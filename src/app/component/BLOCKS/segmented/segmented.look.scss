@@ -1,0 +1,90 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+// The pick-one look, said once for the two places that draw it.
+//
+// `segmented-block` is the control; the right-click menu's choice grid draws
+// the same track, cells, pill and inks and cannot *be* the block, because
+// inside a CDK menu only a `cdkMenuItem` is reachable from the keyboard. What
+// they share is these mixins rather than a class, so there is one definition of
+// the look and no second copy to drift from it.
+
+/** The track the options sit in. */
+@mixin track {
+  --gap: 2px;
+  --pad: 3px;
+  display: flex;
+  gap: var(--gap);
+  padding: var(--pad);
+  border-radius: 8px;
+  background: var(--surface-field);
+  box-sizing: border-box;
+}
+
+/** Options in two columns, wrapping onto rows. */
+@mixin wrapped {
+  flex-wrap: wrap;
+}
+
+/** One option: its glyph, then its label. Height is the caller's. */
+@mixin cell {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+/** An option's label, which clips itself rather than being clipped. */
+@mixin label-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  // Its own line height, so the clip does not take the descenders off
+  // "Pin-in-slot".
+  line-height: 1.4;
+}
+
+/** What the chosen option stands on. */
+@mixin chosen-surface {
+  background: var(--surface);
+  box-shadow: var(--segment-shadow);
+}
+
+/** The chosen option's ink. */
+@mixin chosen-ink($theme) {
+  color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);
+  font-weight: 500;
+}
+
+/**
+ * The chosen option's glyph, which takes the same ink as its label.
+ *
+ * Here rather than at the two call sites, because the glyph was the one color
+ * in the chosen state that lived outside this file -- `var(--brand)`, indigo
+ * 500, beside a label at 700 -- and two blues in one cell is what a shared look
+ * exists to prevent.
+ */
+@mixin chosen-glyph($theme) {
+  color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);
+}
+
+/** The note that says the parts selected disagree. */
+@mixin mixed-ink($theme) {
+  color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/** A glyph, in the ink of the state its option is in. */
+@mixin glyph {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  transition: color 0.18s ease-in-out;
+}

@@ -156,13 +156,14 @@ checkThat(
   slotCarrier
 );
 
-async function toggle(label) {
-  const row = page.locator('#toggle-block .row').filter({ hasText: label }).first();
-  await row.locator('button[role="switch"], .mdc-switch').first().click();
+/** Pick a type in the Edit panel's Joint Type choice, by its label. */
+async function chooseType(label) {
+  await page.locator('app-edit-panel segmented-block button', { hasText: label }).first().click();
   await page.waitForTimeout(500);
 }
 
-await toggle('Weld');
+// A slider pin welded to its block is a Slide, which the choice names Prismatic.
+await chooseType('Prismatic');
 checkThat(
   'welding it draws a plate',
   (await page.locator('#sliderHolder .slider-plate').count()) === 1

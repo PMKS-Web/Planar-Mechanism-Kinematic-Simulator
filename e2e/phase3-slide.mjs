@@ -72,7 +72,12 @@ try {
   await page.waitForTimeout(2500);
 
   const start = await jointState(page);
-  record('the Slide URL decodes into all six joints', start.length === 6, {
+  // Six records in the URL, four joints on the canvas: the payload predates a
+  // slider becoming one joint, so its two coincident pins and their blocks
+  // fold into B and C when it decodes (Stage 1 of
+  // docs/joint-type-and-cylinder-plan.md). Counting six here was reading the
+  // URL rather than the drawing.
+  record('the Slide URL decodes into its four joints', start.length === 4, {
     ids: start.map((joint) => joint.id).join(''),
   });
   await shot(page, 'loaded.png');

@@ -21,6 +21,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
@@ -182,6 +183,63 @@ const ghost = await page.evaluate(() => {
 });
 record('drawing a force previews the arrow it will make', !!ghost && ghost.drawn >= 2, ghost);
 
+// Canceling must remove the preview as well as stop its pointer tracking.
+// Exercise a fresh creation after each cancellation so a stale source cannot
+// leak into the next force, and keep the normal placement checks below.
+const film = filmstrip(page, 'artifacts/force-cancel');
+for (const cancel of ['right-grid', 'right-link', 'middle', 'Escape', 'contextmenu']) {
+  await film.shot(`${cancel}-preview`);
+  await film.during(60, 5, `${cancel}-cancel`, async () => {
+    if (cancel === 'Escape') await page.keyboard.press('Escape');
+    else if (cancel === 'contextmenu') {
+      // Touch long-press and a second button during a held pointer can open a
+      // menu without another pointerdown. The contextmenu must clean up too.
+      await page
+        .locator('svg')
+        .first()
+        .dispatchEvent('contextmenu', {
+          clientX: onBoom.x - 120,
+          clientY: onBoom.y - 90,
+          button: 2,
+        });
+    } else {
+      const at = cancel === 'right-link' ? onBoom : { x: onBoom.x - 120, y: onBoom.y - 90 };
+      await page.mouse.click(at.x, at.y, { button: cancel === 'middle' ? 'middle' : 'right' });
+    }
+  });
+  const canceled = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    return {
+      preview: !!document.querySelector('#forceTempHolder'),
+      source: !!grid.forceCreateOn,
+      forces: grid.mechanismSrv.forces.length,
+    };
+  });
+  record(
+    `${cancel} clears the force preview without placing it`,
+    !canceled.preview && !canceled.source && canceled.forces === 1,
+    canceled
+  );
+  await page.keyboard.press('Escape');
+  await page.mouse.move(onBoom.x - 160, onBoom.y - 110, { steps: 4 });
+  await film.shot(`${cancel}-settled`);
+  record(
+    `${cancel} leaves no preview after the pointer moves`,
+    (await page.locator('#forceTempHolder').count()) === 0
+  );
+  await page.mouse.click(onBoom.x, onBoom.y, { button: 'right' });
+  await page
+    .locator('#contextMenu .cm-row')
+    .filter({ has: page.locator('.cm-row__label', { hasText: /^Force$/ }) })
+    .click();
+  await page.mouse.move(onBoom.x - 120, onBoom.y - 90, { steps: 8 });
+  record(
+    `${cancel} allows another force preview`,
+    (await page.locator('#forceTempHolder').count()) === 1
+  );
+}
+await contactSheet('artifacts/force-cancel/*.png', 'artifacts/force-cancel-sheet.png', 5, 0.35);
+
 await page.mouse.click(onBoom.x - 120, onBoom.y - 90);
 await page.waitForTimeout(800);
 const built = await page.evaluate(
@@ -253,10 +311,18 @@ await page.goto(`${BASE}/?${payloads['Scotch_Yoke']}`, { waitUntil: 'domcontentl
 await waitForReady(page);
 const welded = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  const joint = grid.mechanismSrv.joints.find((candidate) => candidate.isWelded);
+  // Held rigid, in whichever way the drawing records it. The yoke's weld sat on
+  // the pin coincident with its slider, and those are one joint now: a Slide,
+  // which says in `rotates` what every other joint says in `isWelded` (Stage 1
+  // of `docs/joint-type-and-cylinder-plan.md`).
+  const joint = grid.mechanismSrv.joints.find(
+    (candidate) =>
+      candidate.isWelded ||
+      (candidate.constructor?.name === 'PrisJoint' && candidate.rotates === false)
+  );
   return joint ? { id: joint.id, x: joint.x, y: joint.y } : undefined;
 });
-record('the yoke has a welded joint', !!welded, welded);
+record('the yoke has a joint that holds its bodies rigid', !!welded, welded);
 const onWeld = await toScreen(welded.x, welded.y);
 await page.mouse.move(onWeld.x, onWeld.y);
 await page.mouse.click(onWeld.x, onWeld.y, { button: 'right' });

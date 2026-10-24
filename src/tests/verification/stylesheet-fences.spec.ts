@@ -57,7 +57,7 @@ describe('stylesheet fences', () => {
     // onto the --text ladder. The count only goes down: lower the ceiling
     // when you remove some, and name a role in the token file rather than
     // raising it.
-    const CEILING = 87;
+    const CEILING = 81;
     const count = stylesheets()
       .filter((path) => path !== TOKENS)
       .reduce((sum, path) => sum + (read(path).match(/\brgba?\(/g)?.length ?? 0), 0);

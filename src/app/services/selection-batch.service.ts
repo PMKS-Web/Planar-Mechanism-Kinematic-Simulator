@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { Cylinder, cylinderJoints } from '../model/cylinder';
+import { Cylinder, cylinderJoints, isCylinderInner } from '../model/cylinder';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import { Link, RealLink, SliderBlock } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { SelectedPartRef } from '../model/selection';
 import { MechanismService } from './mechanism.service';
 
@@ -171,14 +171,14 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
   const orphanCandidates = new Set<string>();
 
   const removeCylinder = (cylinder: Cylinder) => {
-    for (const body of [cylinder.barrel, cylinder.rod, cylinder.block]) {
+    for (const body of [cylinder.barrel, cylinder.rod]) {
       const root = rootOf(mechanism, body);
       if (root) {
         removeRoots.add(root);
         root.joints.forEach((joint) => orphanCandidates.add(joint.id));
       }
     }
-    for (const joint of [cylinder.barrelNear, cylinder.pin, cylinder.slider]) {
+    for (const joint of [cylinder.inner, cylinder.seal]) {
       removeJointIds.add(joint.id);
     }
   };
@@ -209,10 +209,7 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
     if (removeRoots.has(root)) continue;
     const selectedOnRoot = root.joints.filter((joint) => selectedJointIds.has(joint.id));
     if (selectedOnRoot.length === 0) continue;
-    if (root instanceof SliderBlock) {
-      removeRoots.add(root);
-      root.joints.forEach((joint) => removeJointIds.add(joint.id));
-    } else if (!(root instanceof RealLink) || root.subset.length === 0) {
+    if (!(root instanceof RealLink) || root.subset.length === 0) {
       if (root.joints.length - selectedOnRoot.length < 2) removeRoots.add(root);
     } else {
       const survivors = root.subset.filter(
@@ -278,7 +275,6 @@ function duplicateClosure(
     cylinderJoints(cylinder).forEach((joint) => joints.add(joint));
     addRoot(rootOf(mechanism, cylinder.barrel));
     addRoot(rootOf(mechanism, cylinder.rod));
-    addRoot(rootOf(mechanism, cylinder.block));
   };
 
   for (const part of resolved) {
@@ -308,18 +304,13 @@ function duplicateClosure(
     [...roots].forEach((root) => root.joints.forEach((joint) => joints.add(joint)));
     for (const joint of [...joints]) {
       if (!(joint instanceof RealJoint)) continue;
-      for (const block of joint.links.filter(
-        (link): link is SliderBlock => link instanceof SliderBlock
-      )) {
-        addRoot(rootOf(mechanism, block));
-        block.joints.forEach((member) => joints.add(member));
-        const slider = block.joints.find(
-          (member): member is PrisJoint => member instanceof PrisJoint
-        );
-        if (slider?.isSealed) {
-          const cylinder = mechanism.cylinderAt(slider);
-          if (cylinder) addCylinder(cylinder);
-        }
+      // A copy of a sealed slider has to bring the whole ram, or the copy has
+      // a rod-shaped hole in it. This used to walk each joint's blocks to find
+      // the slider riding it and its coincident partner; a slider is one joint
+      // now, so a slider in the closure is simply this joint.
+      if (joint instanceof PrisJoint && joint.isSealed) {
+        const cylinder = mechanism.cylinderAt(joint);
+        if (cylinder) addCylinder(cylinder);
       }
       if (joint instanceof PrisJoint && joint.isFloating) {
         const carrier = rootOf(mechanism, joint.carrier!);
@@ -358,8 +349,47 @@ function copyClosure(
     ]),
     ...mechanism.forces.map((force) => force.name),
   ]);
+  // The visible joints first, then the buried barrel ends (decision S9). A
+  // cylinder's inner joint is named after the letter its own barrel mount ends
+  // up with, and that letter is handed out in this same pass -- so the copies
+  // that can be seen are lettered before anything is named after one of them.
+  //
+  // It used to be one pass, which spent a letter on the inner joint too: a
+  // duplicated cylinder came out with a hidden joint holding a letter no marker
+  // on the grid wore, and pushed every later joint further down the alphabet.
+  const innerOf = new Map<Joint, Cylinder>();
   for (const source of closure.joints) {
+    const cylinder = mechanism.cylinderAt(source);
+    if (cylinder && isCylinderInner(cylinder, source)) innerOf.set(source, cylinder);
+  }
+  // A cylinder's three visible joints are lettered *along the part* -- the
+  // barrel's mount, the slide, the rod's far end -- whichever of them the
+  // closure happened to reach first. The closure is built from whatever was
+  // clicked, so copying a ram by its seal used to letter the seal A; a copy now
+  // reads down the part the way a newly drawn cylinder does (S9, amended).
+  const inClosure = new Set(closure.joints);
+  const lettered = new Set<Joint>();
+  const letterOrder: Joint[] = [];
+  for (const source of closure.joints) {
+    const cylinder = mechanism.cylinderAt(source);
+    const along = cylinder ? [cylinder.mountA, cylinder.seal, cylinder.mountB] : [source];
+    for (const joint of along) {
+      if (lettered.has(joint) || !inClosure.has(joint)) continue;
+      lettered.add(joint);
+      letterOrder.push(joint);
+    }
+  }
+  for (const source of letterOrder) {
+    if (innerOf.has(source)) continue;
     const id = mechanism.determineNextLetter(reserved);
+    reserved.push(id);
+    jointMap.set(source, copyJoint(source, id, delta, usedNames));
+  }
+  for (const [source, cylinder] of innerOf) {
+    // Hung off the copy of the barrel's own mount, so the name reads as
+    // belonging to the cylinder it was copied into.
+    const base = jointMap.get(cylinder.mountA)?.id ?? cylinder.mountA.id;
+    const [id] = mechanism.determineInteriorNames(base, 1, reserved);
     reserved.push(id);
     jointMap.set(source, copyJoint(source, id, delta, usedNames));
   }
@@ -374,9 +404,7 @@ function copyClosure(
       .sort()
       .join('');
     let copy: Link;
-    if (source instanceof SliderBlock) {
-      copy = new SliderBlock(id, mapped, source.mass);
-    } else if (source instanceof RealLink) {
+    if (source instanceof RealLink) {
       const subsets = source.subset.map(copyLink);
       const realCopy = new RealLink(
         id,
@@ -471,6 +499,11 @@ function copyJoint(
     );
     slider.angle_rad = source.angle_rad;
     slider.isSealed = source.isSealed;
+    // What the block and the coincident pin used to carry between them. Left
+    // behind, a duplicated Slide came back as a Pin-in-slot and a duplicated
+    // slider came back weightless.
+    slider.rotates = source.rotates;
+    slider.mass = source.mass;
     copy = slider;
   } else if (source instanceof RevJoint) {
     copy = new RevJoint(id, source.x + delta.x, source.y + delta.y, source.input, source.ground);
@@ -495,6 +528,10 @@ function copyRealLinkState(source: RealLink, copy: RealLink, joints: Map<Joint, 
   copy.moiIsCustom = source.moiIsCustom;
   copy.comIsCustom = source.comIsCustom;
   copy.fill = source.fill;
+  // Whether the fill above is a choice or a number nobody has drawn: a copy of
+  // a cylinder whose rod was recolored has to come back recolored, and a copy
+  // of one that was not has to go on wearing its barrel's color.
+  copy.ownColor = source.ownColor;
   copy.isCircle = source.isCircle;
   copy.hold = source.hold;
   const anchor = source.comAnchor;

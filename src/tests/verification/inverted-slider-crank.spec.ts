@@ -1,7 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { Joint } from '../../app/model/joint';
+import { Joint, PrisJoint } from '../../app/model/joint';
 import { rigidLinkResidual, slotResidual } from '../../app/model/mechanism/constraint-residuals';
 import { buildMechanism } from '../../test-utils/verification/fixture';
 import {
@@ -42,20 +42,30 @@ describe('inverted slider-crank (inverse slot direction)', () => {
 
     for (let t = 0; t < mechanism.joints.length; t++) {
       const joints = mechanism.joints[t];
-      const block = at(joints, 'P');
+      // B is the joint that slides. It was the crank pin, with a prismatic twin
+      // P beside it and a zero-length block joining them, and it kept the pin's
+      // letter when the three folded into one.
+      const block = at(joints, 'B');
       const c = at(joints, 'C');
       const d = at(joints, 'D');
       expect(slotResidual(block.x, block.y, c.x, c.y, d.x, d.y), `t=${t}`).toBeCloseTo(0, 3);
     }
   });
 
-  it('keeps the block coincident with the crank pin', () => {
+  it('slides at the crank pin itself, with nothing beside it to drift', () => {
+    // Keeping the block on top of its pin used to be a constraint the solver
+    // had to meet at every timestep, and leaving it behind stretched a link
+    // that has no length to give. One joint cannot drift from itself, so what
+    // is worth stating is that it really is one: the crank pin is the slider,
+    // and the mechanism holds no second prismatic joint anywhere.
     const { mechanism } = buildMechanism(INVERTED_SLIDER_CRANK);
 
     for (let t = 0; t < mechanism.joints.length; t++) {
-      const block = at(mechanism.joints[t], 'P');
-      const pin = at(mechanism.joints[t], 'B');
-      expect([block.x, block.y], `t=${t}`).toEqual([pin.x, pin.y]);
+      const sliders = mechanism.joints[t].filter((joint) => joint instanceof PrisJoint);
+      expect(
+        sliders.map((joint) => joint.id),
+        `t=${t}`
+      ).toEqual(['B']);
     }
   });
 

@@ -96,7 +96,7 @@ const opened = await model();
 console.log('\nphase5-driven-cylinder\n');
 checkThat(
   'the published URL decodes to the boom',
-  opened.jointIds.length === 6,
+  opened.jointIds.length === 5,
   opened.jointIds.join('')
 );
 checkThat(
@@ -106,7 +106,7 @@ checkThat(
 );
 checkThat(
   'the cylinder is the drive',
-  opened.inputIds.join(',') === 'S',
+  opened.inputIds.join(',') === 'P',
   opened.inputIds.join(',')
 );
 checkThat('one degree of freedom', opened.dof === 1, `dof=${opened.dof}`);
@@ -233,8 +233,12 @@ await page
   .click()
   .catch(() => {});
 await page.waitForTimeout(400);
-const mark = page.locator('.cylinder-mark').first();
-await mark.click({ force: true }).catch(() => {});
+// The drive is the slide's, and so is the panel that states it (D9): the square
+// mid-skin is joint S, and Add Input, the direction and the speed are its rows.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].seal);
+});
 await page.waitForTimeout(600);
 const panelText = await page
   .locator('app-edit-panel')
@@ -242,8 +246,8 @@ const panelText = await page
   .catch(() => '');
 await page.screenshot({ path: `${OUT}/04-panel.png` });
 checkThat(
-  'the body panel opens on the cylinder',
-  /Edit Cylinder/.test(panelText),
+  "the slide's panel opens on the cylinder",
+  /Edit Joint /.test(panelText) && /Starts at/.test(panelText),
   panelText.slice(0, 60).replace(/\n/g, ' ')
 );
 checkThat(

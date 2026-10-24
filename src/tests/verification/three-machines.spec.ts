@@ -60,7 +60,7 @@ describe('three machines in one drawing', () => {
         .sort()
         .join('')
     );
-    expect(owned.sort()).toEqual(['ABCD', 'EFGP', 'HIJK']);
+    expect(owned.sort()).toEqual(['ABCD', 'EFG', 'HIJK']);
   });
 
   it('gives each its own drive, speed and direction', () => {

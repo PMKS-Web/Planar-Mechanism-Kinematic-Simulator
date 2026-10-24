@@ -88,6 +88,14 @@ const openAt = async (point) => {
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await page.keyboard.up('Alt');
   await page.locator('#contextMenu.show').waitFor();
+  // `show` starts the card growing from half size, and `force: true` skips the
+  // wait for an element to hold still. A forced click measured in that window
+  // landed a row or two above its target once the card had grown: on an
+  // enabled row, which ran and closed the card, so the next row the section
+  // looked for was gone and it timed out. Click only a card that has settled.
+  await page.waitForFunction(
+    () => getComputedStyle(document.querySelector('#contextMenu')).scale === '1'
+  );
 };
 const openLink = async (a = 'B', b = 'C') => {
   const point = await screenPoint(a, b, 0.45);
@@ -173,6 +181,10 @@ await section('tracer', async () => {
     await deletion.evaluate((node) => node.classList.contains('cm-row--off'))
   );
   await deletion.click({ force: true });
+  check(
+    'a disabled row leaves the card open',
+    (await page.locator('#contextMenu.show').count()) === 1
+  );
   preserves('disabled destructive click', before, await snapshot());
   if (!(await clickEnabled('Tracer Point'))) return;
   const after = await snapshot();

@@ -2,7 +2,7 @@ import { Mechanism } from './mechanism';
 import { TEMPLATE_LINKAGES } from '../../component/MODALS/templates/template-linkages';
 import { buildMechanismFixture } from '../../../tests/fixtures/mechanism-fixtures';
 import { RealLink } from '../link';
-import { sealedCylinderStructures } from '../cylinder';
+import { cylindersIn } from '../cylinder';
 
 // Imports mirror force-solver.fixture.spec.ts exactly: the model modules form
 // a cycle that only initializes cleanly when entered in the order the app
@@ -16,7 +16,7 @@ describe('cylinder parts arriving from a URL', () => {
     // decoder hands the parts back to their shapes; masses stay as stored,
     // because mass carries no flag and is always somebody's choice.
     const { service } = buildMechanismFixture(TEMPLATE_LINKAGES['Cylinder_Boom']);
-    const sealed = sealedCylinderStructures(service.joints);
+    const sealed = cylindersIn(service.joints);
     expect(sealed.length).toBe(1);
     for (const part of [sealed[0].barrel, sealed[0].rod]) {
       expect(part instanceof RealLink).toBe(true);

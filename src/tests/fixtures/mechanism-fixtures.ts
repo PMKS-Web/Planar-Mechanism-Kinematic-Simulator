@@ -10,7 +10,7 @@ import {
   cylinderOfJointIn,
   cylinderOfBarIn,
   cylinderOfLinkIn,
-  sealedCylinderStructures,
+  cylindersIn,
 } from '../../app/model/cylinder';
 import { SettingsService } from '../../app/services/settings.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
@@ -82,25 +82,26 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     // Implemented, from the same function the service calls: what counts as a
     // cylinder decides which parts a panel offers and which it folds away, so
     // a stub here could make a drawer look right about a machine it had wrong.
-    sealedStructures: () => sealedCylinderStructures(service.joints),
+    sealedStructures: () => cylindersIn(service.joints),
     // This one is not stubbed but implemented, because a panel that changes
     // what it shows for a cylinder has to be tested against a real one. It is
     // the same resolution the service does, over the same joints.
     cylinderAt: (obj: Joint | Link | undefined) => {
-      const structures = sealedCylinderStructures(service.joints);
+      const structures = cylindersIn(service.joints);
       if (obj instanceof Joint) return cylinderOfJointIn(structures, obj);
       return cylinderOfLinkIn(structures, obj as Link | undefined);
     },
     // The other half of the same pair, and the one the panels ask: whether
     // this body *is* a ram, rather than whether it is carrying one. A bracket
     // welded to a mount carries one and is not one.
-    cylinderOfBar: (link: Link | undefined) =>
-      cylinderOfBarIn(sealedCylinderStructures(service.joints), link),
+    cylinderOfBar: (link: Link | undefined) => cylinderOfBarIn(cylindersIn(service.joints), link),
     // Implemented, not stubbed, and from the same function the service calls:
     // the panels put these words on their graphs, so a stub that invented its
     // own would let the labels drift without a spec noticing.
-    bodyLabel: (body: Link) =>
-      labelForBody(body, cylinderOfBarIn(sealedCylinderStructures(service.joints), body)),
+    bodyLabel: (body: Link) => {
+      const structures = cylindersIn(service.joints);
+      return labelForBody(body, cylinderOfBarIn(structures, body), structures);
+    },
   } as unknown as MechanismService;
   new MechanismBuilder(service, decoder, settings, active).build(true);
 

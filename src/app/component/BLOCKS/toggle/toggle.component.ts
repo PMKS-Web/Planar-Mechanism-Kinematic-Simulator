@@ -16,6 +16,7 @@ import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
 import { FieldOverlay } from '../field-overlay';
+import { selectAll } from '../select-all';
 
 @Component({
   selector: 'toggle-block',
@@ -33,6 +34,13 @@ import { FieldOverlay } from '../field-overlay';
   ],
 })
 export class ToggleComponent {
+  /**
+   * A click selects the whole value — including a second click on a field
+   * that already has focus, which `select()` alone loses to the caret the
+   * browser places afterwards (`BLOCKS/select-all.ts`).
+   */
+  protected readonly selectAll = selectAll;
+
   readonly tooltip = input<string>();
   readonly formGroup = input.required<FormGroup>();
   readonly _formControl = input.required<string>();

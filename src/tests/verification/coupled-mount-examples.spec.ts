@@ -37,16 +37,16 @@ import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
  *
  * They are also the first mechanisms in the suite that reach the coupled route
  * *by themselves*. `forceCoupledRoute` is off throughout; a mount welded into
- * a bracket, or carrying a block of its own, is what selects it, and each
+ * a bracket, or riding a slot of its own, is what selects it, and each
  * example asserts that it was selected rather than assuming it.
  *
  * What is asserted, for every one of them and at every sample:
  *
  *   - where each joint is, how fast it is going, and how hard it is
  *     accelerating, against the hand derivation written beside the example;
- *   - that the ram is still a ram: barrel and rod their own lengths, block on
- *     its pin, the four axis joints in a line and in the right order along it,
- *     and the whole part inside its stroke;
+ *   - that the ram is still a ram: barrel and rod their own lengths, the four
+ *     axis joints in a line and in the right order along it, and the whole
+ *     part inside its stroke;
  *   - that the cycle closes where it started and reverses at both stops;
  *   - and that renaming every joint and turning every list round changes
  *     nothing.
@@ -131,7 +131,7 @@ interface Example {
    */
   passiveRam?: true;
   /** Ids of the two mounts, so the ram invariants know which part is which. */
-  ram: { barrelMount: string; barrelEnd: string; pin: string; block: string; rodMount: string };
+  ram: { barrelMount: string; barrelEnd: string; pin: string; rodMount: string };
   /** The prescribed scalar, read off the drawing at one sample. */
   commandOf: (position: Map<string, Vec>) => number;
   /** How much of it one sample covers, and in which units the drive is read. */
@@ -167,7 +167,7 @@ const AXIAL_REACH = 10;
 const axial: Example = {
   name: 'a carriage on the ram’s own axis',
   make: axialCarriageFixture,
-  ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'R' },
+  ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', rodMount: 'R' },
   commandOf: (position) => apart(position.get('O')!, position.get('R')!),
   step: 0,
   restSpan: AXIAL_REACH,
@@ -176,8 +176,6 @@ const axial: Example = {
     new Map<string, [number, number]>([
       ['ON', [0, 0]],
       ['PR', [0, 0]],
-      ['PS', [0, 0]],
-      ['OK', [0, 0]],
     ]),
   motionAt: (span, rate) => {
     const part = interior(AXIAL_REACH);
@@ -191,20 +189,16 @@ const axial: Example = {
         ['O', mount],
         ['N', [mount[0] + part.barrel, 0]],
         ['P', pin],
-        ['S', pin],
-        ['K', mount],
         ['R', eye],
       ]),
       velocity: new Map<string, Vec>([
         ['O', carriage],
         ['N', carriage],
-        ['K', carriage],
         ['P', still],
-        ['S', still],
         ['R', still],
       ]),
       acceleration: new Map<string, Vec>(
-        ['O', 'N', 'K', 'P', 'S', 'R'].map((id) => [id, still] as [string, Vec])
+        ['O', 'N', 'P', 'R'].map((id) => [id, still] as [string, Vec])
       ),
     };
   },
@@ -259,19 +253,17 @@ const oblique: Example = (() => {
   return {
     name: 'a carriage on a guide that runs across the ram',
     make: obliqueGuideFixture,
-    ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'R' },
+    ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', rodMount: 'R' },
     commandOf: (position) => apart(position.get('O')!, position.get('R')!),
     step: 0,
     restSpan: rest,
     // Barrel and rod are one straight part, so both turn at the ram's own
-    // rate; the two blocks hold coincident joints and turn at nothing.
+    // rate; the slider joints they ride carry no body of their own.
     bodies: (span: number, rate: number) => {
       const turn = obliqueHeading(span, rate);
       return new Map<string, [number, number]>([
         ['ON', [turn.rate, turn.accel]],
         ['PR', [turn.rate, turn.accel]],
-        ['PS', [0, 0]],
-        ['OK', [0, 0]],
       ]);
     },
     motionAt: (span, rate) => {
@@ -305,26 +297,20 @@ const oblique: Example = (() => {
       return {
         position: new Map<string, Vec>([
           ['O', mount],
-          ['K', mount],
           ['N', barrelEnd.position],
           ['P', pin.position],
-          ['S', pin.position],
           ['R', eye],
         ]),
         velocity: new Map<string, Vec>([
           ['O', mountRate],
-          ['K', mountRate],
           ['N', barrelEnd.velocity],
           ['P', pin.velocity],
-          ['S', pin.velocity],
           ['R', still],
         ]),
         acceleration: new Map<string, Vec>([
           ['O', mountAccel],
-          ['K', mountAccel],
           ['N', barrelEnd.acceleration],
           ['P', pin.acceleration],
-          ['S', pin.acceleration],
           ['R', still],
         ]),
       };
@@ -335,7 +321,7 @@ const oblique: Example = (() => {
 // ---------------------------------------------------------------------------
 // 3. A bracket that translates, carrying a passive ram.
 //
-// The bracket is welded to a grounded guide's block, so it keeps its heading
+// The bracket is welded to a grounded guide's slider, so it keeps its heading
 // against the world; the barrel is welded into the bracket, so it keeps its
 // heading too. Everything on the compound therefore moves at the drive's own
 // speed and nothing accelerates. The ram is passive: its length is whatever
@@ -348,20 +334,18 @@ const bracket: Example = {
   name: 'a bracket that translates, carrying a passive ram',
   passiveRam: true,
   make: translatingBracketFixture,
-  ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'R' },
+  ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', rodMount: 'R' },
   // Read off the bracket's own joint, which the drive places: the ram here is
   // driven by nothing and its length is an answer, not a command.
   commandOf: (position) => position.get('W')![0],
   step: 0,
   restSpan: BRACKET_REACH,
-  // The bracket is welded to a grounded guide's block, so nothing on it turns
+  // The bracket is welded to a grounded guide's slider, so nothing on it turns
   // at all -- which is the whole claim this example makes.
   bodies: () =>
     new Map<string, [number, number]>([
       ['ONW', [0, 0]],
       ['PR', [0, 0]],
-      ['PS', [0, 0]],
-      ['WK', [0, 0]],
     ]),
   motionAt: (travel, rate) => {
     const part = interior(BRACKET_REACH);
@@ -373,24 +357,20 @@ const bracket: Example = {
     return {
       position: new Map<string, Vec>([
         ['W', [travel, BRACKET_ARM * SCALE]],
-        ['K', [travel, BRACKET_ARM * SCALE]],
         ['O', mount],
         ['N', [mount[0] + part.barrel, 0]],
         ['P', pin],
-        ['S', pin],
         ['R', eye],
       ]),
       velocity: new Map<string, Vec>([
         ['W', moving],
-        ['K', moving],
         ['O', moving],
         ['N', moving],
         ['P', still],
-        ['S', still],
         ['R', still],
       ]),
       acceleration: new Map<string, Vec>(
-        ['W', 'K', 'O', 'N', 'P', 'S', 'R'].map((id) => [id, still] as [string, Vec])
+        ['W', 'O', 'N', 'P', 'R'].map((id) => [id, still] as [string, Vec])
       ),
     };
   },
@@ -399,7 +379,7 @@ const bracket: Example = {
 // ---------------------------------------------------------------------------
 // 4. A mount riding a slot cut into a turning crank.
 //
-// The mount is welded to its block, so the ram stands square to the slot, and
+// The mount is welded to its slider, so the ram stands square to the slot, and
 // the eye is pinned to ground. Read in the crank's own frame the whole pose is
 // two components of one fixed vector:
 //
@@ -423,7 +403,7 @@ const carrier: Example = (() => {
     name: 'a mount riding a slot cut into a turning crank',
     passiveRam: true,
     make: rotatingCarrierFixture,
-    ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'R' },
+    ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', rodMount: 'R' },
     commandOf: (position) => Math.atan2(position.get('E')![1], position.get('E')![0]),
     step: 0,
     restSpan: Math.hypot(CARRIER.eye.x - CARRIER.mountAlong, CARRIER.eye.y),
@@ -436,8 +416,6 @@ const carrier: Example = (() => {
         ['AE', [omega, 0]],
         ['ON', [omega, 0]],
         ['PR', [omega, 0]],
-        ['PS', [0, 0]],
-        ['OQ', [0, 0]],
       ]),
     motionAt: (angle, omega) => {
       const part = interior(Math.hypot(CARRIER.eye.x - CARRIER.mountAlong, CARRIER.eye.y));
@@ -473,30 +451,24 @@ const carrier: Example = (() => {
           ['A', still],
           ['E', far],
           ['O', mount],
-          ['Q', mount],
           ['N', barrelEnd.position],
           ['P', pin.position],
-          ['S', pin.position],
           ['R', eye],
         ]),
         velocity: new Map<string, Vec>([
           ['A', still],
           ['E', scaled(perpendicular, CARRIER.slot * SCALE * omega)],
           ['O', mountRate],
-          ['Q', mountRate],
           ['N', barrelEnd.velocity],
           ['P', pin.velocity],
-          ['S', pin.velocity],
           ['R', still],
         ]),
         acceleration: new Map<string, Vec>([
           ['A', still],
           ['E', scaled(e, -CARRIER.slot * SCALE * omega * omega)],
           ['O', mountAccel],
-          ['Q', mountAccel],
           ['N', barrelEnd.acceleration],
           ['P', pin.acceleration],
-          ['S', pin.acceleration],
           ['R', still],
         ]),
       };
@@ -557,7 +529,7 @@ const boom: Example = (() => {
   return {
     name: 'a boom whose rod mount is welded into a bracket',
     make: weldedBoomFixture,
-    ram: { barrelMount: 'G', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'C' },
+    ram: { barrelMount: 'G', barrelEnd: 'N', pin: 'P', rodMount: 'C' },
     commandOf: (position) => apart(position.get('G')!, position.get('C')!),
     step: 0,
     restSpan: rest,
@@ -570,7 +542,6 @@ const boom: Example = (() => {
         ['OC', [swing.omega, swing.alpha]],
         ['GN', [swing.turn.rate, swing.turn.accel]],
         ['PCW', [swing.turn.rate, swing.turn.accel]],
-        ['PS', [0, 0]],
       ]);
     },
     motionAt: (span, rate) => {
@@ -611,7 +582,6 @@ const boom: Example = (() => {
           ['C', tipNow],
           ['N', barrelEnd.position],
           ['P', pin.position],
-          ['S', pin.position],
           ['W', add(tipNow, scaled(witnessArm, arm))],
         ]),
         velocity: new Map<string, Vec>([
@@ -620,7 +590,6 @@ const boom: Example = (() => {
           ['C', tipRate],
           ['N', barrelEnd.velocity],
           ['P', pin.velocity],
-          ['S', pin.velocity],
           ['W', add(tipRate, scaled(witnessAcross, arm * turn.rate))],
         ]),
         acceleration: new Map<string, Vec>([
@@ -629,7 +598,6 @@ const boom: Example = (() => {
           ['C', tipAccel],
           ['N', barrelEnd.acceleration],
           ['P', pin.acceleration],
-          ['S', pin.acceleration],
           [
             'W',
             add(
@@ -895,12 +863,11 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
             accelScale = Math.max(accelScale, Math.abs(alpha));
           }
         }
-        // A block holds two joints on top of each other, so its own heading is
-        // whatever rounding leaves between them -- an angle that means nothing
-        // and that the code answers with a small number rather than refusing.
-        // The bound is stated against the fastest *body* in the drawing for
-        // that reason, and it is still far under what the term wrongly left in
-        // the angular acceleration was worth.
+        // A relative bound, against the fastest *body* in the drawing: these
+        // examples turn at very different rates, so one fixed number would be
+        // slack where the motion is and tight where nothing is moving. It is
+        // still far under what the term wrongly left in the angular
+        // acceleration was worth.
         expect(worstRate, where).toBeLessThan(Math.max(rateScale, 1) * 1e-3);
         expect(worstAccel, where).toBeLessThan(Math.max(accelScale, rateScale, 1) * 1e-3);
       });
@@ -917,8 +884,10 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
           const predicted = example.bodies(commands[t], mechanism.inputAngularVelocities[t]);
           const motion = example.motionAt(commands[t], mechanism.inputAngularVelocities[t]);
           for (const link of mechanism.links[t]) {
-            // Only a body with mass has a center of mass; a block is a pair of
-            // coincident joints and the solver writes it none.
+            // Only a body with mass has a center of mass, and `RealLink` is
+            // what carries one. A slider is one joint now, so nothing in these
+            // drawings is expected to fail this -- it is a guard against the
+            // plain `Link`s built elsewhere, not a filter these rely on.
             if (!(link instanceof RealLink)) continue;
             const [omega, alpha] = predicted.get(link.id)!;
             const anchor = link.joints[0];
@@ -951,20 +920,22 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
         expect(worst, where).toBeLessThan(Math.max(scale, 1) * 1e-3);
       });
 
-      it('is still a ram at every sample: lengths, block, line, order, stroke', () => {
-        const { barrelMount, barrelEnd, pin, block, rodMount } = example.ram;
+      it('is still a ram at every sample: lengths, line, order, stroke', () => {
+        const { barrelMount, barrelEnd, pin, rodMount } = example.ram;
         for (let t = 0; t < mechanism.joints.length; t++) {
           const pose = poseOf(mechanism, t);
           const mount = pose.get(barrelMount)!;
           const buried = pose.get(barrelEnd)!;
           const head = pose.get(pin)!;
-          const rider = pose.get(block)!;
           const eye = pose.get(rodMount)!;
           const where = `sample ${t}`;
 
+          // The block that rode this pin was a second joint held on top of it,
+          // and what it asserted here was that the two had not drifted apart.
+          // One joint carries the slot now, so that is a property of the model
+          // rather than something a sample could fail.
           expect(apart(mount, buried), `barrel at ${where}`).toBeCloseTo(part.barrel, 3);
           expect(apart(head, eye), `rod at ${where}`).toBeCloseTo(part.rod, 3);
-          expect(apart(head, rider), `block off its pin at ${where}`).toBeLessThan(1e-3);
 
           const axis: Vec = [eye[0] - mount[0], eye[1] - mount[1]];
           const span = Math.hypot(axis[0], axis[1]);

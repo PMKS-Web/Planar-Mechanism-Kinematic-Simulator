@@ -590,7 +590,11 @@ await safe('a joint can be dropped onto the pin of a slider', async () => {
   await page.waitForTimeout(400);
 
   const loaded = await jointState(page);
-  record('the slider-crank loaded with a prismatic joint', loaded.length === 4, {
+  // Three, from a payload that spells four. This string was written when a
+  // slider was a prismatic joint, a coincident pin and a block joining them;
+  // the reader folds that trio into the one joint now (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), and it keeps the pin's letter.
+  record('the slider-crank loaded with a prismatic joint', loaded.length === 3, {
     joints: loaded.map((j) => j.id),
   });
 
@@ -626,7 +630,7 @@ await safe('a joint can be dropped onto the pin of a slider', async () => {
   const after = await jointState(page);
   await shot(page, 'merged-onto-slider.png');
 
-  record("the slider's pin offered itself as a drop target", ringed === 1, { ringed });
+  record('the slider offered itself as a drop target', ringed === 1, { ringed });
   record('the merge went through', !after.some((j) => j.id === spare.id), {
     spare: spare.id,
     after: after.map((j) => j.id),
@@ -878,11 +882,13 @@ await safe('welding a pair that is already pinned goes through with a warning', 
   await page.mouse.click(c.screenX, c.screenY);
   await page.waitForTimeout(500);
 
-  // Phase 4 replaced the Weld/Unweld button pair with a toggle: a pair of
-  // buttons cannot show which side of the axis the joint is currently on.
-  const weld = page.locator('toggle-block', { hasText: 'Weld' }).locator('button').first();
+  // Phase 4 replaced the Weld/Unweld button pair with a toggle, because a pair
+  // of buttons cannot show which side of the axis the joint is currently on --
+  // and Stage 0 of the joint-type plan replaced that toggle in turn: the weld
+  // is one value of the joint's type now, so welding this joint is choosing it.
+  const weld = page.locator('app-edit-panel segmented-block button', { hasText: 'Welded' }).first();
   const enabled = await weld.isEnabled().catch(() => null);
-  record('the Weld toggle is still clickable', enabled === true, { enabled });
+  record('the Welded value is still offered', enabled === true, { enabled });
 
   if (enabled) {
     await weld.click();

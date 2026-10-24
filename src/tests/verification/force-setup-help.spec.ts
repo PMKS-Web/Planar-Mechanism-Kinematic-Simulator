@@ -1,8 +1,8 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { PrisJoint, RevJoint } from '../../app/model/joint';
-import { RealLink, SliderBlock } from '../../app/model/link';
+import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
+import { RealLink } from '../../app/model/link';
 import { FlagPacker } from '../../app/services/transcoding/flag-packer';
 import { BoolSetting } from '../../app/services/transcoding/stored-settings';
 import { createMechanismHarness, MechanismHarness } from '../../test-utils/mechanism-harness';
@@ -183,38 +183,35 @@ describe('what a fresh link weighs', () => {
   });
 });
 
-describe('mass on a slider block', () => {
+describe('mass on a slider', () => {
   it('counts as weight, the same as the solver counts it', () => {
-    // A slider-crank whose only mass is the piston itself: the solver hangs
+    // A slider-crank whose only mass is the block itself: the solver hangs
     // that mass from gravity, so setup has to call the mechanism loaded.
     const harness = createMechanismHarness();
-    const at: [number, number][] = [
-      [0, 0],
-      [1, 1],
-      [3, 0],
+    const a = new RevJoint('A', 0, 0, true, true);
+    const b = new RevJoint('B', 1, 1);
+    // C rides a horizontal slot fixed to the world, and carries the mass. The
+    // mass was a *link's* while a slider was three objects -- this joint, a
+    // prismatic twin, and a zero-length block joining them -- because only a
+    // link could hold one; a slider is one joint now, and holds its own
+    // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`).
+    const c = new PrisJoint('C', 3, 0, false, true);
+    c.angle_rad = 0;
+    c.mass = 3;
+    const pairs: [RealJoint, RealJoint][] = [
+      [a, b],
+      [b, c],
     ];
-    const joints = at.map(([x, y], i) => new RevJoint('ABC'[i], x, y));
-    joints[0].ground = true;
-    joints[0].input = true;
-    const links = [0, 1].map((i) => {
-      const link = new RealLink(joints[i].id + joints[i + 1].id, [joints[i], joints[i + 1]]);
-      joints[i].links.push(link);
-      joints[i + 1].links.push(link);
-      joints[i].connectedJoints.push(joints[i + 1]);
-      joints[i + 1].connectedJoints.push(joints[i]);
+    const links = pairs.map(([left, right]) => {
+      const link = new RealLink(left.id + right.id, [left, right]);
+      left.links.push(link);
+      right.links.push(link);
+      left.connectedJoints.push(right);
+      right.connectedJoints.push(left);
       return link;
     });
-    // The block and its grounded guide, wired the way the fixture builder
-    // wires them: pin C rides in a horizontal slot fixed to the world.
-    const pris = new PrisJoint('P', joints[2].x, joints[2].y, false, true);
-    pris.angle_rad = 0;
-    pris.connectedJoints.push(joints[2]);
-    joints[2].connectedJoints.push(pris);
-    const block = new SliderBlock('CP', [joints[2], pris], 3);
-    pris.links.push(block);
-    joints[2].links.push(block);
-    harness.service.joints.push(...joints, pris);
-    harness.service.links.push(...links, block);
+    harness.service.joints.push(a, b, c);
+    harness.service.links.push(...links);
     harness.service.updateMechanism();
 
     const load = row(harness, 'A load to react against');

@@ -54,9 +54,22 @@ const readMenu = () =>
       row.querySelector('.cm-row__key')?.textContent?.trim() ??
       (row.querySelector('.cm-row__check') ? 'check' : '');
     const cross = card.querySelector('.cm-cross');
+    const grid = card.querySelector('.cm-choice');
     return {
       title: card.querySelector('.cm-header__title')?.textContent?.trim() ?? null,
       subtitle: card.querySelector('.cm-header__subtitle')?.textContent?.trim() ?? null,
+      // What the part can be, above the ladder: one cell per value.
+      choice: grid
+        ? {
+            label: grid.getAttribute('aria-label'),
+            cells: [...grid.querySelectorAll('.cm-choice__cell')].map((cell) => ({
+              label: cell.querySelector('.cm-choice__label')?.textContent?.trim() ?? '',
+              chosen: cell.classList.contains('cm-choice__cell--chosen'),
+              off: cell.classList.contains('cm-choice__cell--off'),
+              fault: cell.classList.contains('cm-choice__cell--fault'),
+            })),
+          }
+        : null,
       cross: cross ? (cross.classList.contains('cm-cross--off') ? 'off' : 'on') : null,
       // Upper-cased by the stylesheet, so the text node keeps its own case.
       groups: [...card.querySelectorAll('.cm-group__label')].map((one) =>
@@ -173,9 +186,15 @@ const jointA = await openOn('#joint_A');
 check('a joint menu names the joint it is about', jointA?.title === 'Joint A', jointA?.title);
 check('and what it is made of', jointA?.subtitle === 'Pin · Links OA, ACT', jointA?.subtitle);
 check(
-  'the ladder is Attach, State, Traces',
-  JSON.stringify(jointA?.groups) === JSON.stringify(['ATTACH', 'STATE', 'TRACES']),
+  'the ladder is Attach, State, Traces, Actions',
+  JSON.stringify(jointA?.groups) === JSON.stringify(['ATTACH', 'STATE', 'TRACES', 'ACTIONS']),
   jointA?.groups
+);
+check(
+  'Split Joint names the number of bodies it will separate',
+  rowNamed(jointA, 'Split Joint')?.off === false &&
+    rowNamed(jointA, 'Split Joint')?.slot === '2 links',
+  rowNamed(jointA, 'Split Joint')
 );
 check(
   'the deletions are the last rows, and the only red ones',
@@ -188,10 +207,18 @@ check(
 );
 check(
   'states are states, not verbs that rewrite themselves',
-  ['Grounded', 'Driven Input', 'Slider', 'Welded', 'Trace path', 'Locked'].every((label) =>
-    rowNamed(jointA, label)
-  ) && !jointA?.rows.some((one) => /^(Add|Remove) /.test(one.label)),
+  ['Grounded', 'Driven Input', 'Trace path', 'Locked'].every((label) => rowNamed(jointA, label)) &&
+    !jointA?.rows.some((one) => /^(Add|Remove) /.test(one.label)),
   jointA?.rows.map((one) => one.label)
+);
+check(
+  'and what the joint is is one choice above them, not two rows among them',
+  jointA?.choice?.label === 'Joint Type' &&
+    JSON.stringify(jointA.choice.cells.map((one) => one.label)) ===
+      JSON.stringify(['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded']) &&
+    jointA.choice.cells.find((one) => one.chosen)?.label === 'Revolute' &&
+    !jointA.rows.some((one) => /^(Slider|Welded)$/.test(one.label)),
+  jointA?.choice
 );
 check(
   'a load will not anchor where two links share the pin',
@@ -216,9 +243,9 @@ check(
   { subtitle: groundO?.subtitle, grounded: rowNamed(groundO, 'Grounded') }
 );
 check(
-  'a weld with nothing to fuse is grayed with the reason',
-  rowNamed(groundO, 'Welded')?.slot === 'needs 2 links',
-  rowNamed(groundO, 'Welded')
+  'a weld with nothing to fuse is grayed in the choice',
+  groundO?.choice?.cells.find((one) => one.label === 'Welded')?.off === true,
+  groundO?.choice
 );
 
 const tracerT = await openOn('#joint_T');
@@ -331,10 +358,29 @@ check(
 // ---------------------------------------------------------------- cylinder
 
 await openMechanism(page, BASE + CYLINDER);
-const cylinderJoint = await openOn('#joint_A');
+
+/** What the drawing calls the four pieces of its one cylinder. */
+const part = await page.evaluate(() => {
+  const one = ng
+    .getComponent(document.querySelector('app-new-grid'))
+    .mechanismSrv.sealedStructures()[0];
+  const named = (joint) => joint.name || joint.id;
+  return {
+    a: named(one.mountA),
+    b: named(one.mountB),
+    seal: named(one.seal),
+    inner: named(one.inner),
+  };
+});
+
+const cylinderJoint = await openOn(`#joint_${part.a}`);
+// A joint at either end is a pin like any other (D13), so it says what kind of
+// pin it is and which body it is on -- with the member named as the member.
+// All four of a cylinder's joints used to answer "Barrel joint · Cylinder AB",
+// which told a reader neither thing.
 check(
-  'a cylinder joint says which end of which cylinder it is',
-  cylinderJoint?.subtitle?.startsWith('Barrel joint · Cylinder'),
+  'a joint at a cylinder’s end is described as the pin it is, on the member it is on',
+  cylinderJoint?.subtitle === `Ground pin · Barrel ${part.a}${part.seal}`,
   cylinderJoint?.subtitle
 );
 // A mount is an ordinary joint now: it welds, it takes a block, and the only
@@ -343,8 +389,8 @@ check(
 // row says the arithmetic.
 check(
   'a mount alone is refused a weld for having nothing to weld to',
-  rowNamed(cylinderJoint, 'Welded')?.slot === 'needs 2 links',
-  rowNamed(cylinderJoint, 'Welded')
+  cylinderJoint?.choice?.cells.find((one) => one.label === 'Welded')?.off === true,
+  cylinderJoint?.choice
 );
 check(
   'and the deletion says it takes the whole part',
@@ -352,20 +398,136 @@ check(
   ownDelete(cylinderJoint)?.label
 );
 // The row is offered rather than grayed: a block on a mount is a carriage, and
-// that is how an excavator's boom is drawn. What the menu refuses is the ram's
-// inside, and none of those three joints is selectable to right-click on.
+// that is how an excavator's boom is drawn. What the menu refuses is the
+// cylinder's inside.
 check(
   'a mount takes a block, like any other joint',
-  rowNamed(cylinderJoint, 'Slider') !== undefined && rowNamed(cylinderJoint, 'Slider')?.slot === '',
-  rowNamed(cylinderJoint, 'Slider')
+  cylinderJoint?.choice?.cells.find((one) => one.label === 'Pin-in-slot')?.off === false,
+  cylinderJoint?.choice
+);
+check(
+  'and it grounds, like any other joint',
+  rowNamed(cylinderJoint, 'Grounded')?.off === false,
+  rowNamed(cylinderJoint, 'Grounded')
 );
 
-const cylinderBody = await openOn('[id="AB"]');
+// ------------------------------------------------- the joint it slides on
+
+const sealMenu = await openOn(`#joint_${part.seal}`);
 check(
-  'a cylinder is described as one part, not as how it is built',
-  /^Barrel and rod · Joints /.test(cylinderBody?.subtitle ?? '') &&
-    !/assembly|sealed/i.test(cylinderBody?.subtitle ?? ''),
-  cylinderBody?.subtitle
+  'the square is a joint, and its card names the whole part it slides in',
+  sealMenu?.title === `Joint ${part.seal}` &&
+    sealMenu?.subtitle === `Slider · Cylinder ${part.a}${part.b}`,
+  { title: sealMenu?.title, subtitle: sealMenu?.subtitle }
+);
+check(
+  'it is Prismatic at full ink, and the other three say they are inside a cylinder',
+  sealMenu?.choice?.cells.find((one) => one.chosen)?.label === 'Prismatic' &&
+    sealMenu?.choice?.cells.filter((one) => !one.chosen).every((one) => one.off === true),
+  sealMenu?.choice
+);
+check(
+  'nothing attaches to it, and each row says why in the model’s four words',
+  ['Link', 'Cylinder', 'Force'].every(
+    (label) =>
+      rowNamed(sealMenu, label)?.off === true &&
+      rowNamed(sealMenu, label)?.slot === 'inside a cylinder'
+  ),
+  sealMenu?.rows.filter((one) => ['Link', 'Cylinder', 'Force'].includes(one.label))
+);
+check(
+  'a ground on it is sent to one of the joints at the ends',
+  rowNamed(sealMenu, 'Grounded')?.off === true &&
+    rowNamed(sealMenu, 'Grounded')?.slot === 'ground an end joint instead',
+  rowNamed(sealMenu, 'Grounded')
+);
+// The cylinder's drive is this joint's drive (D9), so the row is live here and
+// offered nowhere else on the part -- see the member cards below.
+check(
+  'the drive is set here, and the row works',
+  rowNamed(sealMenu, 'Driven Input')?.off === false,
+  rowNamed(sealMenu, 'Driven Input')
+);
+await page.click('.cm-row:has(.cm-row__label:text-is("Driven Input"))');
+await page.waitForTimeout(700);
+check(
+  'and it lands on the joint that slides',
+  (await page.evaluate(
+    () =>
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.sealedStructures()[0]
+        .seal.input
+  )) === true,
+  'the seal did not take the input'
+);
+check(
+  'and its deletion takes the cylinder with it',
+  ownDelete(sealMenu)?.label === 'Delete Joint (and Cylinder)',
+  ownDelete(sealMenu)?.label
+);
+// One fewer than the drawing holds: the buried end a cylinder derives is never
+// drawn, so it is never counted (D14). The seal is, because the square is.
+const drawnJoints = await page.evaluate(() => {
+  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return { visible: m.visibleJoints().length, all: m.joints.length };
+});
+check(
+  'the whole-mechanism row counts the joints a reader can see',
+  sealMenu?.rows.at(-1)?.slot === `${drawnJoints.visible} joints` &&
+    drawnJoints.visible === drawnJoints.all - 1,
+  { slot: sealMenu?.rows.at(-1)?.slot, ...drawnJoints }
+);
+
+// -------------------------------------------------- the barrel and the rod
+
+const barrelMenu = await openOn('.cylinder-barrel');
+check(
+  'the barrel’s card is the barrel’s, under the part it is half of',
+  barrelMenu?.title === `Barrel ${part.a}${part.seal}` &&
+    barrelMenu?.subtitle === `Cylinder ${part.a}${part.b}`,
+  { title: barrelMenu?.title, subtitle: barrelMenu?.subtitle }
+);
+check(
+  'a member takes no third body: there is no Attach group at all',
+  barrelMenu?.groups.includes('ATTACH') === false &&
+    ['Link', 'Cylinder', 'Tracer Point', 'Force', 'Duplicate Link'].every(
+      (label) => rowNamed(barrelMenu, label) === undefined
+    ),
+  barrelMenu?.groups
+);
+check(
+  'it holds its own length and the part’s angle, like the bar it is',
+  rowNamed(barrelMenu, 'Fixed Length')?.off === false &&
+    rowNamed(barrelMenu, 'Fixed Angle')?.off === false,
+  barrelMenu?.rows.map((one) => one.label)
+);
+// The drive belongs to the joint that slides, and the member card no longer
+// offers a second door to it.
+check(
+  'and it offers no drive of its own',
+  rowNamed(barrelMenu, 'Driven Input') === undefined,
+  barrelMenu?.rows.map((one) => one.label)
+);
+check(
+  'its deletion is the cylinder’s, named as the cylinder',
+  ownDelete(barrelMenu)?.label === 'Delete Cylinder',
+  ownDelete(barrelMenu)?.label
+);
+
+const rodMenu = await openOn('.cylinder-rod');
+check(
+  'the rod’s card is the rod’s: the other half, the same part',
+  rodMenu?.title === `Rod ${part.seal}${part.b}` && rodMenu?.subtitle === barrelMenu?.subtitle,
+  { title: rodMenu?.title, subtitle: rodMenu?.subtitle }
+);
+// Decision S5: the angle is the whole part's, written on whichever member was
+// free and ticked on both. Pressing it on the barrel ticks it on the rod.
+await page.click('.cm-row:has(.cm-row__label:text-is("Fixed Angle"))');
+await page.waitForTimeout(600);
+const heldBarrel = await openOn('.cylinder-barrel');
+check(
+  'an angle fixed from one member reads fixed on the other',
+  rowNamed(heldBarrel, 'Fixed Angle')?.on === true,
+  rowNamed(heldBarrel, 'Fixed Angle')
 );
 
 // Duplicate on a link with three joints: the case that used to accept the
@@ -466,17 +628,18 @@ const SLIDER_AND_LOAD =
 await openMechanism(page, BASE + SLIDER_AND_LOAD);
 const sliderPin = await openOn('#joint_B');
 check(
-  'a slider pin says it is one, and its Slider switch is on',
-  /^Slider pin · /.test(sliderPin?.subtitle ?? '') && rowNamed(sliderPin, 'Slider')?.on === true,
+  'a slider pin says it is one, and the choice shows Pin-in-slot',
+  /^Slider · /.test(sliderPin?.subtitle ?? '') &&
+    sliderPin?.choice?.cells.find((one) => one.chosen)?.label === 'Pin-in-slot',
   sliderPin
 );
 check(
   // Offered rather than hidden: the model has no rule against welding a slider
-  // pin, and the panel offers it, so the menu does too and the refusal comes
-  // with its reason if the fuse cannot stand.
-  'and keeps its Weld row, as the panel does',
-  rowNamed(sliderPin, 'Welded')?.off === false,
-  sliderPin?.rows.map((one) => one.label)
+  // pin, and the panel offers it, so the menu does too -- a slot welded to what
+  // rides it is a Slide, which the choice names Prismatic.
+  'and Prismatic is live on it, as the panel offers',
+  sliderPin?.choice?.cells.find((one) => one.label === 'Prismatic')?.off === false,
+  sliderPin?.choice
 );
 
 const forceTarget = await openOnForce('F1');

@@ -477,9 +477,16 @@ const groupRows = await page.evaluate(() =>
     off: row.className.includes('is-off') || row.getAttribute('aria-disabled') === 'true',
   }))
 );
+const groupChoice = await page.evaluate(() =>
+  [...document.querySelectorAll('#contextMenu .cm-choice__cell')].map((cell) => ({
+    label: cell.querySelector('.cm-choice__label')?.textContent.trim(),
+    chosen: cell.classList.contains('cm-choice__cell--chosen'),
+    off: cell.classList.contains('cm-choice__cell--off'),
+  }))
+);
 check(
-  'the group menu carries the same four switches the one-joint menu does',
-  ['Grounded', 'Slider', 'Welded', 'Trace Path'].every((label) =>
+  'the group menu carries the same switches the one-joint menu does',
+  ['Grounded', 'Driven Input', 'Trace Path'].every((label) =>
     groupRows.some((row) => row.label === label)
   ),
   JSON.stringify(groupRows.map((row) => row.label))
@@ -490,9 +497,16 @@ check(
   JSON.stringify(groupRows.find((row) => row.label === 'Grounded'))
 );
 check(
-  'a group weld is grayed for the reason one joint would have been',
-  groupRows.find((row) => row.label === 'Welded')?.off === true,
-  JSON.stringify(groupRows.find((row) => row.label === 'Welded'))
+  'what the joints are is one choice, as it is on one joint',
+  JSON.stringify(groupChoice.map((one) => one.label)) ===
+    JSON.stringify(['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded']) &&
+    !groupRows.some((row) => /^(Slider|Welded)$/.test(row.label ?? '')),
+  JSON.stringify(groupChoice)
+);
+check(
+  'and a group weld is grayed for the reason one joint would have been',
+  groupChoice.find((one) => one.label === 'Welded')?.off === true,
+  JSON.stringify(groupChoice.find((one) => one.label === 'Welded'))
 );
 await page.keyboard.press('Escape');
 await page.waitForTimeout(250);

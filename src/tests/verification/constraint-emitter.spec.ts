@@ -3,7 +3,7 @@
 import '../../app/model/joint';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { Joint } from '../../app/model/joint';
-import { Link, RealLink, SliderBlock } from '../../app/model/link';
+import { Link, RealLink } from '../../app/model/link';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
 import { Constraint } from '../../app/model/mechanism/simultaneous-solver';
 import { rewire } from '../../test-utils/cylinder-graph';
@@ -29,20 +29,23 @@ const solver = PositionSolver as unknown as {
 };
 
 /**
- * A bar welded to a block, and the block on a guide.
+ * A bar held rigid by the slot it rides.
  *
  * `grounded` puts the guide in the world; otherwise the slot is cut between
  * two joints of a carrier bar, which is the floating case.
+ *
+ * W is the joint that slides and the joint the bar hangs on, which were two
+ * coincident joints with a zero-length block between them until a slider became
+ * one joint. So the Slide is `rotates` on W rather than `isWelded` on a pin
+ * beside it, and the system's unknowns are one shorter.
  */
 function slideAssembly(options: { grounded: boolean }) {
-  const weld = new RevJoint('W', 0, 0);
+  const slider = new PrisJoint('W', 0, 0);
   const far = new RevJoint('F', 3, 1);
-  const slider = new PrisJoint('S', 0, 0);
-  const rider = new RealLink('WF', [weld, far]);
-  const block = new SliderBlock('WS', [weld, slider]);
+  const rider = new RealLink('WF', [slider, far]);
 
-  const joints: Joint[] = [weld, far, slider];
-  const links: Link[] = [rider, block];
+  const joints: Joint[] = [slider, far];
+  const links: Link[] = [rider];
 
   if (options.grounded) {
     slider.groundAt(0);
@@ -54,9 +57,9 @@ function slideAssembly(options: { grounded: boolean }) {
     links.push(carrier);
     slider.slideOn(carrier, slotA, slotB);
   }
-  weld.isWelded = true;
+  slider.rotates = false;
   rewire(joints, links);
-  return { joints, links, weld, far, slider };
+  return { joints, links, weld: slider, far, slider };
 }
 
 const kinds = (rows: Constraint[] | undefined) => (rows ?? []).map((one) => one.kind);
@@ -68,7 +71,7 @@ describe('what a weld at a block is written down as', () => {
     // grounded Slide routed through the constraint set simply had no row for
     // its weld, and the rider was free to turn in a block that forbids it.
     const { joints, links, far } = slideAssembly({ grounded: true });
-    const rows = solver.collectConstraints(joints, links, ['W', 'F', 'S']);
+    const rows = solver.collectConstraints(joints, links, ['W', 'F']);
 
     expect(kinds(rows)).toContain('fixedDirection');
     const held = rows!.find((one) => one.kind === 'fixedDirection');
@@ -81,7 +84,7 @@ describe('what a weld at a block is written down as', () => {
 
   it('holds an angle to the slot when the guide moves with a carrier', () => {
     const { joints, links } = slideAssembly({ grounded: false });
-    const rows = solver.collectConstraints(joints, links, ['W', 'F', 'S']);
+    const rows = solver.collectConstraints(joints, links, ['W', 'F']);
 
     expect(kinds(rows)).toContain('fixedAngle');
     expect(kinds(rows)).not.toContain('fixedDirection');
@@ -127,7 +130,7 @@ describe('which bar a weld is taken to hold', () => {
     // from the two-joint leaf the weld is actually on.
     for (const order of ['leafFirst', 'bracketFirst'] as const) {
       const { joints, links } = riderInACompound(order);
-      const rows = solver.collectConstraints(joints, links, ['W', 'F', 'S', 'X']);
+      const rows = solver.collectConstraints(joints, links, ['W', 'F', 'X']);
       const held = rows?.find((one) => one.kind === 'fixedDirection');
       expect(held).toBeDefined();
       expect(held).toMatchObject({ a1: 'W', a2: 'F' });

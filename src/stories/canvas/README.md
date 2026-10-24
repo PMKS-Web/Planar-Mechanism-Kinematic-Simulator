@@ -4,10 +4,11 @@ This directory is reserved for the gallery's canvas section: joints, links, slot
 cylinders, forces, the glyph primitives they are drawn from, and the ambiguous hit targets
 where two of them overlap.
 
-**Nothing belongs here yet.** That gallery is stage **S6** of the bodies-and-joints migration,
-planned on the unmerged branch `bodies-and-joints-plan` in `docs/bodies-and-joints-plan.md`:
-"Rebuild the dev object gallery to expose all new entities and ambiguous hit targets". Building
-it against today's `Joint` / `Link` model would mean building it twice.
+**Nothing belongs here yet.** Stages 1 and 2 of
+[`docs/joint-type-and-cylinder-plan.md`](../../../docs/joint-type-and-cylinder-plan.md) change how a
+slider and a cylinder are drawn — a slider becomes one joint with one mark, and a cylinder's slide
+becomes a joint of its own — so building these stories against today's `Joint` / `Link` model
+would mean building them twice.
 
 Until then:
 

@@ -163,10 +163,13 @@
 
 @if (menuOpen) {
   <div class="menuScrim" (click)="closeMenu()"></div>
+  <!-- Focusable itself, so a menu opened with the mouse can hold the keys
+       without arming one of its rows. `openMenu` says why. -->
   <div
     class="projectMenu"
     id="projectMenu"
     #projectMenu
+    tabindex="-1"
     [class.byKeyboard]="menuByKeyboard"
     (keydown)="onMenuKey($event)"
     @menuOpen

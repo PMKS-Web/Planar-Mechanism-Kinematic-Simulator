@@ -140,7 +140,7 @@ describe('a ram assembled inside out', () => {
     SettingsService._objectScale.next(previousScale);
   });
 
-  /** The ram's own five joints, as the solver holds them. */
+  /** The cylinder's own four joints, as the solver holds them. */
   function seated() {
     solver.resetStaticVariables();
     const parts = ram();
@@ -160,7 +160,7 @@ describe('a ram assembled inside out', () => {
     // and the rod its own length from the far one. What is wrong is the order
     // along the axis, and only the order.
     const parts = seated();
-    const behind = -parts.barrelNear.x;
+    const behind = -parts.inner.x;
     solver.jointMapPositions.set('B', [behind, 0]);
     solver.jointMapPositions.set('C', [behind, 0]);
     solver.jointMapPositions.set('P', [behind, 0]);
@@ -171,8 +171,8 @@ describe('a ram assembled inside out', () => {
 
   it('is refused when the rod reaches back past its own mount', () => {
     const parts = seated();
-    solver.jointMapPositions.set('C', [parts.rodFar.x + 2, 0]);
-    solver.jointMapPositions.set('P', [parts.rodFar.x + 2, 0]);
+    solver.jointMapPositions.set('C', [parts.mountB.x + 2, 0]);
+    solver.jointMapPositions.set('P', [parts.mountB.x + 2, 0]);
 
     expect(solver.cylindersAreIntact()).toBe(false);
     solver.resetStaticVariables();
@@ -205,8 +205,8 @@ describe('a commanded ram that settles on the wrong root', () => {
     solver.resetStaticVariables();
     const parts = ram();
     solver.registerSealedCylinders(parts.joints);
-    const barrel = parts.barrelNear.x;
-    const rod = parts.rodFar.x - parts.pin.x;
+    const barrel = parts.inner.x;
+    const rod = parts.mountB.x - parts.seal.x;
     const system: SimultaneousSystem = {
       unknownIds: ['B', 'C', 'P'],
       constraints: [

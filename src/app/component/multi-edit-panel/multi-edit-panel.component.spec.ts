@@ -12,6 +12,7 @@ import { MultiEditService } from '../../services/multi-edit.service';
 import { SelectionBatchService } from '../../services/selection-batch.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { MultiEditPanelComponent } from './multi-edit-panel.component';
+import { jointTypeChoice } from '../../model/joint-type';
 
 const S = MODEL_SCALE;
 
@@ -27,6 +28,8 @@ describe('MultiEditPanelComponent', () => {
     setHold: vi.fn().mockReturnValue({ ok: true }),
     setTracePath: vi.fn().mockReturnValue({ ok: true }),
     setForceFrame: vi.fn().mockReturnValue({ ok: true }),
+    jointTypeChoice: vi.fn().mockReturnValue(jointTypeChoice('revolute', false, () => undefined)),
+    setJointType: vi.fn().mockReturnValue({ ok: true }),
   };
   const batch = {
     deleteSelected: vi.fn().mockReturnValue({ ok: true, selection: [] }),
@@ -205,6 +208,34 @@ describe('MultiEditPanelComponent', () => {
     expect(multi.setLocked).toHaveBeenCalledWith(active.selectedPartRefs, true);
   });
 
+  it('offers one Joint Type for the selected joints, and makes every one the type chosen', () => {
+    const a = new RevJoint('A', 0, 0);
+    const b = new RevJoint('B', S, 0);
+    mechanism.joints = [a, b];
+    mechanism.links = [];
+    active.restorePartSelection(
+      {
+        refs: [
+          { kind: 'joint', id: 'A' },
+          { kind: 'joint', id: 'B' },
+        ],
+      },
+      mechanism.joints,
+      mechanism.links
+    );
+
+    const element = render();
+    const options = [...element.querySelectorAll('segmented-block button')] as HTMLButtonElement[];
+    expect(options.map((option) => option.textContent?.trim())).toEqual([
+      'Revolute',
+      'Prismatic',
+      'Pin-in-slot',
+      'Welded',
+    ]);
+    options[3].click();
+    expect(multi.setJointType).toHaveBeenCalledWith(active.selectedPartRefs, 'welded');
+  });
+
   function posedState(): EditState {
     return {
       mode: 'analysis',
@@ -280,8 +311,8 @@ describe('MultiEditPanelComponent', () => {
     expect(panel.form.controls.trace.enabled).toBe(true);
     expect(panel.form.controls.x.disabled).toBe(true);
     expect(panel.form.controls.ground.disabled).toBe(true);
-    expect(panel.form.controls.weld.disabled).toBe(true);
-    expect(panel.form.controls.slider.disabled).toBe(true);
+    // A joint's type is structure, so away from the start it is refused whole.
+    expect(element.querySelector('segmented-block .segmented')?.classList).toContain('disabled');
   });
 
   it('enables mapped force values and frame while respecting a force direction lock', () => {

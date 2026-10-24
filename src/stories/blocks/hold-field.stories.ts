@@ -4,7 +4,7 @@ import { HoldFieldComponent } from '../../app/component/BLOCKS/hold-field/hold-f
 import { RealJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { inPanel } from '../support/frame';
-import { gridUtilsStub, mechanismStub } from '../support/stubs';
+import { cylinderMemberStub, gridUtilsStub, mechanismStub } from '../support/stubs';
 
 /**
  * `hold-field-block`: a bar's Length and Angle, each with a padlock that fixes
@@ -21,7 +21,7 @@ const meta: Meta = {
   component: HoldFieldComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],
-  args: { only: undefined, disabled: false, angleHelp: undefined },
+  args: { disabled: false, lengthHelp: undefined, angleHelp: undefined },
   render: (args) => ({
     props: {
       ...args,
@@ -32,8 +32,8 @@ const meta: Meta = {
       <hold-field-block
         [formGroup]="form"
         [link]="link"
-        [only]="only"
         [disabled]="disabled"
+        [lengthHelp]="lengthHelp"
         [angleHelp]="angleHelp"
       ></hold-field-block>
     `,
@@ -53,12 +53,29 @@ export const LengthFixed: Story = { decorators: withHold('length') };
 
 export const AngleFixed: Story = { decorators: withHold('angle') };
 
-/** A cylinder's row: an angle to hold, and no length, because its length is the stroke. */
-export const AngleOnly: Story = {
-  decorators: withHold(undefined),
+const asMember = (holds: { length?: boolean; angle?: boolean } = {}) => [
+  applicationConfig({ providers: [cylinderMemberStub(holds), gridUtilsStub([])] }),
+];
+
+/**
+ * A cylinder's barrel: both rows, with its own help. The length is the
+ * member's, and the angle is the whole part's, so the rod's panel shows the
+ * same bearing (decision S5).
+ */
+export const CylinderMember: Story = {
+  decorators: asMember(),
   args: {
-    only: 'angle',
-    angleHelp: 'The direction this cylinder points, measured from the positive x axis.',
+    lengthHelp: 'How long the barrel is. The stroke follows it.',
+    angleHelp: 'The direction the cylinder points, joint to joint.',
+  },
+};
+
+/** The state the two places make possible: this member's length, and the part's angle. */
+export const CylinderMemberBothFixed: Story = {
+  decorators: asMember({ length: true, angle: true }),
+  args: {
+    lengthHelp: 'How long the barrel is. The stroke follows it.',
+    angleHelp: 'The direction the cylinder points, joint to joint.',
   },
 };
 

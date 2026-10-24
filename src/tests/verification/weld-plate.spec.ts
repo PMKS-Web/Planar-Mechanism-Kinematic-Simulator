@@ -63,8 +63,10 @@ function slide(welded: boolean, at = { x: 3, y: 0 }) {
   )!;
   slider.slideOn(ab, a, b);
   if (welded) {
-    harness.active.updateSelectedObj(c);
-    harness.service.weldJoint();
+    // The slider, not the pin this started as. A pin *becomes* the slider now,
+    // keeping its letter, so the object `c` still refers to is no longer in the
+    // drawing -- and welding it welded nothing.
+    harness.service.weldJoint(slider);
   }
   harness.service.finishStructuralEdit(false);
   return harness;
@@ -108,15 +110,16 @@ describe('the weld plate', () => {
   });
 
   it('is exactly as wide as the rider it stands in for', () => {
-    // The rider runs along the slot here, so across the frame the plate is the
-    // wider of the rider (2 x barHalf) and the block (2 x blockAcrossHalf), and
-    // the rider wins. A capsule fitted at the old 1.84R would read 0.276
-    // against the link's own 0.25 and stand proud of it all the way round.
+    // The rider runs along the slot here, so across the frame the plate is as
+    // wide as the rider and the block, which are now the same half-width
+    // (decision S23) -- and the plate stands proud of neither. A capsule fitted
+    // at the old 1.84R read 0.276 against the link's own 0.25 and haloed it all
+    // the way round; the bar's own 5/3 R was a ninth of that halo again.
     const plate = plateOf(true);
     const across = points(plate!.path).map(([, y]) => Math.abs(y));
 
     expect(Math.max(...across)).toBeCloseTo(MARK.barHalf * radius(), 2);
-    expect(MARK.barHalf * radius()).toBeGreaterThan(MARK.blockAcrossHalf * radius());
+    expect(MARK.barHalf * radius()).toBeCloseTo(MARK.blockAcrossHalf * radius(), 12);
   });
 
   it('reaches the far joint of the rider it stands in for', () => {
@@ -167,8 +170,7 @@ describe('the weld plate', () => {
         .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
         .find((joint) => !joint.isFloating || joint.carrier?.id !== carrier.id)!;
       slider.slideOn(carrier, a, b);
-      harness.active.updateSelectedObj(pin);
-      harness.service.weldJoint();
+      harness.service.weldJoint(slider);
     }
     harness.service.finishStructuralEdit(false);
 

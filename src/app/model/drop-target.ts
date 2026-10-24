@@ -1,13 +1,13 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
-import { Link, RealLink, SliderBlock } from './link';
-import { Cylinder, cylinderJoints } from './cylinder';
+import { slotHalfLength } from './joint-marks';
+import { Link, RealLink } from './link';
+import { Cylinder, cylinderJoints, isInsideCylinder } from './cylinder';
 
 /** Why a candidate joint cannot receive the joint being dragged. */
 export type MergeRefusal =
   | 'same-joint'
   | 'shares-a-link'
   | 'prismatic'
-  | 'two-sliders'
   | 'over-constrained'
   | 'own-carrier'
   | 'not-a-real-joint'
@@ -31,13 +31,13 @@ export type MergeRefusal =
 export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
   'same-joint': 'A joint cannot be merged into itself.',
   'shares-a-link': 'These joints are on the same link, so merging them would collapse it.',
-  prismatic: 'Drop onto the pin of a slider, not onto its slot.',
-  'two-sliders': 'Only one of these joints can carry a slider.',
+  prismatic:
+    'A slider cannot be merged into another joint — its slot would have nothing to ride. Drag the other joint onto the slider instead.',
   'over-constrained':
     'Merging here would tie the same two joints together twice, over-constraining the mechanism.',
   'own-carrier': 'A slider cannot ride on a link it is part of.',
   'not-a-real-joint': 'This joint cannot be merged.',
-  'sealed-cylinder': 'A cylinder is one sealed part — attach at one of its two joints instead.',
+  'sealed-cylinder': 'A cylinder is one part — attach at one of the joints at its ends instead.',
   'driven-joint':
     'A driven joint can only join two bodies — remove the input first, or attach somewhere else.',
   'own-cylinder': 'A cylinder cannot fold onto itself.',
@@ -60,14 +60,13 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
 export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
   'same-joint': 'the same joint',
   'shares-a-link': 'already one bar',
-  prismatic: 'that end is a slot',
-  'two-sliders': 'one block per pin',
+  prismatic: 'a slider cannot merge',
   'over-constrained': 'already tied together',
   'own-carrier': 'its own carrier',
   'not-a-real-joint': 'not a joint',
-  'sealed-cylinder': 'sealed inside the ram',
+  'sealed-cylinder': 'inside a cylinder',
   'driven-joint': 'a driven pair',
-  'own-cylinder': 'the same ram',
+  'own-cylinder': 'the same cylinder',
   'weld-cannot-survive': 'the weld cannot survive',
   'crosses-machines': 'needs the start pose',
 };
@@ -112,14 +111,30 @@ export function refuseJointMerge(
   cylinders: Cylinder[] = []
 ): MergeRefusal | undefined {
   if (source.id === target.id) return 'same-joint';
-  // The prismatic half of a slider is its slot, not a pin anything can attach
-  // to; the coincident RevJoint is the thing a link rides on.
-  if (source instanceof PrisJoint || target instanceof PrisJoint) return 'prismatic';
+  // A joint inside a cylinder is not an attachment point: a merge into the seal
+  // would hang a third joint on the rod and break the part. The joints at the
+  // two ends remain legal targets — they are exactly where a cylinder attaches
+  // to the rest of the linkage.
+  //
+  // Asked here rather than only at the commit, which is where it used to live.
+  // The seal has a hitbox now (decision S11), so it is a joint a drag can
+  // plainly be aimed at: left to `mergeJoints` alone, the ring went green over
+  // the square and the refusal arrived on release.
+  if (cylinders.some((c) => isInsideCylinder(c, source) || isInsideCylinder(c, target))) {
+    return 'sealed-cylinder';
+  }
+  // A slider can be merged *into* and not out of. Dropping a pin onto one is
+  // how a link comes to ride a slot, which is the whole point of the gesture;
+  // dragging the slider onto a pin would leave its slot naming a joint that no
+  // longer exists, because the survivor of a merge is the target.
+  //
+  // The rule read both ways while a slider was three objects: the prismatic
+  // joint had no hitbox, the coincident pin was what a reader could drag, and
+  // merging that pin left the slider behind attached to the survivor. The
+  // slider is the joint a reader drags now (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), so only the source is refused.
+  if (source instanceof PrisJoint) return 'prismatic';
   if (!(source instanceof RealJoint) || !(target instanceof RealJoint)) return 'not-a-real-joint';
-
-  // Dropping a pin onto a slider's pin is a pin-in-slot, which is the point.
-  // Two blocks on one pin is a different joint type, not a merge.
-  if (carriesASlider(source) && carriesASlider(target)) return 'two-sliders';
 
   // A slider merged into one of its own carrier's joints would ride on a link
   // it is now part of: the slot's direction is measured from two joints, one of
@@ -152,7 +167,7 @@ export function refuseJointMerge(
   // found *different* rams for the two ends and let the merge through. The
   // question is whether any single ram has both of these as its mounts.
   const isMountOf = (cylinder: Cylinder, joint: Joint) =>
-    cylinder.barrelFar.id === joint.id || cylinder.rodFar.id === joint.id;
+    cylinder.mountA.id === joint.id || cylinder.mountB.id === joint.id;
   if (cylinders.some((c) => isMountOf(c, source) && isMountOf(c, target))) {
     return 'own-cylinder';
   }
@@ -183,17 +198,18 @@ function wouldOverConstrain(source: RealJoint, target: RealJoint): boolean {
   });
 }
 
-function carriesASlider(joint: RealJoint): boolean {
-  return joint.connectedJoints.some((connected) => connected instanceof PrisJoint);
-}
-
-/** Whether `joint`'s slider slides along a link that `other` is a member of. */
+/**
+ * Whether `joint` slides along a link that `other` is a member of.
+ *
+ * Asked of the joint itself rather than of a coincident partner: a slider used
+ * to be reached from the pin beside it through `connectedJoints`, and only the
+ * block that joined the two put them in each other's lists at all.
+ */
 function ridesOn(joint: RealJoint, other: RealJoint): boolean {
-  return joint.connectedJoints.some(
-    (connected) =>
-      connected instanceof PrisJoint &&
-      connected.isFloating &&
-      connected.carrier!.joints.some((member) => member.id === other.id)
+  return (
+    joint instanceof PrisJoint &&
+    joint.isFloating &&
+    joint.carrier!.joints.some((member) => member.id === other.id)
   );
 }
 
@@ -223,12 +239,18 @@ export function resolveJointDropTarget(
   y: number,
   joints: Joint[],
   radius: number
-): RevJoint | undefined {
-  let best: RevJoint | undefined;
+): RealJoint | undefined {
+  let best: RealJoint | undefined;
   let bestDistance = radius;
 
   joints.forEach((candidate) => {
-    if (!(candidate instanceof RevJoint)) return;
+    // Any real joint, a slider included. Dropping a pin onto one is how a link
+    // comes to ride a slot, and while a slider was a prismatic joint with a
+    // coincident pin it was that *pin* -- a `RevJoint` -- that this caught. The
+    // slider is the joint with the hitbox now, so narrowing to `RevJoint` here
+    // would silently take the pin-in-slot gesture away. Which direction is
+    // legal is `refuseJointMerge`'s answer, not this filter's.
+    if (!(candidate instanceof RealJoint)) return;
     if (refuseJointMerge(source, candidate)) return;
     const distance = Math.hypot(candidate.x - x, candidate.y - y);
     if (distance < bestDistance) {
@@ -292,6 +314,11 @@ export function resolveSlotDropTarget(
     // says the ram and this body are joined, so there is no rule there worth
     // explaining, and a legal bar further out can still win the drop.
     if (slotWouldFoldACylinder(source, carrier, cylinders)) continue;
+    // The pair comes out of the bar in whatever order it holds its joints, so
+    // the slot this cuts has no promised direction. Decision S1's rule — slot
+    // joint A is the mount, slot joint B the buried end — is about a *sealed*
+    // slot, and a slot cut by dropping a joint on a bar is never one: sealing
+    // happens at creation and nothing here can reach a cylinder's inside.
     for (const members of slotJointPools(carrier)) {
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
@@ -315,11 +342,11 @@ export function resolveSlotDropTarget(
  * The drop pulls the dragged joint onto the carrier's line, and when that line
  * already passes through the ram's other mount there is nowhere for the part to
  * go but shorter. Far enough and it folds inside out — the mount crosses back
- * past its own barrel's near end, at which point the roles are derived the
- * other way round and the drawing puts a letter on an interior joint and hides
- * the mount the reader was dragging. This is the slot half of `own-cylinder`:
- * the merge path has refused folding a ram onto itself all along, and the two
- * ends being one part is just as true when the thing between them is a slot.
+ * past its own barrel's buried end, which is a part drawn in an order it cannot
+ * be assembled in and a pose the solver then refuses. This is the slot half of
+ * `own-cylinder`: the merge path has refused folding a ram onto itself all
+ * along, and the two ends being one part is just as true when the thing between
+ * them is a slot.
  *
  * Asked of every ram the joint is a mount of, not the first — a shared mount is
  * one ram's rod end and the next one's barrel end, and either of the two far
@@ -331,8 +358,8 @@ export function slotWouldFoldACylinder(
   cylinders: Cylinder[]
 ): boolean {
   const farEnds = cylinders
-    .filter((c) => c.barrelFar.id === source.id || c.rodFar.id === source.id)
-    .map((c) => (c.barrelFar.id === source.id ? c.rodFar.id : c.barrelFar.id));
+    .filter((c) => c.mountA.id === source.id || c.mountB.id === source.id)
+    .map((c) => (c.mountA.id === source.id ? c.mountB.id : c.mountA.id));
   if (farEnds.length === 0) return false;
   const members = new Set<string>();
   const collect = (link: Link) => link.joints.forEach((joint) => members.add(joint.id));
@@ -355,9 +382,7 @@ export function slotWouldFoldACylinder(
 function slotJointPools(carrier: Link): Joint[][] {
   if (carrier instanceof RealLink && carrier.subset.length > 0) {
     const pools = carrier.subset
-      .filter(
-        (leaf): leaf is RealLink => leaf instanceof RealLink && !(leaf instanceof SliderBlock)
-      )
+      .filter((leaf): leaf is RealLink => leaf instanceof RealLink)
       .map((leaf) => leaf.joints);
     if (pools.length > 0) return pools;
   }
@@ -381,9 +406,64 @@ function closestPointOnSegment(
   return { x: px, y: py, distance: Math.hypot(x - px, y - py) };
 }
 
+/**
+ * Where a drag of a block already riding a channel resolves to (§4.4).
+ *
+ * `'release'` is the block being pulled clear across the bar rather than along
+ * it, which is the one gesture that plainly means "take this off here";
+ * `undefined` is a slot with no direction left to ride, where the only honest
+ * answer is to leave the cursor's own point alone.
+ */
+export type SlotRide = { x: number; y: number } | 'release' | undefined;
+
+/**
+ * Where a block in a channel is allowed to go, and when it comes out (§4.4).
+ *
+ * Dragging the block along its slot sets s₀ and changes nothing else, so the
+ * drag is projected onto the slot line and clamped to the span the channel
+ * actually occupies — the block cannot leave a hole it is inside of, and one
+ * drag stays one quantity.
+ *
+ * Sticky along the line, then it lets go. Sliding is by far the commoner
+ * intent, so the block stays on its line through any amount of sideways
+ * wobble; past `releaseDistance` across it, the answer is `'release'` and the
+ * caller takes the block off the bar.
+ *
+ * A model function rather than canvas code because the same arithmetic is the
+ * answer for every joint that rides a slot, a cylinder's end joint included
+ * (decision S22) — and because the canvas is at its line cap.
+ */
+export function rideAlongSlot(
+  slider: PrisJoint,
+  wanted: { x: number; y: number },
+  /** The drawing's joint radius, which is what a channel's length is measured in. */
+  r: number,
+  releaseDistance: number
+): SlotRide {
+  const a = slider.slotJointA!;
+  const b = slider.slotJointB!;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 1e-9) return undefined;
+
+  const ux = dx / length;
+  const uy = dy / length;
+  const midX = (a.x + b.x) / 2;
+  const midY = (a.y + b.y) / 2;
+  const offset = (wanted.x - midX) * ux + (wanted.y - midY) * uy;
+  const across = -(wanted.x - midX) * uy + (wanted.y - midY) * ux;
+  if (Math.abs(across) > releaseDistance) return 'release';
+
+  const half = slotHalfLength(r, length);
+  const along = Math.max(-half, Math.min(half, offset));
+  return { x: midX + along * ux, y: midY + along * uy };
+}
+
 /** The joint a drag is currently aimed at, and why it would refuse the merge. */
 export interface JointDropCandidate {
-  joint: RevJoint;
+  /** Any real joint, a slider included -- see `resolveJointDropTarget`. */
+  joint: RealJoint;
   /** Absent when the merge is legal. */
   refusal?: MergeRefusal;
 }
@@ -405,12 +485,16 @@ export function resolveDropCandidate(
   radius: number,
   /**
    * Precomputed sealed-cylinder structures, from the service's per-revision
-   * cache. Passed in rather than derived here for two reasons: the caller's
-   * `joints` list is already filtered (the interior pins the structural
-   * resolution enters through are gone, so deriving from it finds nothing —
-   * which is how the mount rules silently skipped the drag and the refusal
-   * appeared only at release, with no ring); and deriving per candidate per
-   * pointermove is exactly the kind of quadratic work the stutter came from.
+   * cache. Passed in rather than derived here, because deriving per candidate
+   * per pointermove is exactly the kind of quadratic work the drag stutter
+   * came from.
+   *
+   * It was also, for a while, the only way to get an answer at all: the
+   * caller's `joints` list holds what the reader can see, and the resolution
+   * used to enter through a joint that list leaves out — so deriving from it
+   * found nothing, which is how the mount rules silently skipped the drag and
+   * the refusal arrived at the release with no ring before it. The lookup
+   * enters at the seal now, and the seal is a joint the reader can see.
    */
   cylinders: Cylinder[] = []
 ): JointDropCandidate | undefined {
@@ -423,7 +507,8 @@ export function resolveDropCandidate(
     cylinderJoints(c).some((member) => member.id === source.id)
   );
   joints.forEach((candidate) => {
-    if (!(candidate instanceof RevJoint)) return;
+    // A slider is an ordinary target -- see `resolveJointDropTarget`.
+    if (!(candidate instanceof RealJoint)) return;
     // The joint under the cursor is the one being dragged; pointing at itself is
     // not a near miss worth reporting.
     if (candidate.id === source.id) return;

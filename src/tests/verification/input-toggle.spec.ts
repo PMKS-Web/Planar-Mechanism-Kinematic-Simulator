@@ -54,6 +54,24 @@ describe('moving the input from one joint to another', () => {
     expect(harness.saveCount()).toBe(before + 1);
   });
 
+  it('is an undo entry the other way round as well, taking a drive away', () => {
+    // The direction the panel used to have a second, quieter door for: a form
+    // control bound to nothing, writing `input` straight onto the joint and
+    // rebuilding without a save, so the drive could be switched off and Undo
+    // could not give it back. Add Input is a button on `adjustInput` now, and
+    // this is the rule that door keeps in both directions.
+    const harness = load('4-Bar');
+    const [held] = inputs(harness);
+    const driven = (harness.service.joints as RealJoint[]).find((joint) => joint.id === held)!;
+    const before = harness.saveCount();
+
+    harness.active.selectedJoint = driven;
+    harness.service.adjustInput();
+
+    expect(inputs(harness)).toEqual([]);
+    expect(harness.saveCount()).toBe(before + 1);
+  });
+
   it('leaves the old input alone when the new joint is refused', () => {
     const harness = load('4-Bar');
     const held = inputs(harness);

@@ -134,20 +134,31 @@ const menu = await page.evaluate(() => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   const joint = c.mechanismSrv.joints.find((j) => j.id === 'F');
   c.setLastRightClick(joint);
-  return c.cMenu.groups
-    .flatMap((g) => g.rows)
-    .map((r) => ({ label: r.label, disabled: r.disabled }));
+  return {
+    rows: c.cMenu.groups
+      .flatMap((g) => g.rows)
+      .map((r) => ({ label: r.label, disabled: r.disabled })),
+    // The Slider and Welded rows this used to read are one choice of four now
+    // (Stage 0 of the joint-type plan), at the top of the card.
+    choice: (c.cMenu.choice?.options ?? []).map((o) => ({
+      label: o.label,
+      refusal: o.refusal?.short ?? null,
+    })),
+  };
 });
-const item = (text) => menu.find((m) => String(m.label).includes(text));
+const item = (text) => menu.rows.find((m) => String(m.label).includes(text));
+const value = (label) => menu.choice.find((o) => o.label === label);
 check(
   'Ground is offered on a slider, as the panel offers it',
   item('Ground') && !item('Ground').disabled,
-  JSON.stringify(menu)
+  JSON.stringify(menu.rows)
 );
 check(
-  'Weld is offered, and refused with a reason rather than grayed',
-  item('Weld') ? !item('Weld').disabled : !!item('Unweld') && !item('Unweld').disabled,
-  JSON.stringify(menu)
+  // Welding a slider is what Prismatic *is* -- the block and the weld together,
+  // the Slide -- so that is the value this asks after.
+  'welding a slider is offered as Prismatic, with nothing said against it',
+  !!value('Prismatic') && value('Prismatic').refusal === null,
+  JSON.stringify(menu.choice)
 );
 check('Input follows the panel rule on a slider', item('Input') && !item('Input').disabled);
 
@@ -160,27 +171,32 @@ const menuE = await page.evaluate(() => {
   const joint = c.mechanismSrv.joints.find((j) => j.id === 'E');
   c.setLastRightClick(joint);
   return {
-    items: c.cMenu.groups
-      .flatMap((g) => g.rows)
-      .map((r) => ({ label: r.label, disabled: r.disabled })),
+    choice: (c.cMenu.choice?.options ?? []).map((o) => ({
+      label: o.label,
+      refusal: o.refusal?.short ?? null,
+    })),
     links: joint.links.length,
-    weldControlDisabled: (() => {
+    // The panel's weld switch went with the row: the same question is which of
+    // its choice's values are refused. `disabledAt` holds their places in
+    // `JOINT_TYPES`, where Welded is the fourth.
+    weldRefusedInPanel: (() => {
       const panel = document.querySelector('app-edit-panel');
       const cmp = panel ? ng.getComponent(panel) : null;
-      return cmp ? cmp.jointForm.get('weld').disabled : null;
+      const choice = cmp ? cmp.jointTypeChoice : null;
+      return choice ? choice.disabledAt.includes(3) : null;
     })(),
   };
 });
-const weldE = menuE.items.find((m) => String(m.label).includes('Weld'));
+const weldE = menuE.choice.find((o) => o.label === 'Welded');
 check(
-  'Weld is grayed on a joint with one link',
-  menuE.links === 1 && !!weldE && weldE.disabled === true,
+  'Welded is refused on a joint with one link',
+  menuE.links === 1 && !!weldE && weldE.refusal !== null,
   JSON.stringify(menuE)
 );
 check(
-  "and the panel's toggle is disabled by the same rule",
-  menuE.weldControlDisabled !== false,
-  JSON.stringify(menuE.weldControlDisabled)
+  "and the panel's choice refuses it by the same rule",
+  menuE.weldRefusedInPanel === true,
+  JSON.stringify(menuE.weldRefusedInPanel)
 );
 
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));

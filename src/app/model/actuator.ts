@@ -18,6 +18,7 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { Link } from './link';
 import { MODEL_SCALE } from './render-scale';
+import { describeFrozenCylinderDrive, frozenCylinderAtSeal } from './cylinder-frozen';
 
 /** The world, as a body an actuator can be measured against. */
 export const GROUND_BODY = 'ground';
@@ -76,13 +77,27 @@ export function describeActuator(joint: Joint): Actuator | string {
   // A weld is the statement that these bodies do *not* move relative to each
   // other, so there is no freedom at this joint for an input to prescribe.
   // Most welds fuse their links into one compound and are caught by the count
-  // below; a Slide's weld does not -- its block stays a separate link -- so
-  // the flag has to be asked directly. Driving one would put a commanded angle
-  // on top of the weld's own constraint, and the mechanism would report itself
-  // unsolvable rather than saying what was wrong.
-  if (joint.isWelded) {
+  // below; one the repair pass has not built yet does not, so the flag is asked
+  // directly. Driving one would put a commanded angle on top of the weld's own
+  // constraint, and the mechanism would report itself unsolvable rather than
+  // saying what was wrong.
+  //
+  // Never asked of a slider, and that was always the rule: what a Slide holds
+  // is its riders' *orientation* against the slot, and the freedom a drive
+  // prescribes there is the travel along it -- which is how every cylinder in
+  // the app is driven. The bit used to sit on a coincident pin that was not the
+  // joint a drive was ever set on, so this never had to say so out loud.
+  if (joint.isWelded && !(joint instanceof PrisJoint)) {
     return 'This joint is welded, so the bodies it joins cannot move relative to each other. Unweld it, or drive a joint that has a freedom.';
   }
+  // The same statement made about a cylinder, where it is a weld somewhere else
+  // rather than a weld here (decision S25). Both of the part's end joints being
+  // in one body leaves one body on each side of the seal, so the slide holds
+  // nothing apart and there is no travel for a drive to command. Asked before
+  // the count below, which would otherwise answer "a driven joint needs two
+  // bodies" -- true, and no use to a reader looking at a cylinder.
+  const frozen = frozenCylinderAtSeal(joint);
+  if (frozen) return describeFrozenCylinderDrive(frozen);
   const bodies = incidentBodies(joint);
   if (bodies.length < 2) {
     return 'A driven joint needs two bodies to move relative to each other.';
@@ -130,7 +145,12 @@ export function describeActuatorRefusal(joint: Joint): { short: string; long: st
   if (typeof found !== 'string') return undefined;
   const long = found;
   if (!(joint instanceof RealJoint)) return { short: 'not a joint', long };
-  if (joint.isWelded) return { short: 'welded, no freedom', long };
+  if (joint.isWelded && !(joint instanceof PrisJoint)) {
+    return { short: 'welded, no freedom', long };
+  }
+  if (frozenCylinderAtSeal(joint)) {
+    return { short: 'cannot extend', long };
+  }
   const bodies = incidentBodies(joint).length;
   if (bodies < 2) return { short: 'needs 2 bodies', long };
   if (bodies > 2) return { short: `${bodies} bodies meet`, long };

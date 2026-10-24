@@ -1292,6 +1292,13 @@ export class AnalysisGraphComponent
             this.numberOfSeries = 1;
             break;
           }
+          case 'Holding Force': {
+            yAxisTitle = `Force (${this.nup.unitLabel(this.settingsService.forceUnit.value)})`;
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
+            seriesData.push({ name: 'Z', type: 'line', data: datum[0] });
+            this.numberOfSeries = 1;
+            break;
+          }
           case 'Joint Forces':
             yAxisTitle = `Force (${this.nup.unitLabel(this.settingsService.forceUnit.value)})`;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);

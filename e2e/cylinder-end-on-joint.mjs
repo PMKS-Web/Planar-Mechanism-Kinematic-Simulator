@@ -49,8 +49,8 @@ const drawing = () =>
       joints: srv.joints.map((one) => one.id),
       links: srv.links.map((one) => one.id),
       cylinders: srv.sealedStructures().map((sealed) => ({
-        mount: sealed.barrelFar?.id,
-        rodFar: sealed.rodFar?.id,
+        mount: sealed.mountA?.id,
+        rodFar: sealed.mountB?.id,
       })),
       linksAtC: joint('C')?.links.map((one) => one.id),
     };
@@ -133,7 +133,7 @@ record(
 );
 record(
   'and no free end was left standing on top of it',
-  after.joints.length === before.joints.length + 4,
+  after.joints.length === before.joints.length + 3,
   { before: before.joints, after: after.joints }
 );
 

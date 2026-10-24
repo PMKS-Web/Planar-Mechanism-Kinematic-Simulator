@@ -4,7 +4,7 @@ import '../../app/model/joint';
 import { Coord } from '../../app/model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
-import { sealedCylinders } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import { resolveSlotDropTarget, slotWouldFoldACylinder } from '../../app/model/drop-target';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { SettingsService } from '../../app/services/settings.service';
@@ -40,8 +40,8 @@ function ramWithABar(options: { weld: boolean }) {
   const service = harness.service;
 
   service.createCylinderFrom(new Coord(-4 * S, 0), new Coord(2 * S, 0));
-  const ram = sealedCylinders(service.joints)[0];
-  const mount = ram.rodFar as RealJoint;
+  const ram = cylindersIn(service.joints)[0];
+  const mount = ram.mountB as RealJoint;
 
   const tip = new RevJoint('W', mount.x + 2 * S, mount.y + 3 * S);
   service.joints.push(tip);
@@ -55,7 +55,7 @@ function ramWithABar(options: { weld: boolean }) {
   const bar = service.links.find(
     (link): link is RealLink => link instanceof RealLink && link.joints.some((j) => j.id === tip.id)
   )!;
-  return { ...harness, ram: sealedCylinders(service.joints)[0], tip, bar };
+  return { ...harness, ram: cylindersIn(service.joints)[0], tip, bar };
 }
 
 /** The slot this drop would cut, described the way the canvas describes it. */
@@ -68,7 +68,7 @@ function slotAcross(bar: RealLink) {
 describe('a slot that would fold a ram', () => {
   it('is not offered on a bar hung off the ram’s other mount', () => {
     const { ram, bar } = ramWithABar({ weld: false });
-    const barrelFar = ram.barrelFar as RealJoint;
+    const barrelFar = ram.mountA as RealJoint;
     const across = slotAcross(bar);
 
     expect(slotWouldFoldACylinder(barrelFar, bar, [ram])).toBe(true);
@@ -79,7 +79,7 @@ describe('a slot that would fold a ram', () => {
 
   it('is not offered on the compound that mount is welded into either', () => {
     const { service, ram, bar } = ramWithABar({ weld: true });
-    const barrelFar = ram.barrelFar as RealJoint;
+    const barrelFar = ram.mountA as RealJoint;
     const compound = service.links.find(
       (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
     )!;
@@ -99,14 +99,14 @@ describe('a slot that would fold a ram', () => {
 
   it('is refused at the commit, without moving the mount first', () => {
     const { service, ram, bar } = ramWithABar({ weld: true });
-    const barrelFar = ram.barrelFar as RealJoint;
+    const barrelFar = ram.mountA as RealJoint;
     const compound = service.links.find(
       (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
     )!;
     const before = { x: barrelFar.x, y: barrelFar.y };
     const span = Math.hypot(
-      (ram.rodFar as RealJoint).x - barrelFar.x,
-      (ram.rodFar as RealJoint).y - barrelFar.y
+      (ram.mountB as RealJoint).x - barrelFar.x,
+      (ram.mountB as RealJoint).y - barrelFar.y
     );
 
     expect(service.cutSlotOn(barrelFar, slotAcross(compound))).toBe(false);
@@ -114,24 +114,24 @@ describe('a slot that would fold a ram', () => {
     // A refusal that has already written half of itself is not a refusal: the
     // mount is where it was, no block was made, and the part is the length it
     // was drawn at.
-    const after = sealedCylinders(service.joints);
+    const after = cylindersIn(service.joints);
     expect(after.length).toBe(1);
     expect({ x: barrelFar.x, y: barrelFar.y }).toEqual(before);
     expect(service.joints.filter((j) => j instanceof PrisJoint && !j.isSealed).length).toBe(0);
     expect(
       Math.hypot(
-        (after[0].rodFar as RealJoint).x - (after[0].barrelFar as RealJoint).x,
-        (after[0].rodFar as RealJoint).y - (after[0].barrelFar as RealJoint).y
+        (after[0].mountB as RealJoint).x - (after[0].mountA as RealJoint).x,
+        (after[0].mountB as RealJoint).y - (after[0].mountA as RealJoint).y
       )
     ).toBeCloseTo(span, 6);
     // And the ram is still the way round it was drawn.
-    expect(after[0].barrelFar.id).toBe(ram.barrelFar.id);
-    expect(after[0].barrelNear.id).toBe(ram.barrelNear.id);
+    expect(after[0].mountA.id).toBe(ram.mountA.id);
+    expect(after[0].inner.id).toBe(ram.inner.id);
   });
 
   it('says nothing about a bar the ram does not reach', () => {
     const { service, ram } = ramWithABar({ weld: false });
-    const barrelFar = ram.barrelFar as RealJoint;
+    const barrelFar = ram.mountA as RealJoint;
 
     // A bar somewhere else entirely: a mount may ride that, and this is the
     // whole point of letting a mount take a slot at all.
@@ -150,7 +150,7 @@ describe('a slot that would fold a ram', () => {
       resolveSlotDropTarget(barrelFar, across.x, across.y, [elsewhere], 10 * S, [ram])
     ).toBeDefined();
     expect(service.cutSlotOn(barrelFar, across)).toBe(true);
-    expect(sealedCylinders(service.joints).length).toBe(1);
+    expect(cylindersIn(service.joints).length).toBe(1);
   });
 
   it('asks every ram a shared mount belongs to, not the first', () => {
@@ -161,17 +161,17 @@ describe('a slot that would fold a ram', () => {
     const harness = createMechanismHarness();
     const service = harness.service;
     service.createCylinderFrom(new Coord(-5 * S, 0), new Coord(0, 0));
-    const boom = sealedCylinders(service.joints)[0];
+    const boom = cylindersIn(service.joints)[0];
     service.createCylinderFrom(
       new Coord(0, 0),
       new Coord(4 * S, 3 * S),
       undefined,
-      boom.rodFar as RealJoint
+      boom.mountB as RealJoint
     );
     service.finishStructuralEdit(true);
-    const rams = sealedCylinders(service.joints);
-    const shared = rams[0].rodFar as RealJoint;
-    const stickTip = rams.find((one) => one.barrelFar.id === shared.id)!.rodFar as RealJoint;
+    const rams = cylindersIn(service.joints);
+    const shared = rams[0].mountB as RealJoint;
+    const stickTip = rams.find((one) => one.mountA.id === shared.id)!.mountB as RealJoint;
 
     const tip = new RevJoint('W', shared.x - 1 * S, shared.y + 3 * S);
     service.joints.push(tip);
@@ -186,6 +186,6 @@ describe('a slot that would fold a ram', () => {
     // the stick's rod mount may not ride it.
     expect(slotWouldFoldACylinder(stickTip, bar, rams)).toBe(true);
     expect(service.cutSlotOn(stickTip, slotAcross(bar))).toBe(false);
-    expect(sealedCylinders(service.joints).length).toBe(2);
+    expect(cylindersIn(service.joints).length).toBe(2);
   });
 });

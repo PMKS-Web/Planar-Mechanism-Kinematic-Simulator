@@ -1,5 +1,6 @@
 import { PrisJoint } from '../../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../../model/link';
+import { barHalfWidth } from '../../../model/joint-marks';
+import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { SettingsService } from '../../settings.service';
 import { DxfEntity, DxfPoint, DxfPolyline, DxfVertex } from './dxf-model';
@@ -45,8 +46,10 @@ const PIN_SHARE = 0.5;
 /** How wide the drawn link bodies are, in model units. */
 export function linkBodyWidth(): number {
   // The same number the outline's corner radius is built from -- the bodies are
-  // drawn as a bar of this width with a semicircular cap at each end.
-  return (SettingsService.objectScale / 4) * 2;
+  // drawn as a bar of this width with a semicircular cap at each end. A parts
+  // drawing is the canvas's parts, so when the bar came down to the rod's
+  // half-width (decision S23) the exported body came down with it.
+  return barHalfWidth(SettingsService.objectScale) * 2;
 }
 
 /**
@@ -391,16 +394,28 @@ function nominalTravel(joint: PrisJoint): {
   };
 }
 
-/** Whether a joint is welded solid rather than free to turn. */
+/**
+ * Whether a joint is welded solid rather than free to turn.
+ *
+ * The two facts `jointTypeAt` reads: a Slide says it in `rotates` on the
+ * sliding joint, every other joint says it in `isWelded`. They were one bit
+ * before Stage 1 of `docs/joint-type-and-cylinder-plan.md`, when the weld sat
+ * on the coincident pin -- and that pin is the object that used to draw this
+ * mark, so asking `isWelded` alone now leaves a Slide exported as a bearing.
+ *
+ * Read off the shape rather than through `instanceof`, like everything else
+ * here: this module is deliberately free of a model import.
+ */
 export function isWelded(joint: unknown): boolean {
-  return (joint as { isWelded?: boolean }).isWelded === true;
+  const one = joint as { isWelded?: boolean; rotates?: boolean };
+  if (one.rotates !== undefined) return one.rotates === false;
+  return one.isWelded === true;
 }
 
-/** The links that are bodies in their own right: leaves, and no slider blocks. */
+/** The links that are bodies in their own right. */
 export function bodyLinks(links: readonly Link[]): RealLink[] {
   const found: RealLink[] = [];
   const visit = (link: Link) => {
-    if (link instanceof SliderBlock) return;
     if (!(link instanceof RealLink)) return;
     // A welded compound is one part, so it is taken whole rather than as the
     // pieces it was welded from.

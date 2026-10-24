@@ -10,9 +10,13 @@ import { holdableBar } from '../../../model/link-holds';
 import { GridUtilsService } from '../../../services/grid-utils.service';
 import { MechanismService } from '../../../services/mechanism.service';
 import { FieldOverlay } from '../field-overlay';
+import { selectAll } from '../select-all';
 
 /** One of the two values this block shows and can hold. */
 type Which = 'length' | 'angle';
+
+/** The two rows, in the order they are drawn. */
+const ROWS: Which[] = ['length', 'angle'];
 
 /**
  * A bar's length and angle, each with a padlock.
@@ -29,10 +33,12 @@ type Which = 'length' | 'angle';
  * The form controls stay the panel's `length` and `angle`, so what a typed
  * number does is unchanged; this block only decides when one may be typed.
  *
- * A cylinder gets the angle row alone (`only`). It points somewhere the same
- * way a bar does, and its panel already states that bearing in a field -- but
- * it has no length to hold, because the distance between its mounts is the
- * stroke, and holding the stroke would be holding against the drive.
+ * A cylinder's barrel and rod are bars like any other here, with both rows
+ * (decision D12). They were one row -- the angle -- while a cylinder was one
+ * part with one size, and a member's own length is a number now. The two rows
+ * read from different places, which is decision S5: the length is this
+ * member's own flag, the angle is the *part's*, carried by whichever member it
+ * was written on and shown on both.
  */
 @Component({
   selector: 'hold-field-block',
@@ -46,8 +52,8 @@ export class HoldFieldComponent {
   readonly link = input.required<RealLink>();
   /** True for a link whose length and angle are not single numbers -- a body of three or more joints. */
   readonly disabled = input<boolean>(false);
-  /** Show one value's row rather than both, for a part that only has the one. */
-  readonly only = input<Which | undefined>(undefined);
+  /** What the length row's help says, when this is not a plain bar. */
+  readonly lengthHelp = input<string | undefined>(undefined);
   /** What the angle row's help says, when this is not a plain bar. */
   readonly angleHelp = input<string | undefined>(undefined);
   /** -1 while the length field is hovered or focused, -2 when it is left; the canvas draws the dimension. */
@@ -82,10 +88,9 @@ export class HoldFieldComponent {
   protected readonly unlockPath =
     'M7 10V7a5 5 0 0 1 10 0v1.5h-2V7a3 3 0 0 0-6 0v3H7Zm-2.5 0h15v11h-15V10Zm2 2v7h11v-7h-11Z';
 
-  /** The rows to show: both values, or the one this part has. */
+  /** The rows to show. Both values: a bar has the two, and so does a member. */
   protected rows(): Which[] {
-    const only = this.only();
-    return only ? [only] : ['length', 'angle'];
+    return ROWS;
   }
 
   /** The word this row is about, for its caption and for its field's name. */
@@ -94,11 +99,18 @@ export class HoldFieldComponent {
   }
 
   protected helpFor(which: Which): string {
-    if (which === 'length') return 'Distance between the two joints of this link.';
+    if (which === 'length') {
+      return this.lengthHelp() ?? 'Distance between the two joints of this link.';
+    }
     return (
       this.angleHelp() ??
       'Angle of this link measured from the positive x axis. Counter-clockwise is positive.'
     );
+  }
+
+  /** The cylinder this link is a member of, when it is one. */
+  private member(): boolean {
+    return this.mechanism.cylinderOfBar(this.link()) !== undefined;
   }
 
   /** The hold this bar is under, if any. */
@@ -112,7 +124,7 @@ export class HoldFieldComponent {
   /** Whether this part can hold a value at all, and is not already pinned in place. */
   protected holdable(): boolean {
     const shaped =
-      this.mechanism.cylinderOfLink(this.link()) !== undefined || holdableBar(this.link());
+      this.mechanism.cylinderOfBar(this.link()) !== undefined || holdableBar(this.link());
     return shaped && !this.disabled() && !this.lockedInPlace();
   }
 
@@ -137,11 +149,15 @@ export class HoldFieldComponent {
    * so they are not what a reader locked and not what pins the part.
    */
   private pinned(): Joint[] {
-    const sealed = this.mechanism.cylinderOfLink(this.link());
-    return sealed ? [sealed.barrelFar, sealed.rodFar] : this.link().joints;
+    const sealed = this.mechanism.cylinderOfBar(this.link());
+    return sealed ? [sealed.mountA, sealed.mountB] : this.link().joints;
   }
 
   protected held(which: Which): boolean {
+    // A member can be under two at once -- its own fixed length and the part's
+    // fixed angle -- which is more than `holdOf` can say, since that answers
+    // with one value for the whole link (decision S5).
+    if (this.member()) return this.mechanism.memberHoldOf(this.link(), which);
     return this.hold() === which;
   }
 
@@ -149,13 +165,21 @@ export class HoldFieldComponent {
     const other = which === 'length' ? 'angle' : 'length';
     if (this.held(which))
       return `Release the fixed ${which}. Typing a number keeps it fixed at that number`;
-    if (this.hold() === other) return `Fix the ${which} instead — the ${other} is released`;
+    if (this.held(other)) return `Fix the ${which} instead — the ${other} is released`;
     return `Fix the ${which}`;
   }
 
   protected toggle(which: Which, event: Event): void {
     event.stopPropagation();
     if (!this.holdable()) return;
+    // The row knows which of the two values it is about, and on a member that
+    // is the whole question: releasing there is ambiguous to `setHold`, which
+    // takes one hold for the link and has to guess between the member's length
+    // and the part's angle. `setMemberHold` is the door for a row that knows.
+    if (this.member()) {
+      this.mechanism.setMemberHold(this.link(), which, !this.held(which));
+      return;
+    }
     this.mechanism.setHold(this.link(), this.held(which) ? undefined : which);
   }
 
@@ -167,8 +191,16 @@ export class HoldFieldComponent {
     this.overlays[which].hover(false);
   }
 
+  /**
+   * A click selects the whole value — including a second click on a field that
+   * already has focus, which `select()` alone loses to the caret the browser
+   * places afterwards (`BLOCKS/select-all.ts`). Bound here as well as in the
+   * template, because focus and click are two halves of the same rule.
+   */
+  protected readonly selectAll = selectAll;
+
   protected focus(which: Which, field: HTMLInputElement): void {
-    field.select();
+    this.selectAll(field);
     this.overlays[which].focus(true);
   }
 

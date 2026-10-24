@@ -18,6 +18,14 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/phase4-marks';
+/**
+ * Where the slide's own mark is photographed, next to the cylinder's.
+ *
+ * `cylinder-members.mjs` photographs the same mark on a ram into the same
+ * directory: one mark, one folder, so the two are reviewed against each other
+ * rather than in two places.
+ */
+const MARK_OUT = 'artifacts/slide-mark';
 
 const MECHANISMS = [
   {
@@ -67,6 +75,7 @@ page.on('console', (message) => {
 page.on('pageerror', (error) => consoleErrors.push(String(error)));
 
 mkdirSync(OUT, { recursive: true });
+mkdirSync(MARK_OUT, { recursive: true });
 
 for (const mechanism of MECHANISMS) {
   console.log(`\n${mechanism.name} — ${mechanism.note}`);
@@ -180,6 +189,254 @@ if (recolorable) {
   );
 }
 await page.screenshot({ path: `${OUT}/recolored-plate.png` });
+
+// ------------------------------------------- the mark a slider's own joint wears
+//
+// A slider whose riders cannot turn is drawn as a cream bar lying along its
+// slot, in place of the weld cross it used to wear; one that can turn keeps its
+// circle, and a welded *revolute* keeps the cross. The black block underneath
+// is furniture: every hover, selection and lock is drawn on the bar.
+console.log("\nthe slide's mark, and what the block under it does not do");
+
+/** What the drawing says about one joint's marker, in its own frame. */
+const markOf = (id) =>
+  page.evaluate((jointId) => {
+    const turn = (node) => {
+      const found = /rotate\(\s*(-?[\d.]+)/.exec(node?.getAttribute('transform') ?? '');
+      return found ? Number(found[1]) : null;
+    };
+    const mark = document.querySelector(`#joint_${jointId}`);
+    if (!mark) return null;
+    // `getBBox` is the element's own frame, which for the bar is the slot's:
+    // the turn onto the slot is on the group above it. So "wider than it is
+    // tall, here" *is* "lies along the slot".
+    const box = mark.getBBox();
+    const rect = mark.getBoundingClientRect();
+    const block = document.querySelector(`#sliderHolder g[data-slider="${jointId}"] path`);
+    const badge = mark.closest('svg')?.querySelector('.lockBadge');
+    const badgeRect = badge?.getBoundingClientRect();
+    return {
+      tag: mark.tagName,
+      classes: mark.getAttribute('class') ?? '',
+      arcs: (mark.getAttribute('d')?.match(/A /g) ?? []).length,
+      along: box.width,
+      across: box.height,
+      turn: turn(mark.parentElement),
+      blockTurn: turn(block?.closest('g[data-slider]')),
+      blockFill: block ? getComputedStyle(block).fill : null,
+      blockClasses: block ? (block.closest('g[data-slider]').getAttribute('class') ?? '') : '',
+      ring: !!mark.parentElement?.querySelector('.jointSelectionRing'),
+      badge: !!badge,
+      chip: !!mark.closest('svg')?.querySelector('.lockChip'),
+      // The badge sits on the mark, so its middle falls inside the mark's.
+      badgeOnMark:
+        !!badgeRect &&
+        badgeRect.x + badgeRect.width / 2 > rect.x &&
+        badgeRect.x + badgeRect.width / 2 < rect.x + rect.width &&
+        badgeRect.y + badgeRect.height / 2 > rect.y &&
+        badgeRect.y + badgeRect.height / 2 < rect.y + rect.height,
+      screen: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+    };
+  }, id);
+
+const keep = (label, ok, detail = '') => {
+  results.push({ scenario: 'slide-mark', label, actual: detail, expected: 'as described', ok });
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`);
+};
+
+/** A clip round one joint, so the mark is readable rather than four pixels. */
+const clipAround = async (id, half = 130) => {
+  const mark = await markOf(id);
+  return {
+    x: Math.max(0, mark.screen.x + mark.screen.width / 2 - half),
+    y: Math.max(0, mark.screen.y + mark.screen.height / 2 - half * 0.6),
+    width: half * 2,
+    height: half * 1.2,
+  };
+};
+
+await page.goto(BASE + MECHANISMS[0].query, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForSelector('#sliderHolder', { state: 'attached', timeout: 15000 });
+await page.waitForTimeout(600);
+
+// C is the grounded Slide the scotch-yoke is welded at; B rides the yoke's slot
+// and is free to turn in it.
+let grounded = await markOf('C');
+let pinInSlot = await markOf('B');
+keep(
+  'a grounded Prismatic slider wears a rounded bar, along its slot and inside its block',
+  grounded.tag === 'path' &&
+    grounded.classes.includes('slideMark') &&
+    grounded.arcs === 4 &&
+    grounded.along > grounded.across * 1.6 &&
+    grounded.turn === grounded.blockTurn,
+  JSON.stringify(grounded)
+);
+keep(
+  'a Pin-in-slot slider keeps its circle',
+  pinInSlot.tag === 'circle' && pinInSlot.classes.includes('joint_circles'),
+  JSON.stringify({ tag: pinInSlot.tag, classes: pinInSlot.classes })
+);
+await page.screenshot({
+  path: `${MARK_OUT}/slider-grounded-idle.png`,
+  clip: await clipAround('C'),
+});
+await page.screenshot({ path: `${MARK_OUT}/slider-pin-in-slot.png`, clip: await clipAround('B') });
+
+// A Slot's block is exposed, and it is the handle: pointing at it lights the
+// marker at its center and leaves its own paint at #000. (A Slide's block is
+// covered by the weld plate that fuses its rider to it, so a Slide is pointed
+// at through its own marker, below.)
+const blockAt = async (id) => {
+  const s = (await markOf(id)).screen;
+  const cx = s.x + s.width / 2;
+  const cy = s.y + s.height / 2;
+  // Out along the slot, past the marker and onto the block: the block runs
+  // 3.84R each way and the largest marker here is 1.4R.
+  return s.width >= s.height ? { x: cx + s.width * 1.1, y: cy } : { x: cx, y: cy + s.height * 1.1 };
+};
+const onBlock = await blockAt('B');
+await page.mouse.move(onBlock.x, onBlock.y);
+await page.waitForTimeout(400);
+const blockHover = await markOf('B');
+keep(
+  "pointing at a Slot's block lights its marker and leaves the block black",
+  blockHover.classes.includes('joint-highlight') && blockHover.blockFill === 'rgb(0, 0, 0)',
+  JSON.stringify({ classes: blockHover.classes, blockFill: blockHover.blockFill })
+);
+await page.mouse.move(4, 4);
+await page.waitForTimeout(300);
+
+// The same joint, turned into a Slide: the mark is what changes.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((j) => j.id === 'B'));
+  grid.mechanismSrv.weldJoint();
+  grid.activeObjService.updateSelectedObj(null);
+});
+await page.waitForTimeout(600);
+const floating = await markOf('B');
+keep(
+  'and turning it Prismatic swaps the circle for the bar, along the slot it floats in',
+  floating.tag === 'path' &&
+    floating.classes.includes('slideMark') &&
+    floating.along > floating.across * 1.6 &&
+    floating.turn === floating.blockTurn,
+  JSON.stringify(floating)
+);
+await page.screenshot({
+  path: `${MARK_OUT}/slider-floating-prismatic.png`,
+  clip: await clipAround('B'),
+});
+
+// Every state the joint has is drawn on the bar, and the block under it is
+// painted exactly as it was: it is furniture, not the joint.
+const markCenter = async (id) => {
+  const s = (await markOf(id)).screen;
+  return { x: s.x + s.width / 2, y: s.y + s.height / 2 };
+};
+const onMark = await markCenter('C');
+await page.mouse.move(onMark.x, onMark.y);
+await page.waitForTimeout(400);
+const hovered = await markOf('C');
+keep(
+  "hovering a Slide lights its bar and leaves the block's own paint alone",
+  hovered.classes.includes('joint-highlight') &&
+    hovered.blockFill === 'rgb(0, 0, 0)' &&
+    !/selected|hovered|pointed/.test(hovered.blockClasses),
+  JSON.stringify({ classes: hovered.classes, blockFill: hovered.blockFill })
+);
+await page.screenshot({
+  path: `${MARK_OUT}/slider-grounded-hovered.png`,
+  clip: await clipAround('C'),
+});
+
+await page.mouse.click(onMark.x, onMark.y);
+await page.waitForTimeout(400);
+const picked = await markOf('C');
+keep(
+  'selecting it says so on the bar, and the block is painted no differently',
+  picked.classes.includes('joint-selected') &&
+    picked.blockFill === 'rgb(0, 0, 0)' &&
+    !/selected|hovered|pointed/.test(picked.blockClasses),
+  JSON.stringify({ classes: picked.classes, blockFill: picked.blockFill })
+);
+await page.screenshot({
+  path: `${MARK_OUT}/slider-grounded-selected.png`,
+  clip: await clipAround('C'),
+});
+
+// The lock badge stands on the bar, centered, with no chip of its own -- the
+// cream is chip enough, exactly as a pin's circle is.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const c = grid.mechanismSrv.joints.find((j) => j.id === 'C');
+  grid.activeObjService.updateSelectedObj(c);
+  grid.mechanismSrv.toggleLock(c);
+});
+await page.waitForTimeout(500);
+const locked = await markOf('C');
+keep(
+  'a locked slider wears its padlock on the bar, with no chip under it',
+  locked.badge && locked.badgeOnMark && !locked.chip,
+  JSON.stringify({ badge: locked.badge, on: locked.badgeOnMark, chip: locked.chip })
+);
+await page.screenshot({
+  path: `${MARK_OUT}/slider-grounded-locked.png`,
+  clip: await clipAround('C'),
+});
+
+// A joint in a color family of its own keeps that color when it is picked, and
+// wears the amber as a ring inside its own edge instead. A bar has an inside
+// edge -- which is exactly what a weld cross does not, and why the cross wears
+// the amber as an outline. Taken after the cream screenshots so those show the
+// mark in the color the reference drawing does.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const c = grid.mechanismSrv.joints.find((j) => j.id === 'C');
+  grid.mechanismSrv.toggleLock(c);
+  c.colorFamily = 'o';
+  grid.activeObjService.updateSelectedObj(c);
+  ng.applyChanges(grid);
+});
+await page.waitForTimeout(500);
+const ringed = await markOf('C');
+keep(
+  'a colored slide keeps its own color and rings itself in amber inside its edge',
+  ringed.ring && ringed.classes.includes('joint-selected'),
+  JSON.stringify({ ring: ringed.ring, classes: ringed.classes })
+);
+await page.screenshot({
+  path: `${MARK_OUT}/slider-grounded-ringed.png`,
+  clip: await clipAround('C'),
+});
+
+// A welded *revolute* is untouched: only sliders changed.
+await page.goto(BASE + MECHANISMS[0].query, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(600);
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const m = grid.mechanismSrv;
+  const d = m.joints.find((j) => j.id === 'D');
+  // A weld needs two bodies to fuse, and D carries one.
+  m.addBarFrom(d, { x: d.x + 400, y: d.y + 400 });
+  grid.activeObjService.updateSelectedObj(m.joints.find((j) => j.id === 'D'));
+  m.weldJoint();
+  grid.activeObjService.updateSelectedObj(null);
+});
+await page.waitForTimeout(700);
+const weldCross = await markOf('D');
+keep(
+  'a welded revolute still wears the plus',
+  weldCross.tag === 'path' &&
+    !weldCross.classes.includes('slideMark') &&
+    weldCross.arcs === 0 &&
+    Math.abs(weldCross.along - weldCross.across) < 1e-6,
+  JSON.stringify({ tag: weldCross.tag, arcs: weldCross.arcs, classes: weldCross.classes })
+);
+await page.screenshot({ path: `${MARK_OUT}/welded-revolute.png`, clip: await clipAround('D') });
 
 await browser.close();
 

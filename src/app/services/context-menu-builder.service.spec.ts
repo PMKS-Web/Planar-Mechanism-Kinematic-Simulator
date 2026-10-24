@@ -19,10 +19,14 @@ import { silentNotifications } from '../../test-utils/notification-stub';
 import { wireGraph } from '../../test-utils/mechanism-harness';
 import { Force } from '../model/force';
 import { Coord } from '../model/coord';
-import { RevJoint } from '../model/joint';
+import { RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
+import { JOINT_TYPES } from '../model/joint-type';
+import { refuseAttach, refuseGround } from '../model/joint-operation-permission';
 import { MultiEditService } from './multi-edit.service';
+import { JointTypeService } from './joint-type.service';
+import { SplitJointService } from './split-joint.service';
 import { SelectionBatchService } from './selection-batch.service';
 
 /**
@@ -76,6 +80,8 @@ function createBuilderHarness() {
       { provide: ContextMenuBuilderService, deps: [] },
       { provide: SelectionBatchService, deps: [MechanismService] },
       { provide: MultiEditService, deps: [] },
+      { provide: JointTypeService, deps: [] },
+      { provide: SplitJointService, deps: [] },
     ],
   });
   return {
@@ -164,17 +170,24 @@ describe('the right-click menu', () => {
     });
 
     it('carries the joint switches, and says Mixed when the group disagrees', () => {
-      // The same four the one-joint menu carries, in the same words: a reader
-      // who has learned where Grounded is should not learn again because they
-      // selected two joints.
+      // The same switches the one-joint menu carries, in the same words: a
+      // reader who has learned where Grounded is should not learn again because
+      // they selected two joints.
       const parts = fourBar(harness.mechanism);
       harness.active.replacePartSelection(parts.o);
       harness.active.togglePartSelection(parts.a);
 
       const model = harness.builder.build(parts.a, noHandlers);
-      expect(labels(model)).toEqual(
-        expect.arrayContaining(['Grounded', 'Slider', 'Welded', 'Trace Path', 'Locked'])
-      );
+      expect(labels(model)).toEqual(expect.arrayContaining(['Grounded', 'Trace Path', 'Locked']));
+      // What the joints *are* is the choice at the top of the card, as it is on
+      // one joint, rather than two rows down in State.
+      expect(model.choice?.label).toBe('Joint Type');
+      expect(model.choice?.options.map((one) => one.label)).toEqual([
+        'Revolute',
+        'Prismatic',
+        'Pin-in-slot',
+        'Welded',
+      ]);
       // O is ground and A is not, so there is no one state to show.
       expect(row(model, 'Grounded')!.checked).toBe(false);
       expect(row(model, 'Grounded')!.hint).toBe('Mixed');
@@ -194,16 +207,16 @@ describe('the right-click menu', () => {
       expect(driven.refusal?.short).toBe('one input per machine');
     });
 
-    it('grays a group weld for the reason one joint would have been grayed for', () => {
+    it('grays a group type for the reason one joint would have been grayed for', () => {
       const parts = fourBar(harness.mechanism);
       harness.active.replacePartSelection(parts.a);
       harness.active.togglePartSelection(parts.t);
 
       const model = harness.builder.build(parts.a, noHandlers);
-      const welded = row(model, 'Welded')!;
+      const welded = model.choice!.options.find((one) => one.label === 'Welded')!;
       // T is a tracer on one link, so there is nothing at it to fuse -- and
-      // the sentence is the one `weldRefusal` writes, naming the joint.
-      expect(welded.refusal?.long).toContain('T cannot be welded');
+      // the sentence is the one the refusal model writes, naming the joint.
+      expect(welded.refusal?.long).toContain('T cannot become Welded');
       expect(welded.refusal?.long).toContain(harness.grid.weldRefusal(parts.t)!.long);
     });
 
@@ -236,8 +249,17 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       const model = harness.builder.build(parts.a, noHandlers);
       expect(model.groups.filter((group) => group.rows.length).map((group) => group.label)).toEqual(
-        ['Attach', 'State', 'Traces', undefined]
+        ['Attach', 'State', 'Traces', 'Actions']
       );
+    });
+
+    it('puts Split Joint above the delete actions with its link count', () => {
+      const parts = fourBar(harness.mechanism);
+      const split = row(harness.builder.build(parts.a, noHandlers), 'Split Joint')!;
+      expect(split.hint).toBe('2 links');
+      expect(split.disabled).toBe(false);
+      const labels = rows(harness.builder.build(parts.a, noHandlers)).map((one) => one.label);
+      expect(labels.indexOf('Split Joint')).toBeLessThan(labels.indexOf('Delete entire mechanism'));
     });
 
     it('groups every trace directly below Locked', () => {
@@ -300,17 +322,19 @@ describe('the right-click menu', () => {
 
     it('grays the weld on a joint with nothing to fuse', () => {
       const parts = fourBar(harness.mechanism);
-      const weld = row(harness.builder.build(parts.t, noHandlers), 'Welded')!;
-      expect(weld.disabled).toBe(true);
-      expect(weld.refusal!.short).toBe('needs 2 links');
+      const model = harness.builder.build(parts.t, noHandlers);
+      const welded = model.choice!.options.find((one) => one.label === 'Welded')!;
+      expect(welded.refusal!.short).toBe('needs 2 links');
     });
 
     it('leaves both directions of a mutually exclusive pair usable', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.input = true;
       const model = harness.builder.build(parts.a, noHandlers);
-      // Weld grays on a driven joint...
-      expect(row(model, 'Welded')!.refusal!.short).toBe('it is driven');
+      // Welded grays on a driven joint...
+      expect(model.choice!.options.find((one) => one.label === 'Welded')!.refusal!.short).toBe(
+        'it is driven'
+      );
       // ...and the switch that resolves it stays live.
       expect(row(model, 'Driven Input')!.disabled).toBe(false);
       expect(row(model, 'Driven Input')!.checked).toBe(true);
@@ -825,5 +849,273 @@ describe('the right-click menu, on a bar that can hold a value', () => {
     const model = harness.builder.build(parts.a, noHandlers);
     expect(model.header?.subtitle).toContain('on fixed OA');
     expect(row(model, 'Free to Move')).toBeUndefined();
+  });
+});
+
+/**
+ * The three cards a cylinder has, where it used to have one and a half.
+ *
+ * Either member opened the *cylinder's* card until Stage 2c of
+ * `docs/joint-type-and-cylinder-plan.md`, the joint it slides on could not be
+ * clicked at all, and each of its two end joints said "Barrel joint · Cylinder
+ * AB" whichever end it was. The claim now is the same one the rest of this file
+ * makes: the square, the two members and the two ends each say what they are,
+ * and every gray row quotes the model that closes it.
+ */
+describe('the right-click menu, on a cylinder', () => {
+  let harness: ReturnType<typeof createBuilderHarness>;
+  let previousObjectScale: number;
+
+  /** One cylinder on a bare grid, drawn the way the canvas draws one. */
+  function cylinder() {
+    harness.mechanism.createCylinderFrom(new Coord(0, 0), new Coord(6 * S, 0));
+    return harness.mechanism.sealedStructures()[0];
+  }
+
+  beforeEach(() => {
+    // The object scale is process-wide static state and sizes a cylinder's
+    // minimum span, so it is pinned here the way `cylinder-lifecycle.spec.ts`
+    // pins it.
+    previousObjectScale = SettingsService.objectScale;
+    SettingsService._objectScale.next(1 * S);
+    harness = createBuilderHarness();
+    harness.tabs.setTab(TabID.EDIT);
+  });
+
+  afterEach(() => SettingsService._objectScale.next(previousObjectScale));
+
+  describe('the joint it slides on', () => {
+    it('is headed as the slider of the whole part, not of the half it hangs on', () => {
+      const sealed = cylinder();
+      const model = harness.builder.build(sealed.seal, noHandlers);
+      expect(model.header?.title).toBe(`Joint ${sealed.seal.id}`);
+      expect(model.header?.subtitle).toBe(
+        `Slider · Cylinder ${sealed.mountA.id}${sealed.mountB.id}`
+      );
+    });
+
+    it('is Prismatic, and says the other three are inside a cylinder', () => {
+      const sealed = cylinder();
+      const choice = harness.builder.build(sealed.seal, noHandlers).choice!;
+      expect(choice.chosen).toBe(JOINT_TYPES.indexOf('prismatic'));
+      expect(choice.options[choice.chosen].refusal).toBeUndefined();
+      for (const [index, option] of choice.options.entries()) {
+        if (index === choice.chosen) continue;
+        expect(option.refusal?.short, option.label).toBe('inside a cylinder');
+      }
+    });
+
+    it('takes no third body, in the words the model refuses one with', () => {
+      const sealed = cylinder();
+      const said = refuseAttach(sealed.seal, harness.grid.operationContext())!;
+      const model = harness.builder.build(sealed.seal, noHandlers);
+      for (const label of ['Link', 'Cylinder', 'Force']) {
+        expect(row(model, label)!.refusal?.short, label).toBe(said.short);
+        expect(row(model, label)!.refusal?.long, label).toBe(said.long);
+      }
+      expect(said.short).toBe('inside a cylinder');
+    });
+
+    it('sends a ground to one of the joints at the ends, quoting the model', () => {
+      const sealed = cylinder();
+      const said = refuseGround(sealed.seal, harness.grid.operationContext())!;
+      const grounded = row(harness.builder.build(sealed.seal, noHandlers), 'Grounded')!;
+      expect(grounded.refusal?.short).toBe('ground an end joint instead');
+      expect(grounded.refusal?.long).toBe(said.long);
+    });
+
+    it('is where the drive is set, and the row works', () => {
+      const sealed = cylinder();
+      const driven = row(harness.builder.build(sealed.seal, noHandlers), 'Driven Input')!;
+      expect(driven.refusal).toBeUndefined();
+      expect(driven.checked).toBe(false);
+      harness.mechanism.activeObjService.updateSelectedObj(sealed.seal);
+      driven.action();
+      expect(harness.mechanism.sealedStructures()[0].seal.input).toBe(true);
+      expect(row(harness.builder.build(sealed.seal, noHandlers), 'Driven Input')!.checked).toBe(
+        true
+      );
+    });
+
+    it('locks, and its delete row names the cascade', () => {
+      const sealed = cylinder();
+      const model = harness.builder.build(sealed.seal, noHandlers);
+      expect(row(model, 'Locked')!.shortcut).toBe('K');
+      expect(labels(model)).toContain('Delete Joint (and Cylinder)');
+    });
+  });
+
+  describe('a joint at either end', () => {
+    it('is a pin like any other, named by the member it is on', () => {
+      const sealed = cylinder();
+      harness.mechanism.activeObjService.updateSelectedObj(sealed.mountA);
+      harness.mechanism.toggleGround();
+      const end = harness.mechanism.sealedStructures()[0];
+      const model = harness.builder.build(end.mountA, noHandlers);
+      expect(model.header?.title).toBe(`Joint ${end.mountA.id}`);
+      expect(model.header?.subtitle).toBe(`Ground pin · Barrel ${end.mountA.id}${end.seal.id}`);
+      // And the far end, which nothing else is attached to, gets the words any
+      // free point on one body gets. "Like any other" is the whole of D13: it
+      // is described by what it is, not by which cylinder it belongs to.
+      expect(harness.builder.build(end.mountB, noHandlers).header?.subtitle).toBe(
+        `Tracer · Rod ${end.seal.id}${end.mountB.id}`
+      );
+    });
+
+    it('grounds, attaches and changes type, and still names the cascade', () => {
+      const sealed = cylinder();
+      const model = harness.builder.build(sealed.mountA, noHandlers);
+      expect(row(model, 'Grounded')!.refusal).toBeUndefined();
+      expect(row(model, 'Link')!.refusal).toBeUndefined();
+      expect(row(model, 'Cylinder')!.refusal).toBeUndefined();
+      // A block on an end joint is a carriage, which is how a boom is drawn.
+      const choice = model.choice!;
+      const slot = choice.options[JOINT_TYPES.indexOf('pin-in-slot')];
+      expect(slot.refusal).toBeUndefined();
+      expect(labels(model)).toContain('Delete Joint (and Cylinder)');
+    });
+  });
+
+  describe('each member', () => {
+    it('is headed as the half of the part it is, under the part', () => {
+      const sealed = cylinder();
+      const barrel = harness.builder.build(sealed.barrel, noHandlers);
+      expect(barrel.header?.title).toBe(`Barrel ${sealed.mountA.id}${sealed.seal.id}`);
+      expect(barrel.header?.subtitle).toBe(`Cylinder ${sealed.mountA.id}${sealed.mountB.id}`);
+      const rod = harness.builder.build(sealed.rod, noHandlers);
+      expect(rod.header?.title).toBe(`Rod ${sealed.seal.id}${sealed.mountB.id}`);
+      expect(rod.header?.subtitle).toBe(barrel.header?.subtitle);
+    });
+
+    it('offers no Attach group, no drive and no display shape', () => {
+      const sealed = cylinder();
+      const model = harness.builder.build(sealed.barrel, noHandlers);
+      expect(model.groups.map((group) => group.label)).not.toContain('Attach');
+      for (const gone of [
+        'Link',
+        'Cylinder',
+        'Tracer Point',
+        'Force',
+        'Duplicate Link',
+        'Driven Input',
+        'Drawn as a Disc',
+      ]) {
+        expect(labels(model), gone).not.toContain(gone);
+      }
+      expect(labels(model)).toContain('Delete Cylinder');
+      expect(labels(model)).toContain('Delete entire mechanism');
+    });
+
+    it('holds its own length and the whole part’s angle (decision S5)', () => {
+      const sealed = cylinder();
+      const barrel = harness.builder.build(sealed.barrel, noHandlers);
+      expect(row(barrel, 'Fixed Length')!.hint).toBeTruthy();
+      expect(row(barrel, 'Fixed Angle')!.hint).toBeTruthy();
+
+      row(barrel, 'Fixed Angle')!.action();
+      // The angle is the part's: fixed from the barrel, it reads fixed on the
+      // rod, which is a thing `holdOf`'s one value cannot say.
+      expect(row(harness.builder.build(sealed.barrel, noHandlers), 'Fixed Angle')!.checked).toBe(
+        true
+      );
+      expect(row(harness.builder.build(sealed.rod, noHandlers), 'Fixed Angle')!.checked).toBe(true);
+
+      // And its own length is a second, independent tick on the same card.
+      row(harness.builder.build(sealed.rod, noHandlers), 'Fixed Length')!.action();
+      const rod = harness.builder.build(sealed.rod, noHandlers);
+      expect(row(rod, 'Fixed Length')!.checked).toBe(true);
+      expect(row(rod, 'Fixed Angle')!.checked).toBe(true);
+      expect(row(harness.builder.build(sealed.barrel, noHandlers), 'Fixed Length')!.checked).toBe(
+        false
+      );
+    });
+
+    it('refuses both padlocks while the part is locked', () => {
+      const sealed = cylinder();
+      harness.mechanism.toggleLock(sealed.rod);
+      const model = harness.builder.build(sealed.barrel, noHandlers);
+      expect(row(model, 'Fixed Length')!.refusal?.short).toBe('locked in place');
+      expect(row(model, 'Fixed Angle')!.refusal?.short).toBe('locked in place');
+      expect(row(model, 'Locked')!.checked).toBe(true);
+    });
+  });
+
+  /**
+   * A bracket welded to a barrel mount is a body whose *id* holds N, the joint
+   * the drawing never shows. It was headed `Link AA1D`, subtitled "Joints A,
+   * A1, D" and offered as `Link AA1D` in the delete cascade of every joint on
+   * it -- three surfaces naming a letter the reader cannot find anywhere.
+   */
+  describe('a body welded to a barrel mount', () => {
+    /** The cylinder, a bar on its barrel mount, and the weld that fuses them. */
+    function bracket() {
+      const sealed = cylinder();
+      const mount = sealed.mountA as RealJoint;
+      const tip = new RevJoint('W', mount.x - 2 * S, mount.y + 3 * S);
+      harness.mechanism.joints.push(tip);
+      harness.mechanism.links.push(new RealLink(mount.id + tip.id, [mount, tip]));
+      harness.mechanism.finishStructuralEdit(true);
+      harness.active.updateSelectedObj(mount);
+      harness.mechanism.weldJoint();
+      harness.mechanism.finishStructuralEdit(true);
+      const body = harness.mechanism.links.find(
+        (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
+      )!;
+      return { part: harness.mechanism.sealedStructures()[0], body, mount, tip };
+    }
+
+    it('is headed and subtitled with the joints a reader can point at', () => {
+      const { part, body, tip } = bracket();
+      const model = harness.builder.build(body, noHandlers);
+      expect(body.id).toContain(part.inner.id);
+      expect(model.header!.title).toBe(`Link ${[part.mountA.id, tip.id].sort().join('')}`);
+      expect(model.header!.title).not.toContain(part.inner.id);
+      expect(model.header!.subtitle).toBe(`Compound · Joints ${part.mountA.id}, ${tip.id}`);
+    });
+
+    it('is named that way in the cascade of the joint that would take it', () => {
+      const { part, body, tip } = bracket();
+      const model = harness.builder.build(tip, noHandlers);
+      // By prefix: the cascade is written into the label itself, which is the
+      // whole point -- "Delete Joint (and Link AD)".
+      const takes = rows(model).find((one) => one.label.startsWith('Delete Joint'))!;
+      expect(takes.label).not.toContain(part.inner.id);
+      expect(takes.label).toContain(`Link ${[part.mountA.id, tip.id].sort().join('')}`);
+      // And the body's own delete row names it the same way.
+      const own = rows(harness.builder.build(body, noHandlers)).find((one) =>
+        one.label.startsWith('Delete Link')
+      )!;
+      expect(own.label).not.toContain(part.inner.id);
+    });
+  });
+
+  describe('the counts a reader can check against the screen (D14)', () => {
+    it('counts the square and never the end the part derives', () => {
+      const sealed = cylinder();
+      const visible = harness.mechanism.visibleJoints().map((joint) => joint.id);
+      expect(visible).toContain(sealed.seal.id);
+      expect(visible).not.toContain(sealed.inner.id);
+      expect(harness.mechanism.lockCounts().total).toBe(3);
+
+      // Grounded, so there is a machine for the row to name: the cylinder is
+      // four joints in the model and three on the screen.
+      harness.mechanism.activeObjService.updateSelectedObj(sealed.mountA);
+      harness.mechanism.toggleGround();
+      const machine = harness.mechanism.sealedStructures()[0];
+      const model = harness.builder.build(machine.seal, noHandlers);
+      expect(harness.mechanism.partitions[0].ownJoints.length).toBe(4);
+      expect(row(model, 'Delete entire mechanism')!.hint).toBe('3 joints');
+    });
+
+    it('leaves Lock All counting the marks it sets that anyone can see', () => {
+      const sealed = cylinder();
+      harness.mechanism.setAllLocks(true);
+      const grid = harness.builder.build('grid', noHandlers);
+      expect(row(grid, 'Unlock All')!.hint).toBe('3 locked');
+      expect(row(grid, 'Lock All')!.refusal?.short).toBe('all locked');
+      // The derived end is marked with the rest -- unlocking one joint has to
+      // free exactly that joint -- it is simply not counted.
+      expect((sealed.inner as RealJoint).locked).toBe(true);
+    });
   });
 });

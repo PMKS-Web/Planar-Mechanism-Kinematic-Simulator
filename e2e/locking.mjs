@@ -273,10 +273,10 @@ record(
   { cHeld, cStill }
 );
 
-// --- A lock on a block is parametric: it holds a place on the slot ---------
-// The one mark that is not about a point on the drawing. A block has exactly
+// --- A lock on a slider is parametric: it holds a place on the slot --------
+// The one mark that is not about a point on the drawing. A slider has exactly
 // one freedom -- where it sits along its slot -- and that is what its mark
-// spends. The channel stays free to move and takes the block with it.
+// spends. The channel stays free to move and takes the slider with it.
 
 await page.goto(`${BASE}/?${INVERTED_SLIDER_CRANK}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
@@ -288,21 +288,21 @@ await page.evaluate(() => {
 await page.waitForTimeout(200);
 
 record(
-  'locking a block holds it and its pin, and nothing else',
+  'locking a slider holds that one joint, and nothing else',
   await page.evaluate(() => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
-    return [...c.gridUtils.frozenJointIds()].sort().join('') === 'BP';
+    return [...c.gridUtils.frozenJointIds()].sort().join('') === 'B';
   }),
   await page.evaluate(() =>
     [...ng.getComponent(document.querySelector('app-new-grid')).gridUtils.frozenJointIds()].sort()
   )
 );
 
-// The block is drawn on the pin, so the two are one target; whichever the
-// canvas hands the drag, the refusal has to speak about the slot.
-const blockBefore = await jointModel('P');
+// The slider is the one target -- it was drawn on a coincident pin and the two
+// answered as one -- and the refusal has to speak about the slot.
+const blockBefore = await jointModel('B');
 await dragBy(await jointOnScreen('B'), 70, 40);
-const blockAfter = await jointModel('P');
+const blockAfter = await jointModel('B');
 record(
   'dragging the block itself moves nothing',
   blockBefore.x === blockAfter.x && blockBefore.y === blockAfter.y,
@@ -320,11 +320,11 @@ record(
   )
 );
 
-// The joints that cut the slot are not held by the block's mark. Dragging one
-// swings the channel, and the reseat carries the block along it.
-const slotBefore = { c: await jointModel('C'), p: await jointModel('P') };
+// The joints that cut the slot are not held by the slider's mark. Dragging one
+// swings the channel, and the reseat carries the slider along it.
+const slotBefore = { c: await jointModel('C'), p: await jointModel('B') };
 await dragBy(await jointOnScreen('C'), 0, -70);
-const slotAfter = { c: await jointModel('C'), p: await jointModel('P') };
+const slotAfter = { c: await jointModel('C'), p: await jointModel('B') };
 record(
   'a joint that cuts the slot still moves with the block locked',
   Math.hypot(slotAfter.c.x - slotBefore.c.x, slotAfter.c.y - slotBefore.c.y) > 1,

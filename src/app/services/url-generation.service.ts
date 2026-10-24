@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
-import { Link, SliderBlock, RealLink } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from '../model/utils';
 import {
   EnumSetting,
@@ -75,14 +75,19 @@ export class UrlGenerationService {
           joint.y / MODEL_SCALE,
           joint.ground,
           joint.input,
-          joint.isWelded,
+          // The weld bit of a prismatic record says the rider is rigid with the
+          // block -- a Slide. It used to be the coincident pin's, and it could
+          // never mean anything on the slider itself, whose only link was that
+          // block and whose weld would have had nothing to fuse.
+          !joint.rotates,
           joint.angle_rad,
           joint.showCurve,
           joint.carrier?.id ?? '',
           joint.slotJointA?.id ?? '',
           joint.slotJointB?.id ?? '',
           joint.isSealed,
-          joint.driveSpeed
+          joint.driveSpeed,
+          joint.mass
         )
       );
     }
@@ -108,7 +113,13 @@ export class UrlGenerationService {
           link.isCircle
         )
       );
-    } else if (link instanceof SliderBlock) {
+    } else {
+      // A body that is not a bar, which since Stage 1 of
+      // `docs/joint-type-and-cylinder-plan.md` nothing in the app creates: a
+      // slider's block was the only one, and a slider is one joint now. The
+      // branch stays because the record type does — every URL ever shared
+      // carries these, and the specs that prove those URLs still open build
+      // them through here.
       encoder.addLink(
         new LinkData(
           isRoot,
@@ -233,6 +244,19 @@ export class UrlGenerationService {
         ...this.mechanism.forces
           .filter((force) => !!force.color && force.color !== DEFAULT_FORCE_COLOR)
           .map((force) => 'KF' + force.id + '~' + force.color.replace('#', '')),
+        // A rod asked to wear its own color rather than the barrel's (S15).
+        // The color itself is the link's own `color` field, which every URL has
+        // always carried, so the entry is the request and nothing more -- and
+        // no rod in circulation has made it, which is what keeps every existing
+        // URL byte-identical. Leaves as well as top-level bodies, the same walk
+        // the holds make: a rod welded at its far end is a subset leaf and is
+        // still the rod the skin paints.
+        ...[
+          ...this.mechanism.links,
+          ...this.mechanism.links.flatMap((link) => (link instanceof RealLink ? link.subset : [])),
+        ]
+          .filter((link): link is RealLink => link instanceof RealLink && link.ownColor)
+          .map((link) => 'KR' + link.id),
       ]);
 
       // The synthesis design, if one is being worked on. It is not part of the

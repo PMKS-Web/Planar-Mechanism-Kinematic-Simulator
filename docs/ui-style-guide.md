@@ -50,7 +50,8 @@ these:
 | --- | --- |
 | May this edit happen right now? | [`model/edit-permission.ts`](../src/app/model/edit-permission.ts), through [`edit-permission.service.ts`](../src/app/services/edit-permission.service.ts) |
 | Can this joint be driven? | `describeActuatorRefusal` in [`model/actuator.ts`](../src/app/model/actuator.ts) |
-| Can this joint be welded? | `weldRefusal` in [`grid-utils.service.ts`](../src/app/services/grid-utils.service.ts) |
+| Can this joint be welded? | `refuseJointOperation` in [`model/joint-operation-permission.ts`](../src/app/model/joint-operation-permission.ts) |
+| Can this joint take this type? | `refuseJointType` in [`model/joint-type.ts`](../src/app/model/joint-type.ts), through `JointTypeService` |
 | Is a Lock holding this part? | `locksHolding` in [`model/lock-set.ts`](../src/app/model/lock-set.ts) |
 
 A condition such as `@if (joint.links.length < 2)` with its own words is a second copy of the rule.
@@ -61,6 +62,13 @@ no](ui-gotchas.md#editing-playback-and-who-is-allowed-to-say-no).
 
 A disabled button takes no pointer events, so a tooltip on the button itself never opens.
 `button-block` hangs its tooltip on the row for that reason. Do the same.
+
+And a reason opens away from the choices, never over them. In a grid of options a tooltip that
+covers a neighbor blocks the press meant for it, because Material's tooltip pane takes the pointer:
+the Joint Type control opens a top-row reason above the control and a bottom-row one below it
+(`sideFor`), the right-click card opens each reason on the side its column is on (`reasonSide`), and
+both give [`BLOCKS/tooltips-are-labels.ts`](../src/app/component/BLOCKS/tooltips-are-labels.ts) so
+the pane lets the pointer through when a small window flips a tooltip back over the grid anyway.
 
 ### One undo per gesture
 
@@ -93,6 +101,15 @@ quietly changes what the reader typed or sized. Two examples in the source:
 - A block that would run past the end of its own slot is refused, not clamped
   ([`position-solver.ts`](../src/app/model/mechanism/position-solver.ts)). The mechanism runs to the
   limit and reverses there, the way a cylinder does at the end of its stroke.
+
+**Accepting as much of a number as the constraints allow is the second branch, not a third.** A
+cylinder's typed Barrel Length, Rod Length or *Starts at* goes as far toward what was asked as the
+locks and the fixed lengths permit and then says how far it got and what stopped it (`asCloseAs` in
+[`model/cylinder-edit.ts`](../src/app/model/cylinder-edit.ts), decision S19). That is "accepts and
+warns" — the reader is told, once, in a sentence naming the number reached and the thing in the
+way. It is a silent clamp only if nobody says so, which is why the notice is not optional. A
+**drag** is the exception the rule already makes: a gesture that stops following the cursor has
+said it on screen, sixty times a second, and a snackbar per pointermove would be noise.
 
 ---
 
@@ -161,7 +178,19 @@ Accessibility is one of the four principles, and it is checked, not assumed.
   registry: a shortcut gets an id, a section and a label there, and `appShortcutTip` shows its
   keys in the control's tooltip.
 - **Focus is visible.** A focused control shows a ring. Style `:focus-visible`, so a mouse click
-  does not draw one, and never write `outline: none` without putting a ring back.
+  does not draw one, and never write `outline: none` without putting a ring back. **Except where
+  the app moves focus itself** — a popover that takes focus as it opens, like the project menu or
+  the right-click card. The browser reads a script moving focus as keyboard work unless the
+  reader's last act was a pointer that moved focus too, so `:focus-visible` there draws a ring on
+  the first item of a menu somebody clicked open. The component knows how it was opened and says
+  so with a class (`byKeyboard`), which the ring hangs off; it turns on the moment a reader who
+  clicked reaches for the arrow keys. `e2e/menu-focus.mjs` guards both menus.
+- **A menu opened with a pointer arms nothing.** Space and Enter press whatever row has focus, so
+  a popover that focuses its first row on opening puts that row under the reader's next keypress —
+  and the first row is often the most destructive one (New Project). Focus the card itself and let
+  an arrow key say which row, which also draws the ring: what a press will act on is always
+  something the reader can see. Skip rows that cannot take focus, too — `focus()` on a `disabled`
+  button silently does nothing, which strands arrow navigation on the row above it.
 - **An icon-only control has an `aria-label`**, in the vocabulary's words. A control that shows a
   state carries `aria-pressed`, as `app-view-button` does. A grayed control carries its reason
   where a screen reader can reach it, not only in a tooltip.
@@ -190,8 +219,10 @@ The source is [`joint-types-plan.md` §2.8](joint-types-plan.md#28-visual-gramma
   visible.
 - **The selection ring is interaction state only.** Never use it to show a joint's type.
 
-A gallery of canvas entities is planned for stage S6 of the bodies-and-joints migration, not built
-yet. Its stories will go in [`src/stories/canvas/`](../src/stories/canvas/README.md).
+A gallery of canvas entities is planned, not built. Stages 1 and 2 of
+[`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) change how a slider and a
+cylinder are drawn, so it waits for them. Its stories will go in
+[`src/stories/canvas/`](../src/stories/canvas/README.md).
 
 ---
 
@@ -235,7 +266,7 @@ Use the component that does the job:
 | A bare field with a derived-or-typed mark | `state-input` |
 | A hand-written `<input>` | add `appStandardField` |
 | A color | `color-picker` |
-| A choice of one option | `segmented-block`, or `radio-block` when bound to a form |
+| A choice of one option | `segmented-block` (`wrap` it into two columns, with glyphs, for four), or `radio-block` when bound to a form |
 | A switch | `toggle-block` |
 | The panel's stroked button | `button-block` |
 | Two buttons on one row | `dual-button` |

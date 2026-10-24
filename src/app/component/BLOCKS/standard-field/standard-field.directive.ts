@@ -1,4 +1,5 @@
 import { Directive, ElementRef, HostListener, inject } from '@angular/core';
+import { selectAll } from '../select-all';
 
 /**
  * Gives a hand-written `<input>` the two manners every field composed from the
@@ -19,8 +20,8 @@ export class StandardFieldDirective {
   private readonly el: ElementRef<HTMLInputElement> = inject(ElementRef);
 
   @HostListener('click')
-  selectAll(): void {
-    this.el.nativeElement.select();
+  select(): void {
+    selectAll(this.el.nativeElement);
   }
 
   @HostListener('keyup.enter')

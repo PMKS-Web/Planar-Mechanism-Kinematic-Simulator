@@ -117,6 +117,44 @@ export interface BoundaryMotion {
 
 /** How close to zero every residual has to get, in model units. */
 const TOLERANCE = 1e-6;
+/**
+ * What a solve may be left holding when the pose it is solved *against* cannot
+ * be stated any more precisely than this.
+ *
+ * A solved position is recorded rounded to four decimals, so the boundary a
+ * system is fitted to sits on a grid of `1e-4` model units -- and a body placed
+ * joint by joint on that grid is very slightly not a rigid body, by an amount
+ * that wanders a little further with every sample of the walk. Most mechanisms
+ * absorb that in their own slack and never come near this number. A **cylinder
+ * holding its length** (decision S28) has no slack to absorb it with: it pins
+ * its two mounts rigidly to two separately-rounded boundary joints, so the
+ * rounding becomes a disagreement no pose can close. The maintainer's triangle
+ * of three held cylinders stalled at `2.4e-5` on its first step and refused
+ * every step of every size it was offered.
+ *
+ * Two terms, as `drawnPoseTolerance` has two and for the same reason. The
+ * drawing's own size carries the *lever*: a rounded frame two hundred units
+ * long placing a joint six hundred units away multiplies the grain by three.
+ * The floor carries the *walk*: the wander is a step of the grid per sample and
+ * a revolution is a few hundred samples, so a score of grains is what a cycle
+ * can accumulate whatever size it is drawn at. Both are far under anything a
+ * reader could see -- the larger of them, on a drawing a thousand units across,
+ * is five hundredths of a thousandth of a user unit, against a joint drawn at
+ * a seventh of one.
+ *
+ * **Asked for, never assumed.** The caller says when a system is one of these,
+ * because loosening the gate for every system would cost the protection that
+ * gate is: a six-bar drawn near two assembly modes converges, at full rank, to
+ * the wrong one, and what refuses it is a residual a hair above the ordinary
+ * line (`boundary-driven-branch.spec.ts`). The loop below also still *drives*
+ * to `TOLERANCE` either way, so a system that can reach it reaches it, in the
+ * same iterations and to the same pose it always did.
+ */
+const POSE_GRAIN = 1e-4;
+
+export function heldPoseTolerance(scale: number): number {
+  return Math.max(scale * 1e-5, 40 * POSE_GRAIN);
+}
 /** Enough for a damped solve to walk in from a poor pose; a good one takes three. */
 const MAX_ITERATIONS = 60;
 /**
@@ -729,7 +767,9 @@ function solveLinear(A: number[][], b: number[]): number[] | undefined {
 export function solveSimultaneous(
   system: SimultaneousSystem,
   positions: PositionMap,
-  command: number
+  command: number,
+  /** See `heldPoseTolerance`; the default is the precision anything else holds. */
+  accepted: number = TOLERANCE
 ): boolean {
   const ids = system.unknownIds;
   const n = ids.length * 2;
@@ -794,7 +834,7 @@ export function solveSimultaneous(
   }
 
   write(x);
-  return worst(f) < TOLERANCE;
+  return worst(f) < accepted;
 }
 
 /** `JᵀJ` and `−Jᵀf`, the two things a damped step is made of. */

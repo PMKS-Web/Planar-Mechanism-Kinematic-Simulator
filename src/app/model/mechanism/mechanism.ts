@@ -1,7 +1,9 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
-import { Link, SliderBlock, RealLink } from '../link';
-import { assignBodies, WORLD } from './bodies';
+import { Link, RealLink } from '../link';
+import { assignBodies, BodyAssignment } from './bodies';
 import { mobilityFromGeometry } from './mobility';
+import { freedomsOf } from './freedoms';
+import { cylinderHolds } from './cylinder-hold';
 import { Force } from '../force';
 import { PositionSolver, PositionSolverDriveState, PRISMATIC_INPUT_STEP } from './position-solver';
 import { InstantCenter } from '../instant-center';
@@ -25,7 +27,9 @@ export type MechanismFailure =
   | 'dead-position'
   | 'hidden-freedom'
   | 'cycle-never-closes'
-  | 'cylinder-has-no-travel';
+  | 'cylinder-has-no-travel'
+  /** The solve threw. Nothing is known but that, and readiness says so. */
+  | 'solver-error';
 
 /**
  * One component of a rate, as a cell of an exported table.
@@ -131,34 +135,27 @@ export class Mechanism {
     });
     links.forEach((l) => {
       const linkJoints = l.joints.map((joint) => this._joints[0].find((j) => j.id === joint.id)!);
-      switch (l.constructor) {
-        case RealLink:
-          if (!(l instanceof RealLink)) {
-            return;
-          }
-          const realLink = new RealLink(
-            l.id,
-            linkJoints,
-            l.mass,
-            l.massMoI,
-            new Coord(l.CoM.x, l.CoM.y),
-            this.cloneLinkSubset(l.subset, this._joints[0], true),
-            l
-          );
-          realLink.name = l.name;
-          realLink.fill = l.fill;
-          this.restoreLinkSubsetState(l.subset, realLink.subset);
-          this._links[0].push(realLink);
-          break;
-        case SliderBlock:
-          if (!(l instanceof SliderBlock)) {
-            return;
-          }
-          const piston = new SliderBlock(l.id, linkJoints, l.mass);
-          piston.name = l.name;
-          this._links[0].push(piston);
-          break;
+      // `instanceof`, not a switch on the constructor. The switch listed every
+      // class a link could be and silently dropped anything absent from the
+      // list -- so when the block stopped existing, a drawing's links would
+      // have gone missing one class at a time rather than failing where the
+      // class was removed.
+      if (!(l instanceof RealLink)) {
+        return;
       }
+      const realLink = new RealLink(
+        l.id,
+        linkJoints,
+        l.mass,
+        l.massMoI,
+        new Coord(l.CoM.x, l.CoM.y),
+        this.cloneLinkSubset(l.subset, this._joints[0], true),
+        l
+      );
+      realLink.name = l.name;
+      realLink.fill = l.fill;
+      this.restoreLinkSubsetState(l.subset, realLink.subset);
+      this._links[0].push(realLink);
     });
     this.wireJointGraph(0, joints);
     forces.forEach((f) => {
@@ -200,23 +197,41 @@ export class Mechanism {
     } else if (!driven) {
       this.setMechanismInvalid('not-driven');
     } else {
-      this._requiredLoops = LoopSolver.determineLoops(this._joints[0], this._links[0]);
-      this.findFullMovementPos(inputAngVel);
-      // The solver's static holds what *this* build found; read it now, before
-      // the next mechanism's build resets and overwrites it.
-      this._unusableCylinder = PositionSolver.unusableCylinderDrive;
-      // For the same reason, and for anything that differentiates this
-      // mechanism after every other one has been solved over the top of it.
-      // Built here rather than on demand: it is derived from a dozen more of
-      // the same statics, and by the time a graph asks they belong elsewhere.
-      PositionSolver.ensureSimultaneousSystem(this._joints[0], this._links[0]);
-      this._driveState = PositionSolver.captureDriveState();
-      // A sealed cylinder with no stroke emits no steps, so the failure above
-      // is already recorded -- as "nothing can move", which is true but says
-      // nothing a student can act on. Name the ram instead.
-      if (this._unusableCylinder !== undefined && !this.mechanismValid) {
-        this._failure = 'cylinder-has-no-travel';
+      try {
+        this.solveFromTheDrawnPose(inputAngVel);
+      } catch (error) {
+        // A solve that throws is a machine that could not be solved, and it has
+        // to come back as one. Left to escape, the throw left
+        // `MechanismService.updateMechanism` before it had stored the machines
+        // it was building, so every panel went on describing the drawing from
+        // the moment *before* the edit -- which is how a body with Driven Input
+        // switched on came to be told that nothing drives it (decision S26).
+        // The cause of that particular throw is fixed where it was; this is for
+        // the next one, whose sentence will at least be true.
+        console.error('This mechanism could not be solved:', error);
+        this.setMechanismInvalid('solver-error');
       }
+    }
+  }
+
+  /** Everything a valid, driven, one-freedom machine is solved for, in order. */
+  private solveFromTheDrawnPose(inputAngVel: number): void {
+    this._requiredLoops = LoopSolver.determineLoops(this._joints[0], this._links[0]);
+    this.findFullMovementPos(inputAngVel);
+    // The solver's static holds what *this* build found; read it now, before
+    // the next mechanism's build resets and overwrites it.
+    this._unusableCylinder = PositionSolver.unusableCylinderDrive;
+    // For the same reason, and for anything that differentiates this
+    // mechanism after every other one has been solved over the top of it.
+    // Built here rather than on demand: it is derived from a dozen more of
+    // the same statics, and by the time a graph asks they belong elsewhere.
+    PositionSolver.ensureSimultaneousSystem(this._joints[0], this._links[0]);
+    this._driveState = PositionSolver.captureDriveState();
+    // A sealed cylinder with no stroke emits no steps, so the failure above
+    // is already recorded -- as "nothing can move", which is true but says
+    // nothing a student can act on. Name the ram instead.
+    if (this._unusableCylinder !== undefined && !this.mechanismValid) {
+      this._failure = 'cylinder-has-no-travel';
     }
   }
 
@@ -227,6 +242,14 @@ export class Mechanism {
       const prisJoint = new PrisJoint(source.id, x, y, source.input, source.ground);
       prisJoint.angle_rad = source.angle_rad;
       prisJoint.isSealed = source.isSealed;
+      // The two things a slider used to keep somewhere else: the mass on its
+      // block, and the Slide on the weld of its coincident pin. Both are the
+      // joint's own now, and a copy that dropped them would leave every
+      // timestep after the first holding a massless Pin-in-slot -- which the
+      // force solver reads as a body with no weight and the mobility count as
+      // a freedom the drawing does not have.
+      prisJoint.mass = source.mass;
+      prisJoint.rotates = source.rotates;
       // Points at the editable objects for now; wireJointGraph rebinds it to
       // this timestep's copies once they exist.
       if (source.carrier && source.slotJointA && source.slotJointB) {
@@ -303,11 +326,6 @@ export class Mechanism {
         link.fill = source.fill;
         return [link];
       }
-      if (source instanceof SliderBlock) {
-        const piston = new SliderBlock(source.id, joints, source.mass);
-        piston.name = source.name;
-        return [piston];
-      }
       return [];
     });
   }
@@ -371,82 +389,75 @@ export class Mechanism {
   }
 
   /**
-   * steps to determine DOF (Gruebler's Criteron with Exceptions):
-   1.determine number of links + ground
-   1a. Links sharing two or more joints are one rigid body (see assignBodies)
-   2.determine number of ground joints
-   3.determine number of slider joints
+   * The mobility this machine is judged by, once its passive cylinders have
+   * been asked whether they are holding their length.
    *
-   * What a joint *costs* is one less than the number of bodies it holds
-   * together, which is what makes a bar pinned to ground at both ends cost
-   * nothing: only one body meets at each of its ends, and that body is the
-   * world.
+   * The count itself is `freedoms.ts`; what happens here is deciding the
+   * machine it is a count *of*. A cylinder nothing drives and nothing moves is
+   * a rigid link of the length it was drawn at (decision S28), so it is merged
+   * into one body with its two members -- exactly as a cylinder welded shut at
+   * both ends already is (S25) -- and the count is taken of what results. The
+   * number every reader is shown, and every solver works to, is therefore the
+   * machine's effective mobility rather than a count of a drawing nobody meant.
    */
-  determineDegreesOfFreedom() {
-    // Map every link to the rigid body it belongs to.
-    //
-    // Two links pinned to each other at two or more shared joints cannot move
-    // relative to each other — the second pin constrains nothing the first did
-    // not already, so it is redundant. Gruebler's equation has no way to know
-    // that and subtracts for it anyway, reporting a mobility one lower than the
-    // assembly actually has. Users hit this by drawing a coupler as two
-    // overlapping links (or by welding one across a pair of joints another link
-    // already spans): a perfectly ordinary four-bar then counts as DOF 0 and
-    // refuses to simulate. Collapsing such links into one body before counting
-    // removes the paradox.
-    const { bodyOf, bodiesAt, movingBodies } = assignBodies(this.joints[0], this.links[0]);
-
-    const hasGround = this.joints[0].some((j) => j instanceof RealJoint && j.ground);
-    if (!hasGround) {
-      return NaN;
-    }
-
-    const bodies = new Set(this.links[0].map(bodyOf));
-    bodies.add(WORLD);
-    const N = bodies.size;
-    let J1 = 0;
-    const J2 = 0;
-    this.joints[0].forEach((j) => {
-      if (!(j instanceof RealJoint)) {
-        return;
-      }
-      J1 += Math.max(bodiesAt(j).size - 1, 0);
-    });
-    const counted = 3 * (N - 1) - 2 * J1 - J2;
+  determineDegreesOfFreedom(): number {
+    const holds = cylinderHolds(this.joints[0], this.links[0]);
+    this._heldCylinderSeals = holds.held;
+    this._looseCylinderSeals = holds.loose;
+    this._bodyMerges = holds.merges;
+    const { counted, dof } = freedomsOf(this.joints[0], this.links[0], this.bodyAssignment());
     this.countedFreedoms = counted;
-    if (counted >= 1) return counted;
-
-    // Counted as unable to move. Gruebler's error is one-sided -- it charges
-    // twice for constraints that say the same thing, and so reports a mobility
-    // that is too low, never too high -- so this is the one answer worth
-    // checking against the drawing itself. A parallelogram with a third
-    // parallel crank counts as zero and turns perfectly well; so does a bar
-    // carried by two others that hold it the same way.
-    //
-    // Only here, and only when it disagrees upward: everything Gruebler already
-    // calls mobile is left exactly as it was, and a structure that really
-    // cannot move still reads zero, because its rows really are independent.
-    // Not applied where the count already reads one: a drawing whose second
-    // freedom is never stirred -- a ram on a pin whose carriage rides rails --
-    // solves as its reader meant it, and refusing it for the freedom it does
-    // not use would be pedantry. The geometry is asked again only when the
-    // solve fails, in `explainDeadPosition`, where the same answer is the
-    // difference between "a dead position" and "a part tied to nothing".
-    const measured = this.measuredFreedoms();
-    // Only ever a rescue. Where the geometry agrees nothing can move, Gruebler's
-    // own number is the more useful of the two: -2 says how much has to come out
-    // before this is a mechanism, and a flat zero from a rank count says only
-    // that it is stuck.
-    return measured !== undefined && measured >= 1 ? measured : counted;
+    return dof;
   }
 
   /** Gruebler's own count, kept for the diagnosis a failed solve makes. */
   private countedFreedoms = 0;
 
+  /** The seal ids of this machine's cylinders that are holding their length. */
+  private _heldCylinderSeals: ReadonlySet<string> = new Set<string>();
+
+  /** Barrel/rod root pairs those holds make one body of. */
+  private _bodyMerges: string[][] = [];
+
+  /** Seals whose length nothing decides, which a freedom had to be left for. */
+  private _looseCylinderSeals: ReadonlySet<string> = new Set<string>();
+
+  /** See `_heldCylinderSeals`; empty for every machine with nothing to hold. */
+  get heldCylinderSeals(): ReadonlySet<string> {
+    return this._heldCylinderSeals;
+  }
+
+  /** See `CylinderHoldReport.loose`: where a surplus freedom actually is. */
+  get looseCylinderSeals(): ReadonlySet<string> {
+    return this._looseCylinderSeals;
+  }
+
+  /**
+   * What a rigid body is in *this* machine: the drawing's own answer, plus
+   * whatever its passive cylinders are holding rigid.
+   *
+   * Two links pinned to each other at two or more shared joints cannot move
+   * relative to each other — the second pin constrains nothing the first did
+   * not already, so it is redundant. Gruebler's equation has no way to know
+   * that and subtracts for it anyway, reporting a mobility one lower than the
+   * assembly actually has. Users hit this by drawing a coupler as two
+   * overlapping links (or by welding one across a pair of joints another link
+   * already spans): a perfectly ordinary four-bar then counts as DOF 0 and
+   * refuses to simulate. Collapsing such links into one body before counting
+   * removes the paradox.
+   *
+   * A cylinder holding its length is merged here too, and by the same call:
+   * `cylinderHolds` has already decided which, and a passive ram the machine
+   * cannot move is one body with its members exactly as a welded-shut one is
+   * (decisions S25 and S28).
+   */
+  private bodyAssignment(): BodyAssignment {
+    return assignBodies(this.joints[0], this.links[0], this._bodyMerges);
+  }
+
   /** The freedoms the drawing's geometry has, second order and all. */
   private measuredFreedoms(): number | undefined {
-    const { bodyOf, bodiesAt, movingBodies } = assignBodies(this.joints[0], this.links[0]);
-    return mobilityFromGeometry(this.joints[0], this.links[0], { bodyOf, bodiesAt, movingBodies });
+    return mobilityFromGeometry(this.joints[0], this.links[0], this.bodyAssignment());
   }
 
   /**
@@ -663,7 +674,7 @@ export class Mechanism {
     PositionSolver.resetStaticVariables();
     // After the reset, which is what puts the default back.
     PositionSolver.revoluteSampleStep = revoluteStep;
-    PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
+    PositionSolver.determineJointOrder(this.joints[0], this.links[0], this._heldCylinderSeals);
     // A grounded slider's refined spacing, once its stroke has been walked at
     // the fixed one. After the joint order, which is where a cylinder sets
     // its own; a cylinder is never refined, its stroke being known up front.
@@ -849,34 +860,25 @@ export class Mechanism {
           connectedJointIndices.forEach((ji: number) => {
             connectedJoints.push(this._joints[currentTimeStamp + 1][ji]);
           });
-          switch (l.constructor) {
-            case RealLink:
-              if (!(l instanceof RealLink)) {
-                return;
-              }
-              const pushLink = new RealLink(
-                l.id,
-                connectedJoints,
-                l.mass,
-                l.massMoI,
-                this.transportPoint(l.CoM, l.joints, connectedJoints),
-                this.cloneLinkSubset(l.subset, this._joints[currentTimeStamp + 1], true),
-                l
-              );
-              pushLink.name = l.name;
-              pushLink.fill = l.fill;
-              this.restoreLinkSubsetState(l.subset, pushLink.subset);
-              this._links[currentTimeStamp + 1].push(pushLink);
-              break;
-            case SliderBlock:
-              if (!(l instanceof SliderBlock)) {
-                return;
-              }
-              const newLink = new SliderBlock(l.id, connectedJoints, l.mass);
-              newLink.name = l.name;
-              this._links[currentTimeStamp + 1].push(newLink);
-              break;
+          // See the constructor: asked as `instanceof` rather than switched on
+          // the constructor, so a class that is no longer drawn cannot quietly
+          // take a link out of every timestep after the first.
+          if (!(l instanceof RealLink)) {
+            return;
           }
+          const pushLink = new RealLink(
+            l.id,
+            connectedJoints,
+            l.mass,
+            l.massMoI,
+            this.transportPoint(l.CoM, l.joints, connectedJoints),
+            this.cloneLinkSubset(l.subset, this._joints[currentTimeStamp + 1], true),
+            l
+          );
+          pushLink.name = l.name;
+          pushLink.fill = l.fill;
+          this.restoreLinkSubsetState(l.subset, pushLink.subset);
+          this._links[currentTimeStamp + 1].push(pushLink);
         });
         this.wireJointGraph(currentTimeStamp + 1, this.joints[0]);
         // TODO: If forces are a part of links, is all of this info needed? Or just the positions?
@@ -1488,9 +1490,6 @@ export class Mechanism {
         });
         forceTitleRow.push(' ');
         this.links[0].forEach((l) => {
-          if (l instanceof SliderBlock) {
-            return;
-          }
           forceTitleRow.push('Link ' + l.id + ' CoM x ' + posUnit);
           forceTitleRow.push('Link ' + l.id + ' CoM y ' + posUnit);
           forceTitleRow.push('Link ' + l.id + ' CoM Vel x ' + velUnit);
@@ -1500,9 +1499,6 @@ export class Mechanism {
         });
         forceTitleRow.push(' ');
         this.links[0].forEach((l) => {
-          if (l instanceof SliderBlock) {
-            return;
-          }
           forceTitleRow.push('Link ' + l.id + ' angPos ' + angPosUnit);
           forceTitleRow.push('Link ' + l.id + ' angVel ' + angVelUnit);
           forceTitleRow.push('Link ' + l.id + ' angAcc ' + angAccUnit);
@@ -1559,9 +1555,6 @@ export class Mechanism {
     });
     kinematicTitleRow.push(' ');
     this.links[0].forEach((l) => {
-      if (l instanceof SliderBlock) {
-        return;
-      }
       kinematicTitleRow.push('Link ' + l.id + ' CoM ' + 'x ' + posUnit);
       kinematicTitleRow.push('Link ' + l.id + ' CoM ' + 'y ' + posUnit);
       kinematicTitleRow.push('Link ' + l.id + ' CoM ' + 'vx ' + velUnit);
@@ -1571,9 +1564,6 @@ export class Mechanism {
     });
     kinematicTitleRow.push(' ');
     this.links[0].forEach((l) => {
-      if (l instanceof SliderBlock) {
-        return;
-      }
       kinematicTitleRow.push('Link ' + l.id + ' angle ' + angPosUnit);
       kinematicTitleRow.push('Link ' + l.id + ' angVel ' + angVelUnit);
       kinematicTitleRow.push('Link ' + l.id + ' angAcc ' + angAccUnit);
@@ -1636,7 +1626,8 @@ export class Mechanism {
         this.links[index],
         analysisType,
         this.gravity,
-        this.unit
+        this.unit,
+        this._heldCylinderSeals
       );
       for (const joint of this.joints[index].filter((candidate) =>
         this.isForceAnalysisJoint(candidate)
@@ -1682,9 +1673,6 @@ export class Mechanism {
           });
           force_row.push(' ');
           this.links[index].forEach((l) => {
-            if (l instanceof SliderBlock) {
-              return;
-            }
             force_row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 0, posUnitConversion));
             force_row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 1, posUnitConversion));
             force_row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 0, velUnitConversion));
@@ -1694,9 +1682,6 @@ export class Mechanism {
           });
           force_row.push(' ');
           this.links[index].forEach((l) => {
-            if (l instanceof SliderBlock) {
-              return;
-            }
             force_row.push(scalarCell(KinematicsSolver.linkAngPosMap.get(l.id)));
             force_row.push(scalarCell(KinematicsSolver.linkAngVelMap.get(l.id)));
             force_row.push(scalarCell(KinematicsSolver.linkAngAccMap.get(l.id)));
@@ -1756,9 +1741,6 @@ export class Mechanism {
       });
       row.push(' ');
       this.links[0].forEach((l) => {
-        if (l instanceof SliderBlock) {
-          return;
-        }
         row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 0, posUnitConversion));
         row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 1, posUnitConversion));
         row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 0, velUnitConversion));
@@ -1768,9 +1750,6 @@ export class Mechanism {
       });
       row.push(' ');
       this.links[0].forEach((l) => {
-        if (l instanceof SliderBlock) {
-          return;
-        }
         row.push(scalarCell(KinematicsSolver.linkAngPosMap.get(l.id)));
         row.push(scalarCell(KinematicsSolver.linkAngVelMap.get(l.id)));
         row.push(scalarCell(KinematicsSolver.linkAngAccMap.get(l.id)));

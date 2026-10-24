@@ -93,10 +93,33 @@ the options current at the end if more were asked for meanwhile.
 
 Every "choose one of two or three" in the app is `segmented-block`: `radio-block` wraps it for
 form-bound settings, the graph rows use it for Magnitude / X & Y, the export drawers use it
-directly. The pill under the chosen option is positioned by measuring that option
-(`--thumb-left`, `--thumb-width`), so options may be as wide as their labels (`[fill]="false"`
-at the end of a settings row) or share the width equally (the default in a panel). Its buttons
-carry the plain button role and `aria-pressed`, which is what the suites find them by.
+directly, and a joint's type is four of them wrapped into two columns (`wrap`, with `icons`). The
+pill under the chosen option is positioned by measuring that option (`--thumb-left`,
+`--thumb-top`, `--thumb-width`, `--thumb-height`), so options may be as wide as their labels
+(`[fill]="false"` at the end of a settings row), share the width equally (the default in a panel),
+or sit on a second row. A `selected` of -1 chooses nothing, for a group whose parts disagree. Its
+buttons carry the plain button role and `aria-pressed`, which is what the suites find them by, and
+a grayed option's `reasons` hang on its `.cell` wrapper: a disabled button takes no pointer events,
+so a tooltip on the button itself would never open.
+
+### `finishStructuralEdit` puts the selection back on what the reader selected
+
+`toggleSlider()` takes no joint: it reads `activeObjService.selectedJoint`. A service that points
+the selection at a joint to drive it -- `MultiEditService.eachJoint`, `JointTypeService.set` --
+has to point it again before every such edit rather than once, because each structural edit ends
+in `finishStructuralEdit`, whose `reconcilePartSelection` sets `selectedJoint` back to the part
+selection. Welded to Pin-in-slot is an unweld and then a block, and with the selection pointed only
+once, the block landed on whichever joint the reader had selected (`joint-type.service.spec.ts`).
+
+### Once welded, a joint's bars are one link
+
+`weldJointTopology` fuses the bars at a joint into one compound `RealLink` and leaves the sliding
+block out of it, so `joint.links.length` on a welded joint counts the compound once. A rule that
+asks whether a weld has two links to fuse, put to a joint *already* welded, has to count the
+compound's pieces instead: `weldOutlivesBlock` in `model/joint-operation-permission.ts` does, and
+counting links refused Prismatic to Welded on a pin between two bars, whose weld the block's
+leaving keeps. A Slide on one bar has no compound -- its weld is the bar held to the block -- and
+`reconcileAssemblyWelds` strips that weld when the block goes.
 
 ### ApexCharts draws every annotation in front, and has no option about it
 
@@ -129,9 +152,15 @@ A row on the right-click menu never comes and goes with the situation. It is the
 (or every bar, every cylinder, every force) and it grays, with the model's own reason in the slot,
 when it cannot apply. The joint menu used to break this: a cylinder's joint lost its Slider row and
 the slider itself lost its Weld row -- two menus under one name, and a reader who had learned where
-a row sits finding it gone. Both rows are permanent now (`jointAttachRows` and `jointStateRows` in
+a row sits finding it gone. Every row is permanent now (`jointAttachRows` and `jointStateRows` in
 `context-menu-builder.service.ts`), and the refusals quote `weldRefusal`,
 `describeActuatorRefusal` and the rest rather than restating them.
+
+Those two rows are a choice at the top of the card now (`MenuChoice` in `menu-model.ts`): a joint's
+four types, each with its own refusal. Its cells are `cdkMenuItemRadio` items rather than the
+`segmented-block` the panel draws, because inside a CDK menu the arrow keys reach nothing but a
+`cdkMenuItem` -- so the two share the look through the mixins in `segmented.look.scss` and nothing
+else.
 
 There was briefly a *Free to Move* row as well, for a joint on a bar holding its length or angle
 (`RealLink.hold`): such a joint still drags, but only along the arc or the line the hold leaves it.
@@ -462,6 +491,37 @@ the solver run, and not against Gruebler's. A crosshead on two slides counts -1 
 to one by the same geometry; comparing against -1 called the solver's every failure on such a
 drawing a hidden freedom, when the rescue was the count agreeing with the drawing.
 
+### The library's gripper counts one freedom and measures three, and runs on the count
+
+`Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has
+Gruebler's count at 1 and `mobilityFromGeometry` at **3**. `determineDegreesOfFreedom` returns the
+count wherever the count is at least one and never asks the geometry, so the drawing is admitted
+and solved. Two of those three freedoms are therefore motions nothing in the drawing determines,
+and the solver picks a pose for them.
+
+The 3 is not a numerical artifact, which is the first thing to suspect and the first thing to rule
+out. Perturbing a corner of one of its parallelograms by 1e-9, 1e-6, 1e-4 and 1e-3 -- the last of
+which is the resolution the URL itself carries -- leaves it at 3 every time.
+
+**What is not known is which two motions they are.** Grounding `B`, the barrel's near end, drops
+the measurement to 1, which looks like the barrel's swing about its single mount until you notice
+that `gripperFixture` beside it in the gallery has its barrel equally free on one pin and measures
+1. So the barrel is not a sufficient explanation, and no better one has been written down. Note
+also that grounding `B` is not a drawing a reader could make: `isInsideCylinder` counts the
+barrel's near end as inside the part, so it is not an attachment point.
+
+Three siblings in the gallery measure 1 and are worth comparing against before concluding
+anything: `gripperFixture` (railed, hand-placed coordinates), `pivotingGripperFixture` ("the same
+gripper, jaws pivoting instead of railed") and `parallelGripperFixture` ("the way a manufacturer
+draws one"). The difference is not exact symmetry: `slideGripperFixture` builds its parallelograms
+from shared constants and is exact, `gripperFixture`'s are hand-typed and only nearly so, but
+breaking the exact ones by hand does not move the number.
+
+One warning for anyone thinking of gating on the measurement. It is robust on this drawing and
+knife-edge on a near neighbor: the same gripper with `B` grounded flips between 1 and 2 on a 1e-9
+nudge to a parallelogram corner. Whether that shape is reachable by a reader is a separate
+question, but a refusal rule reading this number needs to answer it first.
+
 ### The mobility count reads a floating slot's live direction
 
 `constraintsOf` in `mobility.ts` writes a slide constraint from `joint.slotAngle`, never from
@@ -531,6 +591,32 @@ member reports the assembly permanently at rest.
 form and its hand-differentiated derivative; the same spec shows that unwelding the rod leaves two
 freedoms, which is why the weld is what makes the arrangement a mechanism at all.
 
+### A grounded Slide's rider is placed by the assembly step, never by a dyad
+
+A grounded Slide holds its rider square to the world, so every joint of the rider moves by the one
+vector the guide allows, and `orderSlideAssembly` moves them together. Every generic primitive
+turns the body it places to reach its answer -- two circles meet where the dyad folds, a circle
+meets a slot where the link tilts -- so `detJointOrder` and `orderRiderOnMovingSlot` leave a
+rider's joints alone (`heldSquare`, which asks `slideAssemblies` rather than `rotates`, for the
+reason `slide-assembly.ts` gives). Before that, a bar welded to its block on a guide with its far
+end riding a slot cut into the crank was "solved" by placing the far end from the block's *seeded*
+position -- a grounded slider is known before the walk starts and placed only by its own step --
+and the block from the far end: self-consistent every sample, the block never slid, and the bar
+swung through twenty-five degrees at a weld. Nothing refused it, because the count is right: one
+freedom, and the walk had simply drawn a different mechanism with the same count.
+
+`slideAssemblySource` has a fourth kind for that shape, `'guided'`: slide until the member lands on
+the placed slot, `t = ((P − M₀) × v̂) / (û × v̂)`, one root or none, with the slot line read from the
+carrier's pose each sample through `resolveSlotLine` like any rider's. It is the Scotch yoke's
+`'slot'` source with the roles exchanged. `bar-on-a-slide-in-a-crank-slot.spec.ts` is the drawing.
+
+Two things about that spec. The walk never corrects the drawn pose, and a rock passes back through
+it: a hand-drawn far end sits a tenth of a model unit off its slot at frame 0 and at every return
+to the start, and a difference quotient straddling those frames reads the jump as velocity, so they
+are exempt. And the drawing rocks rather than turning through -- as the slot leans toward the
+guide, the far end has to run further along it to stay at its height and reaches the end of the
+channel first, which `ridersAreInTheirSlots` turns away like any other limit.
+
 ### A URL can say a mount is welded, and the decoder drops the flag
 
 Welding a cylinder's mount is refused by the app today, and the natural way to test what the
@@ -546,13 +632,24 @@ Two consequences. Testing the resolver against a welded mount means building the
 when the weld is opened up, the decode path has to *build* the compound rather than merely keep
 the flag, or a saved drawing will come back with its bracket detached and nothing said.
 
-### A ram's five joints are not named A, B, C, D, and have not been for a while
+### A cylinder's four joints are not named A, B, C, D, and have not been for a while
 
-The two mounts take ordinary letters from `determineNextLetter`; the three the reader never sees
-hang off the barrel mount's letter and are numbered -- `A1`, `A2`, `A3` -- by
-`determineInteriorNames`. That is deliberate twice over: the hidden joints read as belonging to
-the part, and `determineNextLetter` ranks ids by their place in the alphabet, so it walks past
-them instead of letting a cylinder's interior push the *visible* joints into double letters.
+Three of them take ordinary letters from `determineNextLetter` -- the two end joints first and
+then the slide (decision S9) -- and the one the reader never sees, the barrel's buried end, hangs
+off the barrel-side letter and is numbered `A1` by `determineInteriorNames`. That is deliberate
+twice over: the hidden joint reads as belonging to the part, and the letter rule ranks ids by
+their place in the alphabet, so it walks past `A1` instead of letting a cylinder push the
+*visible* joints into double letters.
+
+There were five joints and three hidden names (`A1`, `A2`, `A3`) before Stage 1 made a slider one
+joint and Stage 2 made the slide selectable. **An old payload still carries an interior-named
+seal**, and the reader gives it the next free letter as the last step of the build -- after every
+id-keyed section, because locks, holds, colors and CoM anchors are looked up by the ids the URL
+wrote.
+
+The rule itself is `model/joint-letters.ts` and is asked from two places: the service asks it of
+the drawing, the URL builder asks it of the list it is still assembling. It used to be written out
+twice, once in each.
 
 A suite that names a cylinder's joints should ask the model which joint plays which role
 (`sealedStructures()[0]`, as `e2e/phase4-cylinder.mjs` does) rather than assert the naming scheme
@@ -560,11 +657,11 @@ by accident; a suite that spells out the scheme fails in a way that looks like a
 creation.
 
 Three more things a cylinder suite can assert by accident, all consequences of deliberate
-changes: a cylinder joint's menu **grays** the Slider row
-rather than omitting it (every joint's menu is the same shape now, each refusal explained); a
-cylinder body's menu has gained Fixed Angle and the vector switches, so an exact-list assertion
-goes red whenever the menu legitimately grows; and the panel's speed field is **Input Speed**
-writing `Joint.driveSpeed` on the driven joint, not "Expansion Speed" writing
+changes: a cylinder joint's card carries the four-way **Joint Type** choice and grays the values it
+cannot take (every joint's card is the same shape now, each refusal explained); the whole-part card
+is gone and a click on the barrel, the rod or the slide opens that thing's own card, so an
+exact-list assertion goes red whenever one of them legitimately grows; and the panel's speed field
+is **Input Speed** writing `Joint.driveSpeed` on the driven joint, not "Expansion Speed" writing
 `settingsService.linearInputSpeed` -- a drawing can hold several machines, so a speed belongs to
 the thing being driven rather than to the document.
 
@@ -973,16 +1070,16 @@ check that seeks to the last sample to see full extension sees the start pose in
 as "the animation does nothing". Full extension is the sample furthest from the start -- scan for
 it. (`animate()` also takes a sample index rather than a fraction; see above.)
 
-### Two questions about a ram, and a body has to be asked the right one
+### Two questions about a cylinder, and a body has to be asked the right one
 
-`ownsMember` is deliberately recursive: "a compound that has itself been welded into something
-larger still owns the member, and a delete or a drag that missed it would tear the ram it was
-carrying." That is the right question for a **cascade**. It is the wrong one for **identity**, and
-until a mount could be welded nothing could tell the two apart, because no compound ever held a
-cylinder leaf.
+`ownsMember` is deliberately recursive: a compound that has itself been welded into something
+larger still owns the member, and a delete or a drag that missed it would tear the part it was
+carrying. That is the right question for a **cascade**. It is the wrong one for **identity**, and
+until an end joint could be welded nothing could tell the two apart, because no compound ever held
+a cylinder leaf.
 
-`MechanismService.cylinderAt` is now the carrying question and `cylinderOfBar` the identity one,
-and a body must be asked whichever it means:
+`MechanismService.cylinderAt` is the carrying question and `cylinderOfBar` the identity one, and a
+body must be asked whichever it means:
 
 - **Carrying** -- a delete, a copy, a body drag or swing, and `frozenCarriedJoints`. Missing a ram
   welded under a body tears it, so these stay recursive, and each of those sites says so.
@@ -992,36 +1089,148 @@ and a body must be asked whichever it means:
   the label ink, `isSelectedBody` and `isPointedAtBody`.
 
 Asked the carrying question, a bracket welded to a rod mount opened the cylinder's panel, wore
-"Cylinder AB · Barrel and rod" as its menu title, lit up when the ram beside it was chosen, and
-offered a Delete Cylinder that took the ram and left the bracket standing -- while Delete on that
-same selection took the whole body. It now reads "Edit Link A2BC", "Link A2BC · Compound", and
-"Delete Link (and Cylinder, 3 joints)", which is what both routes actually do.
+"Cylinder AB · Barrel and rod" as its menu title, lit up when the part beside it was chosen, and
+offered a Delete Cylinder that took the part and left the bracket standing -- while Delete on that
+same selection took the whole body. It reads as the compound it is now -- "Edit Link ⟨its own
+letters⟩", "Link ⟨the same⟩ · Compound", and "Delete Link (and Cylinder, 3 joints)" -- which is
+what both routes actually do. (The letters themselves moved in Stage 2: a seal that was stored
+under an interior name is given a real one on decode, so a compound holding one is no longer named
+after a joint nothing shows.)
 
-Note `MechanismService.cylinderOfLink` (via `link-holds.ts`) has *always* asked the identity
-question, through a members map keyed by link id -- which is why holds were the one surface a
-welded bracket never confused. It delegates to `cylinderOfBar` now, so there is one answer rather
-than two names for it.
+There was a third name for the identity question for a while: `MechanismService.cylinderOfLink`,
+which the hold path asked through a members map keyed by link id -- which is why holds were the one
+surface a welded bracket never confused. It became a one-line delegation to `cylinderOfBar` and
+then went, so a body has two questions to choose between rather than two questions and a synonym.
 
-### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
+### A compound has to draw a welded cylinder member, and with the skin's shape
 
-`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized "through its
-pin: the joint that shares a SliderBlock with a sealed slider". A **barrel** leaf has no such
-joint (its two joints are the mount and the buried near end), so welding a bracket to a ram's
-*barrel* mount leaves the barrel in the compound's union: it is drawn once by the compound, in the
-bracket's color, and once by the cylinder skin over the top. With a random palette the two are
-often near enough to hide it; recolor the two bodies and the barrel comes out painted the
-bracket's color with a hard seam partway along the part. The rod case is clean, and the difference
-is only which leaf the filter knows how to name.
+`RealLink.getCompoundPathString` used to *drop* a leaf a cylinder's skin draws, on the reading
+that the skin would paint it anyway. What that produced is a bracket standing beside the part
+rather than one body with it: the bracket its own shape in its own color with its own edge, the skin laid
+over it with a seam and no fillet, and at a barrel mount the bracket's round end showing as a
+circle inside the barrel. A weld means the two are rigid, and two ordinary welded links draw that
+as one fill, one continuous outline and a fillet in the elbow.
 
-The information needed to recognize the barrel is not reachable from the compound: after the weld
-the leaf's joints list only the root in `links`, and the sealed `PrisJoint` -- which is the one
-object that knows (`carrier` is the root, `slotJointA`/`slotJointB` are the leaf's two joints) --
-is reachable only from the rod's pin, which a barrel-welded compound does not contain. So the
-answer is *told* to the leaf instead: `RealLink.drawnByACylinderSkin`, set by
-`MechanismService.tellEachBarWhoDrawsIt` wherever the sealed structures are resolved, which is the
-one place it exists. It is cleared over the bars marked *last* time rather than over the drawing,
-because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
-keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
+So the union takes the member's **silhouette** instead of dropping it (decision S16): the barrel's
+real profile, or the rod's from behind the head to its end joint, built by the skin's own path
+builders and carried on `RealLink.skinSilhouette`. `buildCompoundPath` then does exactly what it
+does for two bars.
+
+Three things that are not obvious about it:
+
+- **A union fillets every corner it finds**, and it cannot tell the elbow, where two parts meet,
+  from the barrel's mouth or the rod's back, where nothing does. Filleted at the weld's radius the
+  mouth came out a capsule and the rod's square back lifted off the black head block it is flush
+  with, letting the black through at both corners. The fix is `CYLINDER.cutEase`: those four
+  corners are eased by a twentieth of R before the union, which puts every turn in them under
+  `buildCompoundPath`'s fifteen-degree corner threshold, so they come back out exactly as drawn.
+  It is the same mechanism that lets a black block keep its own rounded corners through a weld
+  plate.
+- **The body cannot stay in the links layer.** The skin is a stack -- barrel, head block, rod --
+  and a body holding a member has to stand in that member's place in it. A rod drawn under the
+  black head is hidden by it entirely and the band that says how much rod is still in the bore
+  simply goes. `fusedBodiesOf` in `model/cylinder-fusion.ts` assigns each welded body exactly one
+  pass to be painted in, the rod's winning when one body holds both kinds (two cylinders welded to
+  one bracket, or both ends of one cylinder), and `bodyDrawnByACylinder` keeps the links layer off
+  it.
+- **The export is not the picture.** `outlineLoops()` gives the DXF the body *without* the member
+  fused in, by rebuilding the union from the other leaves. A cylinder is already exported as its
+  own barrel and rod on their own layer, so a fused face would lay a second, differently shaped
+  barrel over the first.
+
+The leaf still cannot work any of this out for itself. After a weld its joints list only the
+compound root in `links`, and the sealed `PrisJoint` -- which is the one object that knows the
+pairing (`carrier` is the root, `slotJointA`/`slotJointB` are the barrel's two joints) -- is
+reachable only from the rod's pin, which a barrel-welded compound does not contain. So both
+answers are *told* to it: `drawnByACylinderSkin` and `skinSilhouette`, set by
+`MechanismService.tellEachBarHowItIsDrawn` wherever the sealed structures are resolved. They are
+cleared over the bars marked *last* time rather than over the drawing, because deleting a cylinder
+takes its bars out of `links` before the next resolve runs, and a bar that keeps the flag is a bar that
+stops drawing itself the moment it is welded into anything else. The silhouette is told a second
+time, from `updateMechanism` after `deriveCylinderInteriors`: *which* bars only a structural edit
+changes, but *where* they are is something the derivation may have just moved.
+
+### A link's id is a key, and on a welded barrel mount it is not a name
+
+`mergeLinks` builds a compound's id from the sorted ids of its joints, and a bracket welded to a
+cylinder's barrel mount holds **N**, the buried inner end. N has no marker, no letter and no
+hitbox, and is left out of every count the app shows (D14, S11) -- so the id `AA1D` named a joint
+the drawing has never drawn, and it named it in four places at once: the canvas tag, the panel
+title, the right-click header and the delete cascade of every joint on the body. The menu's
+subtitle said "Joints A, A1, D" over a canvas showing two, and the center-of-mass frame dropdown
+offered "Joint A1" as something to anchor a point to.
+
+`visibleBodyName` in `model/body-label.ts` is the one answer, and `MechanismService.visibleBodyName`
+/ `bodyLabel` are how everything asks it. Three rules in order: a cylinder member is named by its
+own two ends (S10) -- *never* by this rule, which on a barrel would leave the single letter of its
+mount; a name somebody typed wins untouched, "typed" being a name that differs from the id, which
+is what `mergeLinks` already means by it; otherwise the visible joints' ids, sorted the way
+`mergeLinks` sorts. With nothing hidden to drop it returns the id as it stands, so an ordinary body
+is untouched by construction rather than by accident.
+
+The id itself does not move. It is the key the URL, the solver, `mechanismForId`, the export
+columns and the DXF layers are built on, and a display rule that changed it would change all of
+them. Three surfaces keep it on purpose: a graph's `mechPart`, which is a lookup key and only ever
+*shown* in a fallback label no panel reaches; the export's column keys and DXF layer names; and the
+dev-only debug drawer, which is there to show what is stored.
+
+One that is easy to miss: `describeHold` falls back to `link.name || link.id`, and the cylinder
+branch above it names the *part* by its mounts. `GridUtilsService`'s `heldBy` deliberately wants the
+*member* named instead -- with both lengths fixed there are two padlocks to choose between -- and
+landed on that fallback, which for a barrel is the id with N in it. It passes a namer now.
+
+### The loop walk misses a chain that was already complete when it started
+
+`determineLoops` takes each ground joint, and for every neighbor of it calls `findGround` *from
+that neighbor* -- which records a loop only when it finds a ground among the neighbor's own
+neighbors. So a chain that is one edge long, ground to ground, is never written down: the walk
+starts past the end of it.
+
+That was invisible for as long as it was only true of pins. A bar pinned to the frame at both ends
+is frame, and a loop for it says nothing. It became reachable when a slider became one joint
+(Stage 1 of `joint-type-and-cylinder-plan.md`): an elliptical trammel is a bar with each end in a
+grounded **guide**, which before the fold was guide, pin, bar, pin, guide -- two non-ground joints
+in the middle for the walk to find -- and afterwards is one edge between two ground joints. With no
+loop, `solveRates` falls to `determineLooplessKinematics`, which models the drive as a rotation
+about the input joint: the joint on the 90-degree guide was handed a velocity with a large X
+component, which is the one thing its own constraint forbids, and the driven end was left at
+exactly zero.
+
+Positions were fine throughout, which is what made it quiet: the mechanism solved, animated and
+drew correctly, and only the graphs were wrong. `e2e/template-graphs.mjs` is the only thing in the
+suite that asks -- it differences every plotted series against the position it derives from -- and
+it runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
+asks the same question in a second rather than a two-minute browser run, which is where it belongs.
+The fix is one condition in `determineLoops`: record the chain when the neighbor is itself a
+remaining ground *and* the body between them can move -- a slot at either end, or a step taken
+along one.
+
+One harness trap comes with it: `ellipticalTrammelFixture(true, 1)` built through
+`buildMechanism` is `dead-position` with a single sample at *every* object scale tried, a quarter
+of `MODEL_SCALE` through four times it. The template payload encoded from that same fixture solves
+to 363 samples. Ask this mechanism anything through `TEMPLATE_LINKAGES`, not through the fixture.
+
+### `npm run template-payloads` rewrites the hand-authored templates too, not just the fenced ones
+
+`template-payloads.spec.ts` regenerates the block between its `<generated>` markers *and* runs
+`replaceHandAuthored` over the six templates that predate the generator, because color is assigned
+from structure and those six would otherwise be colored by whatever order somebody drew them in.
+It does that by decoding, repainting and re-encoding -- and its docstring used to promise the
+round trip came back byte-identical but for the six color fields, which was what made it safe to
+do to strings nothing else can regenerate.
+
+Stage 1 broke that promise quietly. The reader folds a three-object slider into one `PrisJoint`
+and the writer cannot emit the old spelling any more, so the first `npm run template-payloads`
+after the fold landed rewrote `Slider_Crank`'s **geometry** -- dropping its `YPCD` piston record
+and merging `C` with `D` -- and moved its rod's color as a consequence, since the fill rule reads
+structure. Nothing announced it. Two tests in `template-url.spec.ts` that pinned the old stored
+form went red, and that is the only reason it was caught.
+
+The normalization is wanted -- the dialog should hand out what the app writes today -- but a
+silent one is not. The docstring says so now, and
+`services/transcoding/url-slider-fold.spec.ts` is what proves the fold loses nothing: it builds
+the legacy trio and encodes it rather than pasting bytes that could drift from what the app used
+to produce.
 
 ### A ram's bore is a channel, and welding its barrel mount gave the channel to the bracket
 
@@ -1033,7 +1242,10 @@ the compound's outline as a second subpath -- and since it does not overlap the 
 filled it in rather than subtracting it: a capsule the length of the barrel, in the bracket's
 color, laid over the part it is supposed to be inside. The plan asks for exactly this ("the
 internal bore stays hidden even when its carrier root also contains a neighboring leaf with a
-visible slot"), and the fix is one `if (joint.isSealed) continue;`.
+visible slot"), and the fix is one `if (joint.isSealed) continue;`. Still one `if`, and still the only
+thing holding the bore out: a welded barrel's body is painted by the cylinder's own pass now
+(decision S16) rather than by the links layer, but it is painted from the same `bodyPath`, channels
+and all, so removing the guard would put the capsule straight back.
 
 Worth knowing while chasing this: the compound's `d` and what the canvas *draws* are two different
 strings. `linkPathWithChannels` is `outlineWithMotor(link)` -- which is `link.d` plus any motor
@@ -1095,6 +1307,64 @@ service that resolves its dependencies on first *use* then reads a destroyed inj
 eagerly where the ring allows it, and hand the predicate back on destroy
 (`destroyRef.onDestroy`). `NewGridComponent`'s `whenArrowsNudge` is the example.
 
+### A key pressed into an open menu is the menu's
+
+`KeyboardShortcutsService` listens on `window` and answered every keystroke that was not typed into
+a field, aimed at a button, or fired under a dialog — the arrows included, which is what a menu
+walks its items with. A right-click *selects* what it opened its card on, so Down on a joint's menu
+nudged that joint behind the card, and `ContextMenuComponent`'s "any shortcut closes the card" rule
+then shut the card on the shortcut it had just fired: the joint moved and the card vanished, in that
+order. The gate is `insideAnOpenMenu`, asked of the focused element (`[role="menu"]`) rather than of
+any open overlay — a card can stand while focus is elsewhere, and those keys are still the canvas's.
+The CDK does move focus into the card as it opens it, for a button-2 `contextmenu`; `menu-focus.mjs`
+is the same rule for the project menu, and `joint-type.mjs` walks the card's choice with the arrows.
+
+### A disabled button cannot take focus, so stepping through a list sticks on it
+
+`focus()` on a `disabled` button does nothing at all -- no error, no move -- so a list that walks
+its items by index stops dead on the row *above* the grayed one and never gets past it, however many
+times the key is pressed. The project menu did this at Export Data, which is grayed until something
+has been solved: with nothing solved, ArrowDown went New Project, Open, Mechanism Library, Save,
+Share project, and then stayed on Share project forever. `menuItems()` in
+`top-bar.component.ts` leaves the disabled rows out now. The right-click card never had it, because
+a `cdkMenuItem` stays focusable and says `aria-disabled` instead.
+
+The other half of that menu's keyboard trouble was the opposite of sticking: opening it focused the
+first row, and Space and Enter press whatever row has focus, so New Project sat under the next press
+of Space -- which is also the play/pause key. Nothing is armed until an arrow says which row.
+
+### `:focus-visible` is wrong for focus the app moved itself
+
+A popover that takes focus as it opens -- the project menu, the right-click card -- cannot use
+`:focus-visible` to decide whether to *draw* that focus. The browser treats a script moving focus as
+keyboard work unless the reader's last act was a pointer that moved focus itself, so a card opened
+by right-click came up with a ring around its first item. It is not only the first menu after a
+load, which is how it was described the first time it happened: pressing Escape is enough to make
+the next card ring too, because the last thing that happened was a key. On the joint's card the
+first item is the *chosen* type, so the ring sat on the value already wearing the chosen pill and
+read as a second kind of selected.
+
+Both menus answer it themselves now, from the event that opened them -- `menuByKeyboard` in
+`top-bar.component.ts`, `byKeyboard` in `context-menu.component.ts`, each turned on by the first key
+the reader presses -- and the ring hangs off that class instead. `menu-focus.mjs` is the guard for
+both, and it uses a fresh browser context per case on purpose: the trap only shows before the page
+has recorded an interaction.
+
+### A suite that buffers its checks loses them all to a throw
+
+`phase4-stack-and-menu` collects its answers in `out[]` and prints them at the end. When Stage 0
+removed the Edit panel's `weld` control, `jointForm.get('weld')` returned null inside a
+`page.evaluate`, and the throw took the whole report with it: the run printed no checks at all,
+said `0 FAIL`, and exited 1 -- while three checks in it had been failing for a while. `phase1-drag`
+was quieter still. Its weld section is an `if (enabled) { ... }` guarded by a locator that no longer
+matched anything, so the assertions inside it -- the weld goes through, the mechanism comes back
+over-constrained, the app says so -- stopped running rather than failing, and the suite stayed
+green while proving three things fewer.
+
+So when you remove a control, grep the suites for **the symbol you removed** (`get('weld')`,
+`hasText: 'Weld'`, `toggle-block`), not for the label you expect to read: searching `'Welded'`
+matches neither of these, and the gate found both after the push instead.
+
 ### `anyComponentStyle` is 6 kB warning / 10 kB error
 
 Raised from 4/6 for the CAD Export dialog
@@ -1103,3 +1373,784 @@ cap with no per-component override, so the choice is one number for everything; 
 catches real bloat. `npm run build` is where you find out, and it fails the build rather than
 warning.
 
+### A cylinder's derivation cannot tell a moved mount from a stretched rod
+
+`derivedInterior` reads both lengths off the joints it is given: the barrel from A to N, the rod
+from S to B. It writes N and S back onto the axis at exactly those lengths, so it straightens a
+bend and holds the size it finds. Which means it has **no opinion at all** about a mount that has
+moved -- carry B two units further out without touching S and the rod is simply two units longer,
+and the pass that runs on every rebuild agrees with that reading.
+
+That is why a mount drag goes through `layoutCylinder` (which re-lays the part against its stops)
+and a carried mount through `stretchedCylinderPose`, and why neither of them may be replaced by
+"move the mount and let the rebuild sort it out". The derivation is the thing that runs when
+nobody has said what the edit was.
+
+### *Starts at* is read from the seal, not from the distance between the joints
+
+`cylinderSizeAt` used to report `start` as `(span - closedSpan) / stroke`, which quietly subtracts
+the **barrel** where it means to subtract the rod. That was exactly right while the two had to be
+equal, and wrong the moment decision S3 gave them their own lengths: carrying mount B further out
+without touching the seal makes the *rod* longer -- which is what `derivedInterior` already
+believes -- and the panel would have said the cylinder had opened. It reads `(|AS| - min) / stroke`
+now, off the seal's own place along the barrel, and `|AS|` is a projection onto the axis so a part
+a rounding error has left a hair off it still reads as standing somewhere on it.
+
+### The barrel at its floor measures a stroke an ulp short of the floor stroke
+
+`cylinderBarrelFloor(r)` is `(MIN_STROKE_R + HEAD_CLEARANCE_R) * r` -- a product of a sum -- and the
+stroke is `barrel - HEAD_CLEARANCE_R * r`, a difference. In floating point the second comes out
+just under `MIN_STROKE_R * r`, so `cylinderStrokeAlong` calls the barrel it was just handed
+*unusable* and collapses its travel to a single point. Anything that searches a barrel length
+starting at the floor was therefore handed a meaningless lower bound: a `Starts at` on a doubly
+grounded cylinder accepted a barrel below the floor instead of refusing.
+
+`cylinderHeadTravel` is the raw interval for exactly this, and `cylinderStrokeAlong` is the guarded
+reading built on it. A *layout* has already put the barrel above its floor and wants the
+arithmetic; a *reader* (the panel, the solver) wants the verdict. When they are both usable the two
+agree to the last bit.
+
+### The rod's path covers the cylinder's black square exactly, so the square takes no clicks
+
+`rodBodyPath` starts at `-headHalf` and is drawn at `CYLINDER.rodHalf`, which is
+`MARK.blockAcrossHalf` -- the same half-height `cylinderBlockPath` uses. The rod is therefore
+*exactly* the square's own rectangle plus everything beyond it, drawn after it so the band inside
+the bore reads darker through its 0.7 alpha. Every pointer event aimed at the square landed on the
+rod, which nobody noticed while both selected the same body.
+
+When the square became joint S (Stage 2c) that mattered: the handlers on the painted block were
+dead code. The square's hitbox is a separate transparent path drawn *after* the rod --
+`.cylinder-seal-hit` -- and the painted block takes `pointer-events="none"`. It carried
+`#joint_<id>` while the block was the seal's marker; the cream bar the joint layer draws above the
+head is the marker now (decision S13) and the id went with it, because a hit area is a handle and
+not a joint.
+
+### A decoded joint always has an explicit name, even when nobody named it
+
+`Joint.name` falls back to the id when `_name` is empty, and the encoder writes the *getter's*
+answer -- so every joint in a URL carries a name, and `buildJoint` assigns it unconditionally.
+After a decode nothing is unnamed. That is invisible until something renames an id underneath it:
+re-lettering a cylinder's seal (decision S9) left the joint reading as its old interior name `A2`
+while its id was `E`. The reader clears a name that is only the old id back to empty, so the new
+letter is what a reader sees; a name somebody actually chose is left alone.
+
+### Three shipped templates carry an interior-named seal, and are not regenerated from anything
+
+`Excavator_Bucket`, `Hood_Hinge` and `Aircraft_Landing_Gear` were drawn in the app and pasted into
+`template-linkages.ts` as the URLs it wrote -- there is no fixture behind them, so
+`npm run template-payloads` does not touch them. They are the payloads decision S9's re-lettering
+actually fires on, which is why the only thing Stage 2c changed in `template-baseline.ts` is one
+sample id in each of those three. The `joints` and `links` snapshots above them are untouched,
+because they pin what the *stored* URL says and the codec did not change.
+
+### A weld plate is the union of its rider and its block, so a Slide's block cannot be clicked
+
+`plateFor` runs `buildCompoundPath([riderOutline, blockPath(r)])`, and a union contains both --
+so the plate drawn over a welded slider covers every pixel of the black block, ends included. The
+block group's own `pointerdown` still exists and still routes to the slider, and on a **Slot** it
+is what makes the block the big handle §4.4 promises; on a **Slide** nothing ever reaches it,
+because the plate above it takes the gesture for the rider instead. A Slide is grabbed through the
+joint's own hitbox at its center (`objectScale / 4`, drawn in `jointHolder`, which is above
+`sliderHolder`). Worth knowing before writing a test that means to point at a Slide's block: it
+will select the rider link and say nothing about the joint.
+
+`riderOutline` is no longer the rider's `d`, though: it is **what is drawn** at that rider
+(`drawnOutlineOf`), which for a cylinder member is the skin's silhouette (S18). Two consequences
+for anything looking for a plate in the DOM. A plate holding a member is **not in the slider
+layer** -- it is painted in that member's place in the skin's stack, inside the cylinder group,
+and it carries the body's own `id`, so `[id="DD1"]` finds the plate rather than an empty
+links-layer element. And a **Pin-in-slot** at a cylinder end now draws no rider at all: the skin
+is already above the block, so there is nothing for this layer to hoist.
+
+### `channels` skips a ram's bore and `channelsInLocalFrame` did not, which only a real silhouette showed
+
+Both build the same capsule for the same floating sliders, and only the first carried
+`if (joint.isSealed) continue` -- the bore is drawn by the skin, mouth and all, so it is never an
+ordinary channel. The second is the plate's copy, and the omission was invisible for as long as a
+plate drew the thin bar a member's two joints describe: the capsule is wider than that bar, so the
+subtraction removed a shape that was not there. Give the plate the barrel's real profile and the
+same subtraction hollows the part into a long fork with a rounded slot down the middle of it --
+`fill-rule="evenodd"` doing exactly what it was asked. If a fused shape comes out hollow, look for
+a second subpath before you look at the union.
+
+### `SliderMarkService.marks` maps every `PrisJoint`, and a cylinder's seal is one
+
+Four cylinders put four extra marks in the list nothing ever draws -- `isSkinned` skips them in
+`slotStack` -- and until S18 each of them still ran `plateFor`, a Boolean union per seal per pose,
+and each of them claimed its riders in the `claimed` set the list shares. That set exists so one
+link pinned to two blocks is not drawn twice, and it is walked in joint order. So a rod welded into
+a body lost its plate to the seal at the *other* end of the same rod: N comes before O in the joint
+list, N took the body, and the Slide at O was left with no rider to fuse and a bare black block on
+screen. A seal now plates nothing and claims nothing, which is the honest rule -- the skin draws
+its whole part -- and is also four fewer unions per pose. `fuseSharedPlates` had to learn the same
+thing: a seal is `welded` (`rotates === false`), so it was leading weld groups too.
+
+### The traced-path layer is drawn over every joint marker, slider marks included
+
+`#pathsHolder` sits *after* `#jointHolder` in `new-grid.component.html`, so a joint's own swept
+path is painted across its marker. On a pin the line disappears under the circle's own diameter
+and nobody notices; on a grounded slider, whose path is a straight line along the slot, it runs
+edge to edge through the cream bar and stops dead at the joint's center. It is the layer order, not
+the mark: a `+` and a circle get the same treatment. Do not go looking for an element drawn above
+the mark -- `elementsFromPoint` will not find one, because the trace has `pointer-events: none`.
+
+### A driven slider's arrows start exactly where its mark ends, and only because two numbers agree
+
+`MARK.arrowTail` is 1.4 and `MARK.slideAlongHalf` is 1.4, so the tails of `straightArrowPaths`
+(and of `cylinderArrowPaths`, which scales the pair by the head) begin on the cream bar's end caps
+with no gap and no overlap -- the bar reads as the thing the two arrows are pushing. Move either
+number and a driven Slide either grows a sliver of black between mark and arrow or paints the mark
+over the tails.
+
+Nothing enforced the equality, because each constant was tested against its own reference and
+neither test could see the other. `joint-marks.spec.ts` now asserts the two are equal, and the
+comment on `arrowTail` says which fact it is standing for. It is a pin rather than a derivation:
+neither number is the cause of the other, and writing `arrowTail: MARK.slideAlongHalf` would claim
+a driven *pin's* arrows are about a mark pins do not wear.
+
+### `app-notification` is not a selector, so a suite counting notifications counted nothing
+
+The stack's host element is `app-notification-stack`; there is no `app-notification`. A suite
+asserting "nothing was said" with `page.locator('app-notification .notification').count()` gets
+zero whatever the app did, and passes for the wrong reason forever. `e2e/phase1-drag.mjs` has the
+right form -- `app-notification-stack .notification ... .notificationText` -- and is worth copying
+rather than retyping.
+
+The shape of the trap generalizes: a Playwright locator that matches nothing is indistinguishable
+from an assertion that holds, so a check written as *count is zero* needs a companion that proves
+the selector can be non-zero. The quickest one is to do something that is definitely refused and
+watch the same count go up.
+
+### A cylinder's `hiddenByCylinder` asks one predicate of two lists on purpose
+
+`isCylinderInner` is the whole rule -- N, and nothing else -- and `model/cylinder-skin.ts` asks it
+twice: of the skins the canvas has drawn, and of the record the service resolves. Not redundancy:
+the marks are rebuilt from geometry on a cache key of their own and can lag a frame mid-edit (a
+weld landing, a drag in flight), which was long enough for an interior label to blink into view.
+The marks used to carry their own copy of N's id, which was a second answer to the question rather
+than a second place to ask it, and carrying the record instead is what makes the pair safe.
+
+### The Edit panel's `jointForm` has controls the template does not bind
+
+Its blocks take a control by name -- `_formControl="ground"`, `formControl1="xPos"` -- so a control
+that stops being named in the template goes on existing, goes on being patched by
+`syncJointFields`, and goes on running whatever `valueChanges` was wired to it. Nothing in the
+panel looks wrong, because nothing in the panel can reach it.
+
+That is how a second door to the drive survived Add Input becoming a button: `jointForm`'s `input`
+control wrote the flag straight onto the joint and called `updateMechanism()` with no save, so a
+drive switched off through it could not be undone. Only `e2e/posed-edit-audit.mjs` could still
+press it, by poking the control directly, which is what found it.
+
+Worth a `grep '_formControl='` over `edit-panel.component.html` against the control list in the
+form when a control's behavior looks unreachable. A form control nobody binds is not harmless: the
+audit will find it, and so will anything else that drives the panel through its form.
+
+### An unsolvable rebuild inside a posed edit took the machine's anchor with it
+
+Park a machine away from its start, right-click a **grounded** pin and choose Joint Type →
+Prismatic: the pose you were looking at quietly became the start. On `Cylinder_Boom`'s grounded
+end joint `G`, a third of the way round the cycle, the anchor goes from 424.16 to 49.81 — and a
+plain `4-Bar`'s grounded pin `D` does exactly the same thing, so it is nothing to do with
+cylinders. `e2e/posed-edit-audit.mjs` says it as `anchor moved from 424.16 to 49.81 without saying
+so`; it only ever reaches the cylinder's `G` because that table names a grounded pin and the
+four-bar's does not.
+
+The cause is the rebuild in the *middle* of the edit. `JointTypeService.set` runs the change as
+`add-slider` and then puts the ground back (`services/joint-type.service.ts:129`), and between the
+two the joint is an ungrounded slider: the machine counts 2 DOF and `isMechanismValid()` is false.
+`refreshAnchors` (`services/mechanism.service.ts:6256`) collects only the machines it can solve
+into `alive` and then deletes every anchor whose key is missing from it, so the staged machine's
+anchor is dropped for being *momentarily* unsolvable. The next rebuild is valid again and has no
+anchor, so one is taken fresh from `frames.joints[0]` — which, while the machine is staged, is the
+pose under the reader's hand. `carriedAnchorFor` cannot rescue it: that covers a machine arriving
+under a **new** key, and here the map is simply empty. `settleToAnchorNow` then finds the new
+anchor sitting on sample 0, returns `{ reanchored: true }`, and there is nothing left to narrate.
+
+Held across that one invalid rebuild, both drawings do what the plan says: the four-bar re-anchors
+exactly (its start keeps `B` where it was, the display stays where the reader was), and the
+cylinder honestly reports `lost: 'M1'`, because a barrel travel of 424.16 along `G`–`N` no longer
+exists once `G` itself slides.
+
+The second half has a fault of its own, and it is the one the audit's wording is about.
+`capturingPose` reads only `.reanchored` off the settle (`services/mechanism.service.ts:6589`) and
+throws the `lost` half away, so a menu or panel edit that really does move the start says nothing
+at all. Only the canvas's `closePosedEdit` (`component/new-grid/new-grid.component.ts:3706`) calls
+`markStartMoved` and raises `anchor.unreachable` — which is why a drag narrates a moved start and a
+right-click does not.
+
+Both predate the cylinder work: a detached worktree at `477f2f7c`, the parent of
+`feature/cylinder-sealed-slide`, reproduces the same two numbers.
+
+**Both are fixed now**, and the row is green. `refreshAnchors` adds a machine's key to `alive`
+before it asks whether the machine can be solved, so "still here" is about the owned-joint set and
+not about the solver: the four-bar re-anchors exactly, and the cylinder honestly reports
+`lost: 'M1'`, both as the paragraph above predicted. `capturingPose` then narrates that `lost`
+through `MechanismService.sayStartMoved`, which is the sentence and the transport chip the
+canvas's `closePosedEdit` used to own alone — so the same words now come out whether the edit
+arrived by hand or through a menu row. `e2e/ghost-is-the-start.mjs` holds the second half by name.
+
+### Recoloring a *link* never saved, so the color rode in on the next edit
+
+`ColorPickerComponent.selectColor` called `updateMechanism(true)` for a joint and for a force, and
+for a whole selection through `parts`, but the single-`link` branch set `link.fill` and stopped.
+A link's fill has ridden the URL since the format was written, so nothing was lost — it was simply
+written the next time something else saved. What that cost was Undo: recolor a bar, move a joint,
+press Undo, and the color went back with the joint, because the color had never had an entry of
+its own. Now fixed, which decision S15 needed anyway: a rod's `KR` entry is written at the same
+moment, and a reload from the address bar has to find it there.
+
+### A collapsed `collapsible-subsection` still has its content in the DOM — under the next section
+
+The block animates `[@openClose]` on `.panel-content` rather than removing it, so a collapsed
+section's rows are still queryable and still report a 28×28 bounding box — laid out *over* whatever
+section follows. An e2e suite that opens a section by asking "are the swatches there yet" therefore
+believes it is already open, and the click that follows lands on the next section's sticky header
+(`<button class="panel-header__toggle">… intercepts pointer events`). Read the chevron instead:
+`.panel-header__toggle mat-icon.rotate180` is set only while the section is open. `e2e/cylinder-colors.mjs`
+does it that way, and centers the swatch in the panel before clicking it, because the headers above
+and below are both sticky.
+
+### Clicking a field that already has focus: Chrome sets the caret *after* the click handlers
+
+Every BLOCKS field selects its value on click, and it worked on the first click and failed on every
+one after. On a field that does not yet have focus the browser has settled the caret before the
+handler runs, so `field.select()` sticks. On a field that *already* has focus, Chrome applies the
+caret that click asks for after the handlers — an instrumented run shows `select()` called while
+the selection still reads `0-7`, doing nothing because nothing changed, and the selection reading
+`7-7` a moment later. Asserting the selection again on the next frame is what survives it, and
+`BLOCKS/select-all.ts` is the one place that does: it re-selects only when the value is unchanged,
+the field is still focused, and the selection collapsed to a caret, so a drag across part of the
+value and a keystroke that arrived first are both left alone.
+
+### A pose built from fitted lengths and then handed a requested mount is two different parts
+
+`stretchedCylinderPose` laid a carried cylinder out from the lengths a fit had chosen and then
+wrote the *requested* rod mount back over the fitted one, on the reading that a carried mount
+belongs to whatever moved it. When the fit had to clamp — a member holding its length, or the part
+already at its floor — the two points are not the same point, and the difference lands in the rod:
+a rod holding its length was silently stretched from 1242.6 to 5647.16 model units to bridge it,
+and the planner's rigid-body check could not see it, because a ram it has marked as reshaped has
+its interior exempted. The rule now is that a pose is only ever `cylinderPoseAlong` of the fitted
+lengths and the fitted span, a clamped fit answers `undefined` (which `planEdit` turns into
+`cylinder.carried-too-far`), and `planEdit` measures every cylinder it settled against its own
+pose's lengths before committing.
+
+### With both cylinder mounts pinned, the barrel cannot move the seal — only relabel it
+
+The seal's place along the barrel is `span − rod` whenever both end joints are held, and neither
+term mentions the barrel. So the barrel rung of `whatGives` (S17) never moves the head one model
+unit: it changes the *travel*, and therefore what percentage the same point reads as. It is the
+last rung for that reason, and it is reachable only with both ends **locked** — grounded ends move
+instead, which is why a both-grounded ram now expands and contracts under a drag of the head rather
+than appearing to ignore it. Both doors stay on the one ladder so they cannot answer one drawing
+two ways: `poseForSealAt` converts the pointer to a share and hands it to the same function the
+field uses.
+
+### A cylinder with both mounts locked gives its member panels a lock banner, not a padlock row
+
+`frozenJoints` closes a lock on a mount over the part's consequences, so locking A *and* B holds
+all four joints, and the Barrel and Rod panels then show the lock banner in place of their
+`hold-field-block` rows. An e2e that wants a ram both locked and fixed at a length has to press the
+padlocks first and lock afterwards; `e2e/cylinder-members.mjs` does it in that order and says so.
+While there: a `.notification` carries a refusal's **long** sentence, never its `short`, so a check
+that greps for the short string passes only by accident.
+
+### A Material tooltip takes the pointer, and `matTooltipClass` is not where to say otherwise
+
+`.cdk-overlay-pane` is `pointer-events: auto`, so an open tooltip is what a press over it lands on
+— reported on the Joint Type choice, where a grayed option's reason opened over the options beside
+it and ate the press meant for one of them. `matTooltipClass` cannot fix it: that class goes on the
+tooltip's inner element, and turning the pointer off there only hands the press to the pane behind
+it. The switch is `disableTooltipInteractivity` in `MAT_TOOLTIP_DEFAULT_OPTIONS`, which adds
+Material's own `mat-mdc-tooltip-panel-non-interactive` to the *pane*;
+`BLOCKS/tooltips-are-labels.ts` is that provider, given by `segmented-block` and the right-click
+card. Also worth knowing: a tooltip has exactly two positions, the one asked for and its exact
+inversion, and the overlay picks the inversion whenever the first does not fit — so `above` becomes
+`below` in a short window, over whatever is under it, and no API stops it. Which side a reason opens
+on (`sideFor`, `reasonSide`) is therefore the tidy half of the answer and the inert pane is the
+half that holds when the window is small.
+
+### A body carried rigidly must not write a joint some cylinder places for itself
+
+`planEdit`'s `settle` skipped its *own* cylinder's N and S when carrying a body, which is the same
+rule as "skip every cylinder's" for exactly as long as no two cylinders share a body. Weld two
+barrels into one bracket and it stops being the same rule: laying the edited part out put its N
+where the new length wanted it, placing the joint the two share woke the other part, and the other
+part carried that bracket — N and all — back to where it started. The lengths check added in
+`8e511611` then found the part the reader had just resized was not the length they typed, and
+`cylinder.carried-too-far` came out on every Barrel Length, Rod Length and *Starts at* typed at
+either of them. The set is `derivedByARam`, over `context.cylinders`, and the fixture is
+`src/tests/verification/cylinder-shared-bracket.spec.ts`.
+
+### Two cylinders in one body have to ride its motion, not be re-laid between their own ends
+
+The sequel to the note above, and the reason an Angle typed at one of them was still refused. A
+cylinder whose barrel is a *leaf* of a body this edit is carrying has already been told where to
+go; asking `layoutFor` to re-lay it between its two joints reads the far end's **old** position as
+a constraint, so the second part wrote the bracket back flat over the turn the first had just been
+given and `rigidityRefusal` called it a change of shape. `ridingOn` in `cylinder-pose-plan.ts` is
+that case: one side carried, the other not, and a far end that is free — no ground, no Lock, no
+other body on it — takes the carry whole. Waking is guarded too, by `stationary` and `sameMove`: a
+body standing still, or being carried through the motion it was already being carried through, is
+not news, and without that the two parts wake each other over one rotation until the visit limit
+calls an ordinary turn a conflict.
+
+### The start-pose ghost is a painter of a cylinder, and `GhostBody.fill` is not what is on screen
+
+`buildGhosts` fills each body from `getLinkProp(link, 'fill')` and its shape from `link.d`, and
+both of those are records rather than what the canvas draws. A rod that has chosen no color is
+painted in its barrel's (S15) while its own `fill` still holds the palette color creation handed
+it, and a member's `d` is the two-joint capsule the skin replaces — so the ghost of a navy ram was
+a mint-green rod in a lavender barrel, drawn as two plain bars. `model/ghost-paint.ts` is where the
+canvas asks the two rules instead (`fillShownOn`, `memberSilhouette` with no `cutEase`, since the
+easing exists for a union and the ghost has none), and anything else that paints a body from a
+record has the same bug waiting in it — `services/export/mechanism-svg.ts` still strokes every link
+with `link.fill`.
+
+### A cylinder's slot is cut in its barrel, so ask the barrel whether it holds the slider
+
+`PrisJoint.isSlotWellFormed` refuses a carrier whose joints include the slider itself, and it asked
+the *carrier* — which is a root. Weld a cylinder's two end joints into one body and the rod becomes
+a leaf beside the barrel, so the root holds the seal while the bore in the barrel is as real as it
+ever was. `MechanismService.reconcileSlots` answered by calling `detach()`, which is not
+recoverable: unwelding rebuilds the two bodies but cannot invent a bore, so the ram never came
+back, and the URL the state then wrote was one the decoder refuses (*"URL seals a joint that is not
+a floating slider"*) — a reload or a share opened an empty grid, and undo and redo threw where they
+stood and said *"That shared link could not be opened"*. The question is asked of the **slot's
+host** now, the smallest part of the carrier that still holds both slot ends, and only for a sealed
+seal: an ordinary slider whose rider is welded into its carrier really does have nothing left to
+slide, and is judged exactly as before. The same exception lives in the codec's
+`validateDecodedSlotCarriers`, in the same words, because the two disagreeing means the app writing
+a URL its own decoder refuses. The fused part resolves with `barrelRoot === rodRoot`, which is the
+state `cylinder-pose-plan.ts` already had an answer for (`cylinder.both-ends-fused`): it can be
+moved, it can never extend, and unwelding gives back exactly what was there. The drawing side is
+robust either way: `RealLink.leafOutlines` only treats a rod as drawn elsewhere while its seal is
+still floating, so a body holding a member no skin is drawing draws it itself.
+`e2e/cylinder-mount-render.mjs` and section 16 of `e2e/cylinder-members.mjs` carry the scene.
+
+### `vi.spyOn` over a method that is already spied hands back the mock that is there, calls and all
+
+So a per-test helper that re-spies `NotificationService.prototype.refusal` gives the second test the
+*first* test's `mock.calls`, and `calls[0]` is a message from a drawing that test never built. It
+passes for as long as the check is on the refusal's code, which two tests in a row are likely to
+share, and lies the moment the check is on the sentence. `mock.calls.at(-1)` is what a test that
+provoked one refusal means; `cylinder-edit-transaction.spec.ts` says so where it uses it.
+
+### A sliding joint's own point body carries *both* of its reactions, summed
+
+`ForceSolver.pointBodies` makes one `Link` per `PrisJoint`, keyed by the joint's own letter, and
+two reactions are written on it: the normal force in the slot (against the slot's carrier) and the
+pin force on the rider. `jointReactionsByLink.get(S).get(S)` is therefore their sum, which is not a
+force on anything a reader can name — while `get(S).get(carrier)` and `get(S).get(rider)` each are.
+The panel used to show the point body's row labelled after the *carrier*, on the reading that what
+a block has of its own is the force in its slot; with a grounded slot, where there is no carrier
+body and so no second row, that reading holds. With a floating slot — and a cylinder's always is,
+cut into its barrel — it produced two rows under one name over two different numbers. A cylinder's
+seal drops that row (`isOwnPointBody` in the analysis panel, and the same filter in
+`ExportColumnsService`); a grounded slider keeps it, because there the slot force is reported there
+or nowhere.
+
+### `ForceSolver` solves the moment a welded guide carries and nothing reads it
+
+`guideCouples` — one scalar per welded slide, the couple the slot supplies because the rider cannot
+turn in it (`docs/phase-3-slide-spec.md` §3.8) — is computed, returned on every frame, and consumed
+by two specs. No panel, no graph and no export column asks for it, and `AnalysisSampleService`
+knows no `mechProp` that would reach it. So a cylinder's barrel can report the force in its slot
+and not the moment, which is a real gap rather than an oversight to fix in passing: surfacing it
+means a new series, a torque unit on it, and a column in the drawer.
+
+### A cylinder member is named by its ends even when somebody typed a name for it
+
+`visibleBodyName` asks `memberEnds` *before* it looks at the written name, so the barrel of
+`Cylinder_Gripper` — stored with the name `Barrel` — reads `AC` everywhere, and its rod reads `CD`
+rather than `Rod`. That is decision S10 working as intended (a member is named by its own two
+joints, so the two halves can be told apart), but it means routing a surface through
+`visibleBodyName` can *replace* a name the reader typed. It only happens on the two members of a
+cylinder; every other body keeps a typed name.
+
+### A CAD export's zip is stored, not deflated, so its tables can be read without unpacking
+
+`services/export/zip.ts` is `zipStore`: method 0, no compression. A suite that wants to check what
+went into `mechanism.zip` can read the file as `latin1` and search it for the string it cares
+about, which is what `e2e/hidden-joint-audit.mjs` does rather than carrying a zip library.
+
+### The linkage table renders in exactly one place, and it is the developer drawer
+
+`<app-linkage-table>` appears once in the app — inside `#debugWrapper`, right-panel tab 4, which is
+dev-only and unreachable in production (the copy in `app.component.html` is commented out). So a
+change to it is a change to a developer surface, and anything written about "the linkage table" as
+a thing readers see is describing a door that was closed a while ago.
+
+### `reseatFloatingSliders` cannot just write a block that is a cylinder's end joint
+
+Every other floating block is a point, so the pass projects it back onto its channel and writes the
+two coordinates. An end joint is one end of a rigid part, and writing it leaves the barrel and rod
+the lengths they were; `deriveCylinderInteriors`, which runs next and never clamps, then puts N and
+S back on the *new* axis at those lengths and draws the head as far outside its own barrel as the
+stretch. So the pass collects those moves and hands them to `GridUtilsService.runEdit`, whose
+`layoutFor` re-lays the part from its two ends through `stretchedCylinderPose` and resizes it to
+reach — with `rebuild: false`, because every caller of the reseat runs `updateMechanism` straight
+afterwards and asking for one here comes back through the same pass.
+
+A carrier dragged until the span is under what the part closes to would be refused there, with a
+good sentence — and then the block sits off its rail for good and *every later edit anywhere in the
+drawing* asks the same refused question again. So `model/slot-reseat.ts` asks the layout first and
+takes the channel's answer as far along the channel as the part can follow, which is what a rail
+and a collar do. The answer is always on the channel: a point between where the block was and where
+the hole went is a block in neither. A Lock on the end joint skips the whole branch — a lock says
+the joint does not move, and a reseat is nobody's gesture.
+
+### A cylinder's URL has never re-encoded byte for byte
+
+Create a cylinder, change nothing, reload from the address it wrote, and the two strings differ:
+the two member links' centres of mass come back one encoding unit apart. They are *derived* (S14),
+so they are recomputed from joints that arrived at the URL's own precision rather than from the
+unrounded ones the first encode saw. An ordinary bar dropped on a slot at the same fractional
+coordinates round-trips exactly. So a check on a cylinder drawing compares the *drawing* — roles,
+carrier, lengths, pose — and not the string; `e2e/cylinder-mount-slot.mjs` says so where it does it.
+
+### A rail square to a cylinder's axis is a dead centre, and the solver is right to refuse it
+
+Drop a cylinder's end joint on a fixed rail that crosses the part at a right angle and the mechanism
+reads one degree of freedom and then reports "Nothing moves when the input turns". Both rows that
+touch the end joint — the slot's `onLine` and the drive's commanded span — have the same gradient
+there, so `hasFullColumnRank` refuses the system. That is the geometry: extending the cylinder pushes
+the joint along the part's own axis, and the rail only lets it go across. Slant the rail, or start the
+part off the perpendicular, and it runs. Worth knowing before hunting a solver bug that is not there.
+
+### An end joint that has gained a slot can no longer be merged onto a joint
+
+`refuseJointMerge` refuses a `PrisJoint` *source* outright ("a slider cannot merge"), and a cylinder
+end that has been dropped on a bar is one. So the way back is Joint Type → Revolute on that joint,
+or pulling the block clear of the bar and then dragging it onto the joint — not a second drag at the
+joint, which shows the red ring and the reason. The same has always been true of an ordinary block;
+it is only surprising at a cylinder, where the joint was an ordinary pin a moment earlier.
+
+### `resolveSlotDropTarget` already kept a cylinder's own two members out, for two different reasons
+
+Dragging an end joint, neither the rod nor the barrel is ever offered as a carrier — and not because
+either is a member. The rod is a body the dragged joint *belongs to*, which the first line of the
+loop skips; the barrel is a body holding the part's **other** end, which `slotWouldFoldACylinder`
+skips. The canvas's own `isCylinderMemberLink` filter is about *other* cylinders. Worth knowing
+before adding a rule that is already there twice.
+
+### A welded bracket is rigid in the simulation and not in the editor
+
+`planEdit` / `settle` in `model/cylinder-pose-plan.ts` carries a welded body **only for a body
+drag** — `dragCylinder` and `rotateCylinder`, which say `motion: 'body'` on the pose (S21). Every
+other edit of a cylinder writes its own four joints and lets the bracket welded to a member change
+shape around them, exactly as a compound link does when one of its joints is dragged. The file used
+to argue the opposite, in so many words: that moving a member and not the bracket does not deform
+the body but *tears* it. It reads convincingly and it is wrong for this app — nothing else here
+treats a welded body as rigid at edit time. Three things fall out of it that surprise in their own
+right: a Lock out on a bracket no longer freezes the cylinder welded into it, a cylinder whose two
+end joints are welded into one body now takes a length (the `cylinder.both-ends-fused` sentence is
+gone), and `rigidityRefusal` is asked about carried bodies only, because a body the edit
+deliberately let change shape is not a failed rigid motion.
+
+### A joint's own hitbox is `objectScale / 4` and did **not** follow the bar down
+
+When the bar's half-width became the rod's (`barHalfWidth`, decision S23) every restatement of
+`objectScale / 4` was rewritten to ask for it -- except the transparent circle in `jointHolder`
+that a joint is grabbed by, which is still `settings.objectScale / 4`. It reads the same number by
+coincidence rather than by derivation: it is a grab radius, sized so a pin is easy to hit, and a
+bar's edge is not what it is measuring. Narrowing it with the bar would have made every joint 9%
+harder to grab for no reason anybody could see. The nearby `0.25 * settings.objectScale` on the
+force anchor is the same kind of number.
+
+### `SynthesisCanvasService.barHalfWidth()` existed for months and nothing called it
+
+It returned `0.25 * objectScale`, the bar half-width, while seven `this.settings.objectScale / 4`
+sat beside it in the same file building pose bars, previews and the selection box. `max-lines` and
+`no-unused-vars` both let a private method nothing calls through. It is `barHalf()` now and every
+one of the seven asks it. Worth a glance whenever a file has a well-named helper *and* the number
+it wraps spelled out nearby -- the helper may never have been wired up.
+
+### The middle of a cylinder's head is the seal's cream mark, so a pixel there says nothing
+
+Sampling `#fff8e1` at the centre of every head in every scene is not evidence that the layering is
+right; it is the slide mark (`slideMarkPath`) the joint layer draws over the head. To read the band
+that says how much rod is in the bore, sample **along the head's own axis** -- `headAlongHalf * 0.8`
+through the element's `getScreenCTM()` clears the mark at full size and on a shrunken head alike,
+and stays inside the block's end cap. `e2e/cylinder-mount-render.mjs` does exactly that.
+
+### Two barrels in one bracket were never painted wrong, and two rods always were
+
+`fusedBodiesOf` claimed a shared shape for the *first* mark in list order that held it, rods first.
+A barrel unit was therefore always claimed by the earlier cylinder -- whose group is painted first
+-- so the bracket landed before both heads and the drawing was right by luck. A rod unit was
+claimed by the earlier cylinder too, which painted it *before* the later cylinder's group: the
+later head came out bare `#000`. The chain was right or wrong depending only on which of the two
+cylinders was drawn first. Decision S24's order removes the luck; the asymmetry is worth knowing
+before reading a bug report that says "sometimes".
+
+### `refreshAnchors` held an anchor across an edit made *at* the start pose
+
+The anchor is held across a rebuild on purpose — that is what carries a machine's start through an
+edit made at some *other* pose. Held whenever the topology and the rule were unchanged, it also
+outlived the ordinary case. Drag the driven crank's own pin, or the ground it turns about, while
+the drawing is showing its start: the design's t = 0 is the drawing as edited, and the anchor goes
+on naming the angle the crank used to stand at. Nothing looks wrong, because at the start pose the
+canvas draws no ghost (`showStartGhost`). Press play, pause anywhere, and the ghost appears a
+third of a turn from where stop-to-start lands — which is the report this was found from, and it
+reproduces on a plain `4-Bar` with no cylinder anywhere.
+
+`reanchorIfStartMoved` is the guard, and the condition is worth understanding: for a machine this
+rebuild did **not** stage, `restoreStartPose` has just put the editable arrays on that machine's
+own t = 0, so the sample 0 it has just been solved into *is* its start. `anchorStillNames`
+(`model/mechanism/anchor.ts`) compares the anchor's seed against that sample rather than re-reading
+the coordinate, because the coordinate is stored on purpose: re-derived every rebuild it would walk
+the start a fraction of a sample at a time and no single edit would look wrong. Pre-existing —
+`origin/staging` gives the identical numbers.
+
+### `isAtStartPose()` believed a synced drawing whose second machine was mid-cycle
+
+`seekMechanism` writes the shared sample index only for the **master** machine, the one with the
+longest cycle. Any other machine can therefore be parked a third of the way round with
+`mechanismTimeStep` still reading zero — and a posed edit's closing re-seek (`seekToCoordinate`)
+leaves it exactly there. `atStartPose` only consulted the per-machine clocks while *unsynced*, so
+synced it answered yes, and that is the answer `restoreStartPose` asks before every rebuild: the
+next edit anywhere on the drawing wrote that machine's displayed pose down as its t = 0. Its start
+moved 692 model units on `Three_Machines`, the URL saved the new one, and no ghost was drawn over
+it, because at the start pose there is nothing to draw. `model/edit-permission.ts` has described
+this answer as "every machine parked at its own start" the whole time; it is that now. Needs two
+machines to reach — one machine is always its own master.
+
+### An amber ghost outlived the anchor it was warning about
+
+`buildGhosts` falls back to `lastGoodGhost` when the anchored pose is out of reach, which is right
+during a drag: the ghost has to stay on screen at the moment it is warning that the start is about
+to be lost. It also ran when there was no anchor **at all** — switch a machine's drive to a joint
+whose input has no coordinate rule and the anchor goes while the cycle stays — so the amber ghost
+stood there between gestures over a machine that had no start to lose, and disagreed with
+`anchorIsReachable`, which has always answered that a machine with nothing anchored is not a
+machine in trouble. No anchor now means no ghost, and the held pose is dropped with it.
+
+### A machine that cannot be solved *this rebuild* has not stopped existing
+
+`refreshAnchors` collects the machines it can solve into `alive` and drops every anchor whose key
+is missing from it. One edit is often several steps, though, and the drawing between two of them is
+one nobody asked for: `JointTypeService.set` un-grounds a pin, retypes it and grounds it again, and
+in the middle the machine counts a freedom it will not have a moment later. Judged by the solve,
+that one rebuild dropped the anchor — and the next valid rebuild took a fresh one from sample 0,
+which while the edit is staged is the pose under the reader's hand. `alive.add(key)` now happens
+before the validity check, so the set means "this machine still exists" and nothing else. A machine
+that stays unsolvable keeps a stale anchor, which costs nothing: every surface that reads one asks
+about validity first.
+
+### `orderCoupledPartition` can leave nothing to solve, and then has to say so
+
+Its `'nothing-to-solve'` branch is reached when the drive's own walk has already placed every joint
+— which is what a drawing whose every joint rides the input's body looks like, a cylinder welded
+into one body at both ends on a grounded driven pin. The branch checked that the drawn pose
+satisfied its own constraints and returned, without touching `PositionSolver.stepCount`. The reset
+leaves that at zero, so `attemptPositionAnalysis` ran none of the steps the walk had emitted and
+reported success — and `Mechanism.findFullMovementPos` then read `jointMapPositions` for a joint
+nothing had placed and threw a `TypeError`. `stepCount = orderNum - 1` is the whole fix, and the
+number matters: the `'solved'` branch adds one more step at `orderNum` and sets `stepCount` to it.
+
+### A thrown solve leaves `MechanismService.mechanisms` holding the *previous* machine
+
+`updateMechanism` builds into a local and assigns at the end (`this.mechanisms = buildEach()`), so
+an exception inside any `new Mechanism(...)` escapes with the old array still in place. Nothing
+resets it and nothing says so: the panels go on reading a machine solved before the edit, and every
+sentence they draw is about a drawing that no longer exists. That is how "Nothing drives this
+mechanism" came to be shown about a joint that had just been given Driven Input — the machine
+answering was the one built the moment before the toggle. When a readiness sentence contradicts the
+drawing, look for a throw before you look at the sentence.
+
+### `partition.links` holds root bodies, so a welded cylinder member is in none of them
+
+`indexOfMechanismSolving` and `partById` both searched the top level only, and a cylinder's barrel
+or rod that a weld has folded into a compound is a leaf. Both answered "no such part" — so
+`isPartSimulatable` was false and the analysis panel told the reader that a body of a running
+machine "is not in a mechanism that can be solved", and `mechanismForId` returned nothing so every
+graph drew dashes. `bodiesUnder` in `model/link.ts` is the one flatten the three places share; the
+rate solver's `fillRatesByDifference` walks it too, for the same reason.
+
+### A slot constraint between a body and itself is `0 = 0`
+
+Which is harmless in the least-squares position solve — a redundant row, and the gate is on column
+rank — and not harmless in the force solve, where the guide couple it implies is a column no row can
+pin. `ForceSolver.analyzeFrame` skips a frozen cylinder's slide outright (`frozenCylinderAtSeal`),
+and `enumerateReactions` gives its seal an ordinary two-component pin pair with the body instead of
+a normal force, because a point body has two rows and a rigid attachment at a point is two unknowns.
+Getting either half alone gives a matrix one unknown short of its rows, which reports as "a body
+here has nothing to react against".
+
+### `admitCoupledSystem` was judging the URL's rounding, not the mechanism
+
+Its residual gate asks the drawn pose to satisfy its own constraints to
+`scale * 1e-6` — one part in a million of the mechanism's size — before the
+coupled solver will answer for it. That is the right shape for what it is
+refusing (a structure somebody has bent by hand) and far tighter than the
+precision a pose actually arrives at: the transcoder packs a coordinate onto a
+step of about a thousandth of a user unit, absolute, the same on a four-unit
+drawing and a two-hundred-unit one. On the maintainer's cylinder-on-a-slot that
+was 5.1e-4 against a 0.2 grain, and the riding end joint was stored 7.6e-2 off
+its slot line — so a mechanism that ran in the session it was drawn in refused
+to run when it was reopened, with `nothing-can-move` and every non-ground joint
+named unsolvable. The tolerance is floored at `4 * URL_COORDINATE_GRAIN` now
+(`drawnPoseTolerance`, shared with `prescribedGeometryHolds`), and
+`settleInitialPose` — which runs *after* the gate, and is the reason the gate
+could afford to be generous all along — puts the admitted pose exactly on its
+constraints. Nothing is moved at decode.
+
+### Undo replays a URL, so a decode-only bug is an every-undo bug
+
+`SaveHistoryService` stores states as encoded strings and restores by re-running
+the decoder. Anything that only goes wrong on the way back in therefore goes
+wrong on every undo and every redo, not merely on a reload — and the symptom is
+not "undo is broken" but a drawing that has no cycle, no anchor and no ghost
+until the next drag happens to reseat it. When a ghost or anchor report names a
+particular drawing, check that the drawing still solves from its own URL before
+looking at the anchor code.
+
+### A fixture's link string is one character per joint
+
+`buildFixtureLink` spreads `spec.joints`, so a link written `'DD1'` asks for
+joints `D`, `D` and `1`. A cylinder's buried inner end is named `A1` in the app
+and cannot be written in a fixture at all; published cylinder fixtures give it a
+single letter (`N`) instead, and every reader-facing name still drops it because
+`visibleBodyName` finds it by identity rather than by the shape of its id.
+
+### A published cylinder fixture has to carry its colors
+
+`cylinder-rod-color.spec.ts` sweeps `FIXTURE_GALLERY` for S15 — a cylinder is
+one color — and a fixture that says nothing about `fill` gets the palette
+cursor's next color per link, so its barrel and rod come out different and the
+sweep fails. Write the fills the drawing was shared with: the barrel, the rod
+and, where a weld has swallowed the rod, the body holding it.
+
+### A throw inside `new Mechanism(...)` used to leave every panel describing the previous drawing
+
+`MechanismService.updateMechanism` assigns `this.mechanisms` only after every
+partition has been built, so an exception from one solve escaped before the
+assignment and the service went on holding the machines from before the edit —
+readiness, the chips and the playback rows all true of a drawing the reader was
+no longer looking at. That is how a body with Driven Input on was told nothing
+drives it. `Mechanism`'s constructor now catches a throwing solve, logs it with
+`console.error`, and comes back invalid as `'solver-error'`, which readiness
+answers with its fallback. So a red console line plus "This mechanism could not
+be solved" means a solver bug to go and find, not a drawing to fix.
+
+### `applyObjectScaleChange` is not only about link outlines any more
+
+It is the one funnel every route that changes Object Size ends in — the Settings
+field, the "size for this zoom" button, and `SvgGridService.adoptScaleForDrawing`
+on load — and it now repairs cylinders as well as recomputing bars
+(decision S29). Anything new that changes the scale has to go through it, and
+anything that measures a cylinder in R has to be refreshed by it.
+
+### A scale change reaches `MechanismService` twice while Settings is open
+
+`SettingsService._objectScale.next(...)` runs the panel's own subscription,
+which calls `applyObjectScaleChange`, and then the caller that set the value
+calls it again. Both passes are idempotent, so nothing looked wrong until
+something wanted to know whether *this* change had done anything: the second
+pass finds a drawing already put right and would answer no. `rescaleNeedsSaving`
+is remembered across the pair for that reason, and `SettingsService.objectScaleAdopting`
+is what stops the first pass writing an undo entry for a size the app chose.
+
+### `cylinderRodFloor` has a whole head of margin over the geometry it protects
+
+It reads `rod ≥ barrel − clearance`, while B only actually reaches the mouth at
+full retraction when `rod < barrel − clearance − head`. The margin is why S29's
+repair may pass the floor without drawing anything wrong, and why a size
+reduction past about 73% of the original needs to.
+
+### `frameOf` in `cylinder-edit.ts` refuses a part with no usable travel
+
+Every `poseFor…` therefore reports "the cylinder is not built" for a barrel that
+Object Size has walked under `cylinderBarrelFloor`. That is right for an edit and
+wrong for a repair, which is asked exactly when the part has stopped being
+drawable — hence its third argument. Do not remove the guard; pass the flag.
+
+### `travelingForward` means "the transport's own coordinate is rising", not "forward"
+
+And which way that coordinate runs is not the same for the two kinds of drive: a
+crank's is negated so a **clockwise** drive runs the handle left to right, while
+a ram's is its own extension so a **positive** speed does. That inversion lives
+in `driveTurnsClockwiseWhileRising` (`model/drive-direction.ts`); anything
+reading `travelingForward` and reaching for a word must go through it.
+
+### `strokeOf` in `drive-profile.ts` is a fallback now, and is direction-blind
+
+It takes its axis from the two ends of the path the block actually travels, so
+`along` always rose away from the drawn pose — a direction the *drawing* chose
+rather than one the slot has. Reversing a bare slider's drive therefore left
+every sample of `along` identical and the transport reported the same heading
+either way (measured on `Scotch_Yoke` and `Punch_Press`; `Slider_Crank` happened
+to reverse its sample order and so happened to flip). A linear drive is measured
+by `slotwiseOf` now — the anchor's own `slotCoordinateRuleFor` — and this is
+reached only where the drawing cannot say which way the slot points at all.
+
+### The transport's coordinate and the anchor's are the same rule, asked two ways
+
+`coordinateRuleFor` is gated on `resolveActuator`, which is right for an anchor
+— that is about the quantity a *drive* controls — and wrong for the transport,
+which only wants to know which way the slot points. `Cylinder_Gripper`'s slider
+`M` has a perfectly good carrier and no describable actuator, and the gated
+version left its coordinate directionless. `slotCoordinateRuleFor` is the
+ungated half, and `coordinateRuleFor` calls it, so there is still one answer.
+
+### Only one shipped drawing's scrub track moved when that was fixed
+
+`Elliptical_Trammel` is the whole library's only bare-slider input, and its
+block runs against its slot's stored direction, so its handle now starts at
+0.856 of the track where it started at 0.144. Nothing stored moved: the anchor
+has its own coordinate rule and never read `DriveProfile.along`.
+
+### `advanceBoundary` used to interpolate its boundary along *chords*
+
+Halving a step took the midpoint of each boundary joint's own chord, and a body
+turning through an angle does not pass through its chords' midpoints — it
+arrives very slightly **shrunk**. Most drawings absorb that in their own slack
+and never notice. A held cylinder (S28) has none to absorb it with: it pins two
+unknowns rigidly to two *different* boundary joints, their separation is fixed
+and the shrunk boundary's is not, so no pose satisfies the rows and the halving
+refuses the very sample it was subdividing to reach. `halfwayBoundary` takes the
+square root of the fitted rigid motion instead — `R(θ/2)` with the translation
+that, applied twice, lands exactly on the far end — and falls back to chords for
+a boundary the fit cannot reproduce.
+
+### A solved position is stored rounded to four decimals, which is why `heldPoseTolerance` exists
+
+`recordJointPosition` and `incrementRevInput` both round, so a driven body
+placed joint by joint is not quite a rigid body, and the error wanders a little
+further with every sample of the walk. `solveSimultaneous` aims at `1e-6` and
+that is unreachable for a system holding a cylinder's length. Its *acceptance*
+is therefore a parameter, asked for by name: loosening it for everything costs
+the guard that refuses a six-bar converging at full rank onto the wrong assembly
+mode (`boundary-driven-branch.spec.ts`), which fails the moment the gate moves.
+
+### The rows for a held cylinder are a *body*, not a distance to its mount
+
+Written as "the seal stands |AS| from the mount", the seal carried two distance
+rows to two anchors on a line through it — both gradients along the axis, which
+is exactly the degenerate pair `rigidOffset` exists to replace. Every row of the
+maintainer's triangle was satisfied to 5e-7 at the drawn pose and least squares
+could get no nearer than 1.3e-5 of one. `collectConstraints` writes the four
+joints as one body instead, **known joints first**, so no row is a promise about
+two boundary joints that the walk can break on its way.
+
+### A triangle of held cylinders is force-*indeterminate*, and so are its bars
+
+Welding one corner makes two bodies pinned at two points, which share their load
+in no unique way. The drawer says "more supports than equilibrium can determine"
+— about the drawing, not about the holding — and the same shape drawn as plain
+bars says it too. Ask the holding force of a determinate machine (the published
+*Four-bar on a held cylinder*) when you want a number.
+
+### Split Joint keeps what others depend on still
+
+A slider block is a part, not a meeting point: splitting one leaves it unmoved on its slot with no links, drawn with the empty-joint ring, and gives every rider its own Revolute pin. So a block with one rider can split, where a pin needs two links. Counting only `joint.links` on a floating slider reads one rider as one body -- the carrier is a constraint, not a member, and is not counted.
+
+A weld is no reason to refuse; the service lets it go through `unWeldJoint` first, inside one `batched` edit -- at the start pose a posed edit holds no saves, so without the batch the unweld wrote an undo entry of its own. That means counting bodies *before* it happens: a weld fuses the links at it into one compound, so `joint.links` shows one body. The count is the weld components the compound leaves without this joint, so two leaves welded together again elsewhere are still one body, and a corner of a triangle welded at every corner is refused as one link. A Prismatic block with two riders is the same case -- the block carries `isWelded` -- and unwelding it sets `rotates`, so the service sets it back.
+
+Where the pins go is `placeSplitPins`. One body keeps the point: the link that ends a slot or is a cylinder member, or else the one that keeps the joint's letter. Every other pin takes the cheapest placement that leaves no pin on another bar and no bar over another pin, searched along each direction toward its own body's other joints, with a sideways step charged double because it turns the link rather than shortening it. Spreading the pins evenly around the point instead moved a slot's end out from under its slider -- splitting D in the Shaper fixture left B 16.9 model units off its slot, because `dragJoint(..., false)` skips the rebuild that would reseat it -- and left two plain links lying across each other's pins. Only what happens at the pins counts: a scissor's arms cross by design, and a check on whole bars found nothing that cleared and left the center pin where it was. A bar that ran on through the split point is not held to keep off the kept pin either, since only a bend could change that. Toward the *average* of a body's other joints is no direction at all for a pin in the middle of a straight bar, which is why each joint is a direction of its own. When a lock or hold keeps the pin chosen to move exactly where it was, it becomes the one that stays. Only when two slot ends meet at one pin, and one has to move, does the split call `reseatFloatingSliders()` -- calling it every time nudged blocks the split never touched, since Slider Crank Inversions loads with G and K a hair off their slots. Steps are measured in joint sizes, so a split spec built at raw fixture coordinates has every link shorter than one step and quietly checks the fallback instead: build split fixtures through `inModelUnits`.
+
+### A forced click on the right-click card has to wait for the card to stop growing
+
+The card opens at half size and grows to full over 0.15 s once it carries `show`, so waiting for `#contextMenu.show` waits for the growth to *start*. An ordinary Playwright click then waits for its target to hold still; `click({ force: true })` -- the only way to click a disabled row -- skips that wait, measures the row mid-growth, and lands where the row *was*. Measured right after `show`, the card was at 0.53-0.62 scale and Delete Link sat 200 px above its final place, over Fixed Length or Fixed Angle. When the stray click hits an enabled row, the row runs and closes the card, and the next row a test looks for is gone: `posed-menu` timed out 30 s later on Tracer Point, in seven unrelated branches and three reruns that then passed. The stray row toggled a hold, which moves no joint, so the test's own "nothing changed" check could not see it. Wait for `getComputedStyle(card).scale === '1'` before a forced click.

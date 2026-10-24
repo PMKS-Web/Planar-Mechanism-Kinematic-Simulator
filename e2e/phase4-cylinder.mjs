@@ -60,12 +60,12 @@ function model() {
 /**
  * Which joint is which, asked of the model rather than assumed.
  *
- * A ram's five joints are not named A, B, C, D in creation order and have not
- * been for some time: the two mounts take ordinary letters and the three
- * hidden ones hang off the barrel mount's letter, numbered, so that the joints
- * nobody can see stop pushing the ones they can into punctuation. A suite that
- * spells the letters out is asserting the naming scheme by accident, and goes
- * red the next time it changes for a good reason.
+ * A cylinder's four joints are not named A, B, C, D in creation order and have
+ * not been for some time: the two ends and the seal take ordinary letters and
+ * the barrel's buried inner end hangs off the barrel mount's letter, numbered,
+ * so that the joint nobody can see stops pushing the ones they can into
+ * punctuation. A suite that spells the letters out is asserting the naming
+ * scheme by accident, and goes red the next time it changes for a good reason.
  */
 function cylinderRoles() {
   return page.evaluate(() => {
@@ -73,11 +73,11 @@ function cylinderRoles() {
     const [sealed] = c.mechanismSrv.sealedStructures();
     if (!sealed) return null;
     return {
-      barrelFar: sealed.barrelFar.id,
-      barrelNear: sealed.barrelNear.id,
-      pin: sealed.pin.id,
-      slider: sealed.slider.id,
-      rodFar: sealed.rodFar.id,
+      barrelFar: sealed.mountA.id,
+      barrelNear: sealed.inner.id,
+      pin: sealed.seal.id,
+      slider: sealed.seal.id,
+      rodFar: sealed.mountB.id,
     };
   });
 }
@@ -181,7 +181,7 @@ checkThat(
 
 let state = await model();
 const roles = await cylinderRoles();
-checkThat('the model can name the ram’s five joints', !!roles, JSON.stringify(roles));
+checkThat('the model can name the cylinder’s four joints', !!roles, JSON.stringify(roles));
 const { barrelFar, barrelNear, pin, rodFar } = roles ?? {};
 const commitPoint = await page.evaluate(
   ({ start, end }) => {
@@ -211,18 +211,21 @@ checkThat(
 );
 checkThat(
   'the committed gesture built the complete assembly',
-  state.joints.length === 5 && state.links.length === 3 && state.marks === 1,
+  state.joints.length === 4 && state.links.length === 2 && state.marks === 1,
   JSON.stringify({ joints: state.joints.map((j) => j.id), links: state.links, marks: state.marks })
 );
 const sealedSlider = state.joints.find((j) => j.kind === 'PrisJoint');
 checkThat('the slider is sealed', !!sealedSlider?.sealed);
 checkThat(
-  'only the two mounts are selectable joints',
+  // Three selectable joints, not two: the square mid-skin is the seal, and it
+  // is what a reader selects and drags (Stage 2c, decision D9). Only the
+  // barrel's buried inner end has no hitbox at all.
+  'the two ends and the seal are selectable joints, and the buried end is not',
   !!(await jointOnScreen(barrelFar)) &&
     !!(await jointOnScreen(rodFar)) &&
-    !(await jointOnScreen(barrelNear)) &&
-    !(await jointOnScreen(pin)),
-  'A,D visible; B,C hidden'
+    !!(await jointOnScreen(pin)) &&
+    !(await jointOnScreen(barrelNear)),
+  'A, D and the seal visible; the buried barrel end hidden'
 );
 await page.screenshot({ path: `${OUT}/01-created.png` });
 
@@ -361,7 +364,7 @@ checkThat(
 );
 checkThat(
   'the skin survived the flood',
-  (await page.locator('.cylinder-mark').count()) === 1 && floodAfter.joints.length === 5
+  (await page.locator('.cylinder-mark').count()) === 1 && floodAfter.joints.length === 4
 );
 
 // -------------------------------------------------------- 3. ground a mount
@@ -385,40 +388,59 @@ const mountMenu = await page.evaluate((mountId) => {
     .flatMap((g) => g.rows)
     .map((r) => ({ label: r.label, disabled: r.disabled }));
 }, barrelFar);
+const mountTypes = await page.evaluate((id) => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.setLastRightClick(grid.mechanismSrv.joints.find((joint) => joint.id === id));
+  return (grid.cMenu.choice?.options ?? []).map((option) => ({
+    label: option.label,
+    disabled: !!option.refusal,
+  }));
+}, barrelFar);
 checkThat(
   // The deletion names what it takes rather than saying only "Delete Joint".
-  // Slider is *offered*: a block on a mount is a carriage, and a mount is an
+  // A block is *offered*: one on a mount is a carriage, and a mount is an
   // ordinary attachment point. What is sealed is the ram's inside, and none of
   // those three joints can be right-clicked at all.
-  'the mount menu names the cylinder in its Delete, and offers Slider',
+  'the mount menu names the cylinder in its Delete, and offers a block',
   mountMenu.some((i) => i.label.startsWith('Delete Joint (and Cylinder')) &&
-    mountMenu.some((i) => i.label === 'Slider' && !i.disabled),
-  JSON.stringify(mountMenu)
+    mountTypes.some((one) => one.label === 'Pin-in-slot' && !one.disabled),
+  JSON.stringify({ mountMenu, mountTypes })
 );
 
-// -------------------------------------- 4. drive it through the body's menu
-console.log('\nmake the cylinder the input from the body menu');
-const bodyMenu = await page.evaluate((mountId) => {
+// ------------------------------------- 4. drive it through the slide's menu
+console.log('\nmake the cylinder the input from the joint it slides on');
+const memberMenu = await page.evaluate((mountId) => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
   c.setLastRightClick(barrel);
+  return c.cMenu.groups.flatMap((g) => g.rows).map((r) => r.label);
+}, barrelFar);
+const slideMenu = await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.setLastRightClick(c.mechanismSrv.sealedStructures()[0].seal);
   const labels = c.cMenu.groups.flatMap((g) => g.rows).map((r) => r.label);
   c.cMenu.groups
     .flatMap((g) => g.rows)
     .find((r) => r.label === 'Driven Input')
     ?.action();
   return labels;
-}, barrelFar);
+});
 await page.waitForTimeout(500);
 checkThat(
-  // No Attach group at all: a sealed assembly takes no third body. What it
-  // does carry has grown since -- a hold on its angle, the vector switches --
-  // so the claim is about what must be there and what must not, rather than
-  // an exact list that goes red every time the menu gains a row.
-  'the body menu offers the part’s own states and no way to attach to it',
-  ['Driven Input', 'Locked', 'Delete Cylinder'].every((row) => bodyMenu.includes(row)) &&
-    ['Link', 'Cylinder', 'Force', 'Tracer Point'].every((row) => !bodyMenu.includes(row)),
-  bodyMenu.join(', ')
+  // The drive belongs to the joint that slides, and Stage 2c puts it on that
+  // joint's card alone (D9). A member's card is the member's: no Attach group,
+  // because a member takes no third body, and no second door to the drive.
+  // The claim is about what must be there and what must not, rather than an
+  // exact list that goes red every time a menu gains a row.
+  'the drive is on the slide’s card, and a member’s card attaches nothing',
+  slideMenu.includes('Driven Input') &&
+    ['Fixed Length', 'Fixed Angle', 'Locked', 'Delete Cylinder'].every((row) =>
+      memberMenu.includes(row)
+    ) &&
+    ['Driven Input', 'Link', 'Cylinder', 'Force', 'Tracer Point'].every(
+      (row) => !memberMenu.includes(row)
+    ),
+  JSON.stringify({ slideMenu, memberMenu })
 );
 state = await model();
 checkThat(
@@ -426,22 +448,27 @@ checkThat(
   !!state.joints.find((j) => j.kind === 'PrisJoint')?.input
 );
 checkThat(
+  // In the pass above every skin rather than at the tail of the cylinder's own
+  // group (decision S24): a body welded to another cylinder can be painted
+  // after this one, and white arrows under it say nothing.
   'the skin shows the driven arrows',
-  (await page.locator('.cylinder-mark line').count()) >= 2
+  (await page.locator('.cylinder-overlay line').count()) >= 2
 );
 
 // ------------------------------------------- 5. set the speed from the panel
-console.log('\nset the expansion speed on the body panel');
-await page.evaluate((mountId) => {
-  // Select the body, as a click on the skin would.
+console.log("\nset the expansion speed on the slide's panel");
+await page.evaluate(() => {
+  // Select the slide, as a click on the square mid-skin would: the drive is
+  // that joint's, and so are the rows that describe it (D9).
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
-  c.setLastLeftClick(barrel);
-}, barrelFar);
+  c.activeObjService.updateSelectedObj(c.mechanismSrv.sealedStructures()[0].seal);
+});
 await page.waitForTimeout(500);
 checkThat(
-  'selecting the body opens the Edit Cylinder panel',
-  (await page.getByText('Edit Cylinder').count()) >= 1
+  'selecting the slide opens its joint panel, with Starts at and no Grounded row',
+  /Edit Joint /.test(await page.locator('app-edit-panel').innerText()) &&
+    /Starts at/.test(await page.locator('app-edit-panel').innerText()) &&
+    !/Grounded/.test(await page.locator('app-edit-panel').innerText())
 );
 const speedInput = page
   .locator('input-block')
@@ -502,7 +529,7 @@ await page.waitForTimeout(700);
 state = await model();
 checkThat(
   'one undo brings the whole cylinder back',
-  state.joints.length === 5 && state.links.length === 3 && state.marks === 1,
+  state.joints.length === 4 && state.links.length === 2 && state.marks === 1,
   JSON.stringify({ joints: state.joints.length, marks: state.marks })
 );
 checkThat(
