@@ -18,6 +18,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const results = [];
 const record = (what, ok, detail) => {
@@ -75,7 +76,7 @@ const load = async (payload) => {
   await waitForReady(page);
   // Frame the whole drawing: a label that is off the edge of the window cannot
   // be hit-tested, and "off screen" is not the question being asked here.
-  await page.evaluate(() =>
+  await inAngular(page, () =>
     ng.getComponent(document.querySelector('app-new-grid')).svgGrid.scaleToFitLinkage(false)
   );
   await page.waitForTimeout(900);
@@ -185,7 +186,7 @@ for (const name of ['Scotch_Yoke', 'Whitworth_Quick_Return']) {
 
 // --- a welded body, which is where the center of mass stops being safe -------
 await load(payloads['Stephenson_III']);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const shared = srv.joints.find((joint) => joint.links?.length > 1 && !joint.ground);
   if (shared) srv.weldJoint(shared);
@@ -282,7 +283,7 @@ record(
 
 // This fixture already reaches Standard's upper screen-size limit. Increasing
 // the legacy base scale must not make its labels grow beyond that limit.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const settings = ng.getComponent(document.querySelector('app-new-grid')).settings;
   settings.constructor._objectScale.next(settings.objectScale * 2);
 });
@@ -304,7 +305,7 @@ record(
 
 // --- a joint's name lands wherever its joint is -----------------------------
 await load(payloads['Stephenson_III']);
-await page.evaluate(() => {
+await inAngular(page, () => {
   ng.getComponent(document.querySelector('app-new-grid')).settings.isShowID.next(true);
 });
 await page.waitForTimeout(600);
@@ -332,7 +333,7 @@ record(
 
 // --- the other labels still answer to the button ----------------------------
 await load(payloads['4-Bar']);
-const governed = await page.evaluate(() => {
+const governed = await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const count = () => ({
     joints: document.querySelectorAll('#jointTagHolder text').length,

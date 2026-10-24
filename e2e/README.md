@@ -109,6 +109,13 @@ Not suites — import them from one.
   and nothing on screen is still moving; `openMechanism(page, url)` loads a URL and waits the same
   way. Use these instead of a fixed sleep: a click measured before the canvas settles lands
   somewhere else.
+- `in-angular.mjs` — `inAngular(page, work, arg)` runs a poke inside Angular's zone, and
+  `onGrid(page, work, arg)` does the same handed the canvas component. `page.evaluate` runs outside
+  the zone, so a drawer opened, a part selected or a name changed through `ng.getComponent(...)`
+  stays unrendered until something else causes a pass. Nothing does any more: the app used to check
+  itself every animation frame, which hid this, and nine gate suites went red when that stopped.
+  Use it for pokes only. Each call is a change-detection pass, so a poll that reads through it
+  would hide app code that changes state outside the zone.
 - `quiet-start.mjs` — `startQuiet(context)` seeds `localStorage` so neither the tutorial invitation
   nor the release notes covers the canvas. Apply it before the first page opens. `whatsNewSeen` in
   `QUIET_START` must match `WHATS_NEW_VERSION`; `whats-new.mjs` fails if it does not.

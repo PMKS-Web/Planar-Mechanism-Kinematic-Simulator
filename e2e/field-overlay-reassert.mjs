@@ -26,6 +26,7 @@ const { chromium } = await import(
 import { mkdirSync } from 'node:fs';
 import { openMechanism } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/field-overlay-reassert';
@@ -56,12 +57,16 @@ await page.waitForTimeout(400);
  * coordinate is the flakiest thing any suite here can do.
  */
 const select = async (what) => {
-  await page.evaluate((kind) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const mech = grid.mechanismSrv ?? grid.mechanism;
-    grid.activeObjService.updateSelectedObj(kind === 'link' ? mech.links[0] : mech.joints[0]);
-    ng.applyChanges(grid);
-  }, what);
+  await inAngular(
+    page,
+    (kind) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const mech = grid.mechanismSrv ?? grid.mechanism;
+      grid.activeObjService.updateSelectedObj(kind === 'link' ? mech.links[0] : mech.joints[0]);
+      ng.applyChanges(grid);
+    },
+    what
+  );
   await page.waitForTimeout(700);
 };
 

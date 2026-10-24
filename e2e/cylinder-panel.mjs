@@ -19,6 +19,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const payload = TEMPLATE_LINKAGES['Cylinder_Boom'];
 const ctx = await chromium.launchPersistentContext('/tmp/pmks-chrome-reg', {
@@ -33,11 +34,15 @@ page.on('pageerror', (e) => errs.push(String(e)));
 async function load(which) {
   await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
-  await page.evaluate((what) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const one = grid.mechanismSrv.sealedStructures()[0];
-    grid.activeObjService.updateSelectedObj(what === 'seal' ? one.seal : one.barrel);
-  }, which);
+  await inAngular(
+    page,
+    (what) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const one = grid.mechanismSrv.sealedStructures()[0];
+      grid.activeObjService.updateSelectedObj(what === 'seal' ? one.seal : one.barrel);
+    },
+    which
+  );
   // The line above ran outside Angular's zone; a nudge across the canvas enters
   // it, so the panel is drawn before anything is read off it.
   await page.mouse.move(900, 300);

@@ -23,6 +23,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-frozen-body';
@@ -73,7 +74,8 @@ async function build({ drive }) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  return page.evaluate(
+  return inAngular(
+    page,
     (how) => {
       const grid = ng.getComponent(document.querySelector('app-new-grid'));
       const m = grid.mechanismSrv;
@@ -211,22 +213,26 @@ await page.waitForTimeout(300);
 
 // --- the panels: every part of the body reads true kinematics ---------------
 async function readingsFor(what) {
-  await page.evaluate((which) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const m = grid.mechanismSrv;
-    const ram = m.sealedStructures()[0];
-    const part =
-      which === 'body'
-        ? m.links[0]
-        : which === 'barrel'
-          ? ram.barrel
-          : which === 'rod'
-            ? ram.rod
-            : which === 'seal'
-              ? ram.seal
-              : ram.mountA;
-    grid.activeObjService.updateSelectedObj(part);
-  }, what);
+  await inAngular(
+    page,
+    (which) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const m = grid.mechanismSrv;
+      const ram = m.sealedStructures()[0];
+      const part =
+        which === 'body'
+          ? m.links[0]
+          : which === 'barrel'
+            ? ram.barrel
+            : which === 'rod'
+              ? ram.rod
+              : which === 'seal'
+                ? ram.seal
+                : ram.mountA;
+      grid.activeObjService.updateSelectedObj(part);
+    },
+    what
+  );
   await page.waitForTimeout(600);
   return panelText();
 }

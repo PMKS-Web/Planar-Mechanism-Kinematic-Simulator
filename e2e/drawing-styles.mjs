@@ -2,6 +2,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { openMechanism } from './app-ready.mjs';
+import { onGrid } from './in-angular.mjs';
 import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
@@ -23,15 +24,7 @@ const check = (label, ok, detail) => {
   results.push({ label, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'} ${label}`, ok ? '' : detail);
 };
-const grid = (fn, arg) =>
-  page.evaluate(
-    ({ source, arg }) =>
-      new Function('g', 'arg', `return (${source})(g,arg)`)(
-        ng.getComponent(document.querySelector('app-new-grid')),
-        arg
-      ),
-    { source: fn.toString(), arg }
-  );
+const grid = (fn, arg) => onGrid(page, fn, arg);
 const load = async (id) => {
   if (!payloads[id]) throw new Error(`Missing fixture: ${id}`);
   await openMechanism(page, `${BASE}/?${payloads[id]}`);

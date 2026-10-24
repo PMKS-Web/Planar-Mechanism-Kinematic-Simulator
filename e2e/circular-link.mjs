@@ -24,6 +24,7 @@ const SHOTS = new URL('../artifacts/screenshots/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const checks = [];
 const check = (name, pass, detail = '') => {
@@ -110,11 +111,15 @@ check(
   [...crankMenu, ...couplerMenu].join(', ')
 );
 
-await page.evaluate((id) => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.links.find((l) => l.id === id));
-  grid.mechanismSrv.toggleLinkCircular();
-}, before.id);
+await inAngular(
+  page,
+  (id) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.links.find((l) => l.id === id));
+    grid.mechanismSrv.toggleLinkCircular();
+  },
+  before.id
+);
 await page.waitForTimeout(500);
 
 stage = 'made-circular';
@@ -156,7 +161,7 @@ if (shared) {
 }
 
 // It has to survive being animated: every solved frame is a fresh copy.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const bar = ng.getComponent(document.querySelector('app-playback-bar'));
   bar.togglePlay ? bar.togglePlay() : bar.play?.();
 });

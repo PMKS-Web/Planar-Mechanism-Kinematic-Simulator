@@ -16,6 +16,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
@@ -52,7 +53,7 @@ const onScreen = () =>
   });
 
 const flipUnit = () =>
-  page.evaluate(() => {
+  inAngular(page, () => {
     const panel = ng.getComponent(document.querySelector('app-settings-panel'));
     const control = panel.settingsForm.controls['globalunit'];
     control.setValue(control.value === '0' ? '1' : '0');
@@ -96,7 +97,7 @@ record('and redoing it does too', Math.abs(redone.span - before.span) < 3, { bef
 await page.locator('.tabButton', { hasText: 'Edit' }).click();
 await page.waitForTimeout(600);
 const settled = await onScreen();
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const joint = srv.joints.find((j) => !j.ground);
   joint.x += 40;
