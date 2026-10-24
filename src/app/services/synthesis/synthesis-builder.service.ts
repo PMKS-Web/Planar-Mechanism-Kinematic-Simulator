@@ -265,7 +265,9 @@ export class SynthesisBuilderService {
       form['length']!,
       this.settings.lengthUnit.getValue()
     );
-    if (!success) return false;
+    if (!success || !Number.isFinite(maybeLength) || maybeLength <= 0) {
+      return false;
+    }
 
     /** What each row wants doing, in the order the rows are numbered. */
     const edits: { index: number; position: Coord; thetaDegrees: number; fresh: boolean }[] = [];

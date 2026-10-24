@@ -40,6 +40,30 @@ await enter('Position 1 X', '1 cm');
 await enter('Position 1 Y', '1 cm');
 await enter('Position 1 angle', '0 deg');
 await page.getByRole('button', { name: 'Duplicate Last Position' }).click();
+const header = await page
+  .locator('#synthesisPanel .panel-header__actions')
+  .filter({ hasText: 'Add Position' })
+  .evaluate((host) => {
+    const buttons = [...host.querySelectorAll('button-block button')];
+    return buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      const icon = button.querySelector('mat-icon').getBoundingClientRect();
+      return {
+        height: box.height,
+        font: parseFloat(getComputedStyle(button).fontSize),
+        iconOffset: (icon.left + icon.right - box.left - box.right) / 2,
+      };
+    });
+  });
+check(
+  'position actions are compact and the copy glyph is centered',
+  header.length === 2 &&
+    header.every((item) => item.height <= 30 && item.font <= 13) &&
+    Math.abs(header[1].iconOffset) < 1.5,
+  header
+);
+await page.screenshot({ path: `${OUT}/position-actions.png` });
+
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await settings();
 const unitFilm = filmstrip(page, `${OUT}/meter-film`);
