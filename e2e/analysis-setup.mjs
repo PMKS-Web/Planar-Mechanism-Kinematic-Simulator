@@ -19,6 +19,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -106,7 +107,7 @@ record(
   text
 );
 // A mass typed, by the same steps the mass field takes.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.links[0].mass = 1;
   grid.mechanismSrv.updateMechanism(true);
@@ -133,7 +134,7 @@ record(
 
 // --- a mechanism with nothing driving it ------------------------------------
 await open(payloads['4-Bar']);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.joints.forEach((joint) => (joint.input = false));
   srv.updateMechanism();
@@ -190,7 +191,7 @@ record('going to a part is not an edit, so Undo stays where it was', undoDisable
 // The drawer opens when a mode refuses, so the mechanism is left undriven too:
 // a valid one simply enters Kinematic and there is no drawer to read.
 await open(payloads['4-Bar']);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const srv = grid.mechanismSrv;
   // A joint on its own, with no link: unassigned, and reported as such.
@@ -360,7 +361,7 @@ record(
 // drawing to the simultaneous route -- so the advice is only true because both
 // halves are in place, which is why it is followed here rather than read.
 await open(payloads['Scotch_Yoke']);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.joints.forEach((joint) => (joint.input = joint.id === 'C'));
   srv.updateMechanism(true);
@@ -407,7 +408,7 @@ record(
 // --- an input the walk cannot start from, which the build solves anyway ------
 // The scissor lift driven from its floor pivot was a "dead position" once.
 await open(payloads['Scissor_Lift']);
-const fromTheFloor = await page.evaluate(() => {
+const fromTheFloor = await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.joints.forEach((joint) => (joint.input = joint.id === 'A'));
   srv.updateMechanism(true);

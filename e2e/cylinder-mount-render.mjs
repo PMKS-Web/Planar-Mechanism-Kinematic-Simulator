@@ -26,6 +26,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-mount-render';
@@ -79,7 +80,8 @@ async function draw(recipe, options = {}) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  const drawn = await page.evaluate(
+  const drawn = await inAngular(
+    page,
     ([which, opts]) => {
       const grid = ng.getComponent(document.querySelector('app-new-grid'));
       const m = grid.mechanismSrv;
@@ -757,23 +759,27 @@ check(
 // naming a joint the drawing never shows. Nothing a reader sees has a digit in
 // it here, because no visible joint on this grid does.
 console.log('\nwhat a body welded to a barrel mount is called');
-const named = await page.evaluate((where) => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  const m = grid.mechanismSrv;
-  const part = m.sealedStructures()[0];
-  const body = m.links.find((link) => link.id === where.root);
-  grid.activeObjService.updateSelectedObj(body);
-  const tags = [...document.querySelectorAll('#linkTagHolder text')].map((one) =>
-    one.textContent.trim()
-  );
-  return {
-    id: body.id,
-    inner: part.inner.id,
-    wanted: m.visibleBodyName(body),
-    tags,
-    mounts: [part.mountA.id, part.mountB.id],
-  };
-}, barrelBody);
+const named = await inAngular(
+  page,
+  (where) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const m = grid.mechanismSrv;
+    const part = m.sealedStructures()[0];
+    const body = m.links.find((link) => link.id === where.root);
+    grid.activeObjService.updateSelectedObj(body);
+    const tags = [...document.querySelectorAll('#linkTagHolder text')].map((one) =>
+      one.textContent.trim()
+    );
+    return {
+      id: body.id,
+      inner: part.inner.id,
+      wanted: m.visibleBodyName(body),
+      tags,
+      mounts: [part.mountA.id, part.mountB.id],
+    };
+  },
+  barrelBody
+);
 await page.waitForTimeout(350);
 const panelTitle = await page.evaluate(
   () => document.querySelector('app-edit-panel')?.innerText.split('\n')[0] ?? ''
@@ -819,23 +825,27 @@ await film.shot('named-panel');
 
 // ------------------------------------------------------------------ unweld
 console.log('\nunwelding puts both back');
-const freed = await page.evaluate((where) => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  const m = grid.mechanismSrv;
-  const mount = m.joints.find(
-    (j) => j.id === m.sealedStructures()[0].mountA.id || j.id === where.seal
-  );
-  grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].mountA);
-  m.unweldSelectedJoint();
-  m.finishStructuralEdit(true);
-  const ram = m.sealedStructures()[0];
-  return {
-    mount: mount?.id ?? null,
-    barrelRoot: ram.barrelRoot.id,
-    barrel: ram.barrel.id,
-    rodRoot: ram.rodRoot.id,
-  };
-}, barrelBody);
+const freed = await inAngular(
+  page,
+  (where) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const m = grid.mechanismSrv;
+    const mount = m.joints.find(
+      (j) => j.id === m.sealedStructures()[0].mountA.id || j.id === where.seal
+    );
+    grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].mountA);
+    m.unweldSelectedJoint();
+    m.finishStructuralEdit(true);
+    const ram = m.sealedStructures()[0];
+    return {
+      mount: mount?.id ?? null,
+      barrelRoot: ram.barrelRoot.id,
+      barrel: ram.barrel.id,
+      rodRoot: ram.rodRoot.id,
+    };
+  },
+  barrelBody
+);
 await page.waitForTimeout(350);
 const afterUnweld = await fusionFacts();
 const looseFacts = await renderFacts();
@@ -899,22 +909,27 @@ await contactSheet(`${OUT}/*angle-*.png`, `${OUT}/sheet-angles.png`, 2);
 // ------------------------------------------------ both ends of the stroke
 console.log('\neither end of the stroke');
 let ids = await draw('running');
-const stroke = await page.evaluate((where) => {
-  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-  const mount = () => m.joints.find((j) => j.id === where.mounts[1]);
-  m.animate(0, false);
-  // Asked here rather than carried from the fixture: the sample count is only
-  // settled once the machine has been built, and it changes with input speed.
-  return {
-    retracted: { x: mount().x, y: mount().y },
-    samples: m.masterMechanism()?.joints.length ?? 0,
-    valid: m.mechanisms.some((one) => !!one?.isMechanismValid()),
-  };
-}, ids);
+const stroke = await inAngular(
+  page,
+  (where) => {
+    const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const mount = () => m.joints.find((j) => j.id === where.mounts[1]);
+    m.animate(0, false);
+    // Asked here rather than carried from the fixture: the sample count is only
+    // settled once the machine has been built, and it changes with input speed.
+    return {
+      retracted: { x: mount().x, y: mount().y },
+      samples: m.masterMechanism()?.joints.length ?? 0,
+      valid: m.mechanisms.some((one) => !!one?.isMechanismValid()),
+    };
+  },
+  ids
+);
 await film.shot('stroke-retracted');
 // A cylinder's cycle runs out and back, so the last sample is the first one
 // again; full extension is the sample furthest from the start, not the last.
-const extended = await page.evaluate(
+const extended = await inAngular(
+  page,
   (where) => {
     const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
     const mount = () => m.joints.find((j) => j.id === where.mounts[1]);
@@ -953,7 +968,8 @@ check(
 // solved frame gets, so no seam may open between it and the rest of the skin.
 const cycle = [];
 for (let frame = 0; frame < 12; frame++) {
-  await page.evaluate(
+  await inAngular(
+    page,
     (at) => {
       const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
       m.animate(Math.round((at.frame / 12) * at.samples), false);
@@ -981,7 +997,7 @@ await contactSheet(`${OUT}/*stroke-*.png`, `${OUT}/sheet-stroke.png`, 2);
 
 // ------------------------------------------------- two zooms, one narrow window
 console.log('\ntwo zoom levels and a narrow window');
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.svgGrid.zoomIn();
   grid.svgGrid.zoomIn();
@@ -996,7 +1012,7 @@ check(
     facts.bodiesDrawnTwice.length === 0,
   JSON.stringify(facts.interiorsDrawn.concat(facts.sealsMissing, facts.bodiesDrawnTwice))
 );
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.svgGrid.zoomOut();
   grid.svgGrid.zoomOut();
@@ -1036,7 +1052,8 @@ for (const [name, fill] of [
   ['teal', '#1f8a80'],
   ['amber', '#c47f18'],
 ]) {
-  await page.evaluate(
+  await inAngular(
+    page,
     (paint) => {
       const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
       const compound = m.links.find((l) => (l.subset ?? []).length > 0);
@@ -1333,7 +1350,8 @@ const ramClip = await page.evaluate(() => {
   return { x: Math.max(0, skin.x - 130), y: Math.max(0, skin.y - 90), width: 700, height: 220 };
 });
 for (let frame = 0; frame < 12; frame++) {
-  await page.evaluate(
+  await inAngular(
+    page,
     (at) => {
       const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
       m.animate(Math.round((at.frame / 12) * at.samples), false);
@@ -1495,7 +1513,7 @@ check(
   JSON.stringify(triangle.over)
 );
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
 });
@@ -1520,7 +1538,7 @@ check(
   JSON.stringify({ was: triangle.block, now: fused.block })
 );
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
 });
@@ -1553,7 +1571,7 @@ check(
 // question is asked of the bar the slot is cut in now -- a barrel never holds
 // the seal -- so a welded triangle stays a cylinder and both of these are
 // ordinary checks.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
 });

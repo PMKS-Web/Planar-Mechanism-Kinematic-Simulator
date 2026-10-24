@@ -27,6 +27,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const results = [];
 const record = (what, ok, detail) => {
@@ -115,7 +116,8 @@ const setOption = async (control, on) => {
   await page.locator('.menuItem', { hasText: 'Settings' }).click();
   await page.waitForTimeout(800);
   const listed = /Snap to Alignment/.test(await page.locator('app-settings-panel').innerText());
-  await page.evaluate(
+  await inAngular(
+    page,
     ([control, on]) => {
       const panel = ng.getComponent(document.querySelector('app-settings-panel'));
       panel.settingsForm.controls[control].setValue(on);

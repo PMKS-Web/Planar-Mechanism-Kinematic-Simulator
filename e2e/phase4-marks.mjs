@@ -15,6 +15,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/phase4-marks';
@@ -162,7 +163,7 @@ const wasFill = await plateFill();
 // check is about cache invalidation, and a production bundle cannot be asked.
 const recolorable = await page.evaluate(() => typeof window.ng?.getComponent === 'function');
 if (recolorable) {
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
     grid.mechanismSrv.getLinks().find((link) => link.id === 'CD').fill = '#00695C';
     window.ng.applyChanges(grid);
@@ -309,7 +310,7 @@ await page.mouse.move(4, 4);
 await page.waitForTimeout(300);
 
 // The same joint, turned into a Slide: the mark is what changes.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((j) => j.id === 'B'));
   grid.mechanismSrv.weldJoint();
@@ -369,7 +370,7 @@ await page.screenshot({
 
 // The lock badge stands on the bar, centered, with no chip of its own -- the
 // cream is chip enough, exactly as a pin's circle is.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const c = grid.mechanismSrv.joints.find((j) => j.id === 'C');
   grid.activeObjService.updateSelectedObj(c);
@@ -392,7 +393,7 @@ await page.screenshot({
 // edge -- which is exactly what a weld cross does not, and why the cross wears
 // the amber as an outline. Taken after the cream screenshots so those show the
 // mark in the color the reference drawing does.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const c = grid.mechanismSrv.joints.find((j) => j.id === 'C');
   grid.mechanismSrv.toggleLock(c);
@@ -416,7 +417,7 @@ await page.screenshot({
 await page.goto(BASE + MECHANISMS[0].query, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(600);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
   const d = m.joints.find((j) => j.id === 'D');
