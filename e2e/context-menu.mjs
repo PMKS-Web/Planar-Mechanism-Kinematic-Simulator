@@ -181,7 +181,7 @@ await openMechanism(page, BASE + FOURBAR);
 const ownDelete = (menu) => {
   const rows = menu?.rows ?? [];
   const last = rows.at(-1);
-  return last?.label.startsWith('Delete entire mechanism') ? rows.at(-2) : last;
+  return last?.label.startsWith('Delete Entire Mechanism') ? rows.at(-2) : last;
 };
 
 const jointA = await openOn('#joint_A');
