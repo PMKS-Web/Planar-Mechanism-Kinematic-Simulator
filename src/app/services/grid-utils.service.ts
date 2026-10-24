@@ -1,3 +1,4 @@
+import { linkArtwork, schematicLink } from '../model/link-artwork';
 import { cylinderJoints } from '../model/cylinder';
 import { pickLink } from '../model/link-pick';
 import { Injectable, Injector, inject } from '@angular/core';
@@ -986,7 +987,7 @@ export class GridUtilsService {
       draggingBarrelMount ? wanted : sealed.mountA,
       draggingBarrelMount ? sealed.mountB : wanted,
       cylinderLengthsOf(sealed),
-      0.15 * SettingsService.objectScale,
+      0.15 * SettingsService.cylinderObjectScale,
       // The anchor is the mount NOT being dragged: it stays exactly still,
       // and the dragged mount is what the span floor stops.
       draggingBarrelMount ? 'rod' : 'barrel',
@@ -1206,7 +1207,7 @@ export class GridUtilsService {
     // number being typed is a hold on the new number.
     const own = new Set([sealed.barrel.id, sealed.rod.id]);
     return {
-      r: 0.15 * SettingsService.objectScale,
+      r: 0.15 * SettingsService.cylinderObjectScale,
       isGrounded: (joint) => joint instanceof RealJoint && joint.ground,
       // The same set `planEdit` judges the finished plan against, asked one
       // rung earlier so the ladder can try the *other* end instead of walking
@@ -1358,7 +1359,7 @@ export class GridUtilsService {
           mountA,
           mountB,
           carried.lengths,
-          0.15 * SettingsService.objectScale,
+          0.15 * SettingsService.cylinderObjectScale,
           carried.holds
         );
       },
@@ -1707,9 +1708,38 @@ export class GridUtilsService {
 
   pickLinkAt(link: RealLink, selected: RealLink | undefined, event: MouseEvent): RealLink {
     const point = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
-    return pickLink(this.mechanismSrv.links, link, selected, (leaf) =>
-      this.isPointInsideLink(point, leaf)
-    );
+    const defs = document.querySelector('#canvas defs');
+    if (!defs) return link;
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    // Chromium needs a connected SVG tree to resolve stroke geometry. A defs
+    // child is measurable without painting anything or intercepting the pointer.
+    defs.appendChild(hit);
+    hit.setAttribute('stroke', 'transparent');
+    hit.setAttribute('stroke-width', String(this.svgGrid.scaleWithZoom(12)));
+    const cylinders = this.mechanismSrv.sealedStructures();
+    // Built only once a part is tested: a click on a plain body never needs one,
+    // and the specs drive that click where there is no DOMPoint.
+    const at = () => new DOMPoint(point.x, point.y);
+    /** Loads the leaf's drawn shape into `hit`, and says whether it is lines. */
+    const drawn = (leaf: RealLink): boolean => {
+      const skeleton = this.settings.isSchematic ? schematicLink(leaf, cylinders) : '';
+      hit.setAttribute('d', skeleton || linkArtwork(leaf, this.settings.drawingScale, cylinders));
+      return skeleton !== '';
+    };
+    const pick = (inside: (leaf: RealLink) => boolean) =>
+      pickLink(this.mechanismSrv.links, link, selected, inside);
+    try {
+      const picked = pick((leaf) =>
+        drawn(leaf) ? hit.isPointInStroke(at()) : hit.isPointInFill(at())
+      );
+      if (!this.settings.isSchematic || !picked.isCompound) return picked;
+      // Nothing's line was hit, so the shaded inside of a part -- a plate, or a
+      // disc -- picks it: Schematic shades it because it takes a click. Asked
+      // second, so a bar lying across a plate is still picked by its line.
+      return pick((leaf) => drawn(leaf) && hit.isPointInFill(at()));
+    } finally {
+      hit.remove();
+    }
   }
 
   updateLastSelectedSublink(mouseEvent: MouseEvent, clickedObj: RealLink) {

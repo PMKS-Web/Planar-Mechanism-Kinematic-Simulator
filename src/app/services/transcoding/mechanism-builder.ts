@@ -12,6 +12,7 @@ import { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from 'src/app/model/util
 import { BoolSetting, DecimalSetting, EnumSetting, IntSetting } from './stored-settings';
 import { ActiveObjService } from '../active-obj.service';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
+import { scaleFromTokens } from './fine-scale';
 
 /**
  * Follow one joint's rename through every link that holds it, however deep.
@@ -695,8 +696,15 @@ export class MechanismBuilder {
       this.settings.isGravity.next(!this.transcoder.getBoolSetting(BoolSetting.GRAVITY_OFF));
       // The URL stores the user-unit object scale; the internal one is
       // MODEL_SCALE times larger, like every other length.
+      const decimal = (setting: DecimalSetting) => this.transcoder.getDecimalSetting(setting);
+      SettingsService.preservedCylinderScale =
+        scaleFromTokens(
+          decimal(DecimalSetting.CYLINDER_SCALE),
+          decimal(DecimalSetting.FINE_CYLINDER_SCALE)
+        ) * MODEL_SCALE;
       SettingsService._objectScale.next(
-        this.transcoder.getDecimalSetting(DecimalSetting.SCALE) * MODEL_SCALE
+        scaleFromTokens(decimal(DecimalSetting.SCALE), decimal(DecimalSetting.FINE_SCALE)) *
+          MODEL_SCALE
       );
     }
 

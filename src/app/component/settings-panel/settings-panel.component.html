@@ -92,15 +92,14 @@
       >
         Snap to Alignment
       </toggle-block>
-      <input-block
-        type="number"
-        [formGroup]="this.settingsForm"
-        _formControl="objectScale"
-        tooltip="How big joints, blocks and cylinders are drawn. A drawing that arrives without a size of its own gets one suited to how large it is."
-        >Object Size
-      </input-block>
-      <button-block icon="auto_fix_normal" [click]="updateObjectScale.bind(this)"
-        >Auto-size Objects</button-block
+      <radio-block
+        option1="Standard"
+        option2="Fine"
+        option3="Schematic"
+        [formGroup]="settingsForm"
+        _formControl="drawingStyle"
+        tooltip="Standard shows filled bodies. Fine uses slimmer bodies and symbols. Schematic shows connections and outlined cylinders and sliders. All three stay readable as you zoom, without changing dimensions or analysis."
+        >Drawing Style</radio-block
       >
     </collapsible-subsection>
 

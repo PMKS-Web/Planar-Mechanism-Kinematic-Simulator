@@ -125,7 +125,7 @@ export const HEAD_CLEARANCE_R = 1.4;
  */
 export function cylinderHeadHalf(
   barrelLength: number,
-  r: number = 0.15 * SettingsService.objectScale
+  r: number = 0.15 * SettingsService.cylinderObjectScale
 ): number {
   const wanted = Math.min(CYLINDER.headAlongHalfMax * r, barrelLength / 2);
   return Math.max(CYLINDER.headAlongHalfMin * r, wanted);
@@ -544,14 +544,13 @@ export function cylinderCreationLayout(
  * `usable` is the answer to "is there anywhere to go", and it is a flag rather
  * than an inverted interval on purpose. A barrel shorter than the clearance has
  * no travel, and every caller here clamps or samples against `[min, max]` —
- * handed `max < min` they would silently do something. Object Scale can walk a
- * legal barrel under it at any moment (it changes R and rebuilds), so this is a
- * state the app reaches, not a defensive branch: the interval collapses to the
- * one point the head can occupy and the flag says so out loud.
+ * handed `max < min` they would silently do something. An imported barrel can
+ * be shorter than its preserved physical clearance: the interval collapses to
+ * the one point the head can occupy and the flag says so out loud.
  */
 export function cylinderStrokeAlong(
   barrelLength: number,
-  r: number = 0.15 * SettingsService.objectScale
+  r: number = 0.15 * SettingsService.cylinderObjectScale
 ): { min: number; max: number; usable: boolean } {
   const { min, max } = cylinderHeadTravel(barrelLength, r);
   if (!(max - min >= MIN_STROKE_R * r)) {
@@ -582,7 +581,7 @@ export function cylinderHeadTravel(barrelLength: number, r: number): { min: numb
 /** The stroke a barrel of this length has, floored at nothing rather than going negative. */
 export function cylinderStroke(
   barrelLength: number,
-  r: number = 0.15 * SettingsService.objectScale
+  r: number = 0.15 * SettingsService.cylinderObjectScale
 ): number {
   return Math.max(0, barrelLength - HEAD_CLEARANCE_R * r);
 }
@@ -660,11 +659,10 @@ export interface DerivedInterior {
  * brackets, judging locks, refusing — to arrive at the same two points. A
  * repair has to be asked whether it is allowed; a derivation does not, because
  * it only ever writes the two joints the seal owns. What it will not do is
- * clamp S into the travel: raising Object Scale grows the head under a part
- * nobody touched and can leave S outside the stops, and snapping it in would
- * move a joint with no undo entry and destroy the geometry that scaling back
- * down would otherwise restore. Left alone the part stays exactly as drawn and
- * the solver refuses to run it, which is what the panel already says.
+ * clamp S into the travel: an imported part may already sit outside its stops,
+ * and snapping it in would move a joint with no undo entry. Left alone the
+ * part stays exactly as authored and the solver explains the invalid travel.
+ * Display resizing preserves physical clearance and never changes these stops.
  */
 export function derivedInterior(cylinder: Cylinder): DerivedInterior | undefined {
   const { mountA, mountB, inner, seal } = cylinder;
@@ -1092,7 +1090,7 @@ export function layoutCylinder(
 /** The size and position a built cylinder currently has, read back off its joints. */
 export function cylinderSizeOf(
   cylinder: Cylinder,
-  r: number = 0.15 * SettingsService.objectScale
+  r: number = 0.15 * SettingsService.cylinderObjectScale
 ): CylinderSize {
   return cylinderSizeAt(cylinder.mountA, cylinder.inner, cylinder.seal, cylinder.mountB, r);
 }
@@ -1132,7 +1130,7 @@ function cylinderSizeAt(
   inner: { x: number; y: number },
   seal: { x: number; y: number },
   mountB: { x: number; y: number },
-  r: number = 0.15 * SettingsService.objectScale
+  r: number = 0.15 * SettingsService.cylinderObjectScale
 ): CylinderSize {
   const barrelLength = Math.hypot(inner.x - mountA.x, inner.y - mountA.y);
   const rodLength = Math.hypot(mountB.x - seal.x, mountB.y - seal.y);

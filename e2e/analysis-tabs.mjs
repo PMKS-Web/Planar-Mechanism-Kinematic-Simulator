@@ -156,7 +156,7 @@ try {
   check('every tab labels an existing panel with the matching visibility', semantics);
 
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await page.locator('#linkHolder path').nth(0).click({ force: true });
+  await page.locator('#linkHolder path#AB').click({ force: true });
   await page.getByRole('button', { name: /Kinematic Analysis/ }).click();
   check(
     'selected kinematics tab survives changing the selected link and mode',
