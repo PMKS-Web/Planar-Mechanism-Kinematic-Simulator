@@ -117,6 +117,7 @@ export {
 } from './fixture-payload';
 import { DEFAULT_OBJECT_SCALE, fixturePayload, type PublishedSpeed } from './fixture-payload';
 import { SPLIT_JOINT_GALLERY } from './split-joint-gallery';
+import { PART2_LIBRARY_GALLERY } from './part2-library-gallery';
 
 export interface GalleryEntry {
   name: string;
@@ -162,6 +163,7 @@ export interface GalleryEntry {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  ...PART2_LIBRARY_GALLERY,
   {
     name: 'Punch press',
     purpose:
