@@ -91,10 +91,10 @@ const topology = () =>
   });
 let state = await topology();
 check(
-  'one click moves both pins apart and keeps the original selected',
+  'one click keeps B in place, steps the other link off it, and keeps B selected',
   state.b &&
     state.i &&
-    Math.hypot(state.b.x - beforeSplit.x, state.b.y - beforeSplit.y) > 0 &&
+    Math.hypot(state.b.x - beforeSplit.x, state.b.y - beforeSplit.y) === 0 &&
     Math.hypot(state.i.x - beforeSplit.x, state.i.y - beforeSplit.y) > 0 &&
     Math.hypot(state.b.x - state.i.x, state.b.y - state.i.y) > 0 &&
     state.selected === 'B',
@@ -209,8 +209,8 @@ const floatingState = () =>
     const joint = grid.mechanismSrv.joints.find((candidate) => candidate.id === id);
     return {
       kind: joint?.constructor.name,
-      dangling: joint?.isDangling,
       floating: joint?.isFloating,
+      orphan: joint ? grid.mechanismSrv.isJointOrphan(joint) : undefined,
       x: joint?.x,
       y: joint?.y,
       count: grid.mechanismSrv.joints.length,
@@ -218,30 +218,34 @@ const floatingState = () =>
     };
   }, floatingBefore.id);
 let floating = await floatingState();
+const splitBlock = (state) =>
+  state.kind === 'PrisJoint' &&
+  state.floating === true &&
+  state.orphan === true &&
+  state.riders.length === 0 &&
+  state.x === floatingBefore.x &&
+  state.y === floatingBefore.y &&
+  state.count === floatingBefore.count + floatingBefore.riders.length;
 check(
-  'a floating slot split keeps one slider and its riders while detaching the carrier',
-  floating.kind === 'PrisJoint' &&
-    floating.dangling === true &&
-    floating.count === floatingBefore.count &&
-    JSON.stringify(floating.riders) === JSON.stringify(floatingBefore.riders) &&
-    Math.hypot(floating.x - floatingBefore.x, floating.y - floatingBefore.y) > 0,
+  'a floating slot split leaves the block on its slot, unmoved, and every rider on its own pin',
+  splitBlock(floating),
   { floatingBefore, floating }
 );
-await page.screenshot({ path: `${OUT}/floating-slot-detached.png` });
+await page.screenshot({ path: `${OUT}/floating-slot-split.png` });
 await page.getByRole('button', { name: 'Undo' }).click();
 await waitForReady(page);
 floating = await floatingState();
-check('Undo restores the floating slot carrier', floating.floating === true, floating);
-await page.getByRole('button', { name: 'Redo' }).click();
-await waitForReady(page);
-floating = await floatingState();
 check(
-  'Redo restores the same dangling slider without adding a joint',
-  floating.kind === 'PrisJoint' &&
-    floating.dangling === true &&
+  'Undo puts the riders back on the block',
+  floating.floating === true &&
+    JSON.stringify(floating.riders) === JSON.stringify(floatingBefore.riders) &&
     floating.count === floatingBefore.count,
   floating
 );
+await page.getByRole('button', { name: 'Redo' }).click();
+await waitForReady(page);
+floating = await floatingState();
+check('Redo leaves the same empty block on its slot', splitBlock(floating), floating);
 check('nothing threw', errors.length === 0, errors);
 
 await browser.close();

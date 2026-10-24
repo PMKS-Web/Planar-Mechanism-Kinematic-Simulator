@@ -10,7 +10,7 @@ import {
   expectSeriesToMatch,
   Tolerance,
 } from './compare';
-import { BuiltMechanism } from './fixture';
+import { BuiltMechanism, buildMechanism, inModelUnits, MechanismFixture } from './fixture';
 import { DynamicsTrace, KinematicsTrace, solveDynamics, solveKinematics } from './solve';
 
 export interface KinematicsSuiteOptions {
@@ -177,13 +177,18 @@ export interface DynamicsSuiteOptions {
 
 /**
  * Registers force-analysis tests against a MATLAB Newton (dynamic) scenario.
- * The fixture must be built with the matching gravity flag.
+ * The fixture must carry the matching gravity flag.
+ *
+ * Built in model units, as the app builds it, rather than at the fixture's raw
+ * coordinates: the force solver reads lengths as model units, and every
+ * inertia term depends on getting that right. Rows still align, because they
+ * align on the crank's angle, which no scale changes.
  */
 export function registerDynamicsSuite(
   name: string,
   expected: DynamicsData,
   jointPosForAlignment: VerificationDataset,
-  build: () => BuiltMechanism,
+  fixture: () => MechanismFixture,
   options: DynamicsSuiteOptions = {}
 ) {
   const inputJointId = options.inputJointId ?? 'A';
@@ -195,7 +200,7 @@ export function registerDynamicsSuite(
   let kinematics: KinematicsTrace;
   let alignment: AlignmentReport;
   beforeAll(() => {
-    const built = build();
+    const built = buildMechanism(inModelUnits(fixture()));
     kinematics = solveKinematics(built);
     alignment = alignToDataset(
       kinematics,

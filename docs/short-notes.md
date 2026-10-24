@@ -952,6 +952,18 @@ part entirely and a perfectly good ram reads as being past its stop. `buildMecha
 scale to `1 * MODEL_SCALE` and does not scale the fixture's coordinates, which is why
 `cylinderBoomFixture` comes out of it reporting no travel -- that is the mismatch, not the ram.
 
+### A fixture built by `buildMechanism` at raw coordinates is 200 times too small for the force solver
+
+`buildMechanism` keeps a fixture's coordinates as written, because the kinematics suites compare
+positions against MATLAB numbers directly. The force solver reads every length as a model unit,
+`MODEL_SCALE` to one of the reader's, so it analyzes that build as a linkage 200 times smaller than
+the one written. Static reactions do not change with the size, which is why this hid for so long.
+Torques shrink by 200, and every inertia term changes. A spec that checks a torque, a couple or a
+dynamic reaction against real numbers builds from `inModelUnits(fixture)`, as the MATLAB dynamics
+suites, the power-balance audit and the slide statics do. Read positions back in meters by dividing
+by `MODEL_SCALE`. The four-decimal rounding the position solver applies is then finer in meters,
+so a torque pinned at a raw build can move in its fourth decimal.
+
 ### A wrong branch is not a limit, and only one of them is worth a shorter step
 
 `solveLookingAhead` in `mechanism.ts` used to read every refusal as the end of the input's
@@ -2342,9 +2354,17 @@ square root of the fitted rigid motion instead — `R(θ/2)` with the translatio
 that, applied twice, lands exactly on the far end — and falls back to chords for
 a boundary the fit cannot reproduce.
 
-### Split Joint treats a floating slot's carrier as a body
+### Split Joint keeps what others depend on still
 
-A floating `PrisJoint` is absent from its carrier's `joints`: that absence is what makes it a slot rather than a pin. Split Joint counts the carrier so the action is offered, but releases that constraint instead of inserting a carrier pin. The same `PrisJoint`, drive units, and all rider memberships remain; it becomes dangling and moves a small distance normal to its former slot. Ordinary shared pins spread by a small fraction of the drawn joint scale. Both motions use the constrained drag path, so position locks and holds remain authoritative. Counting only `joint.links` makes every ordinary floating pin-in-slot look like a one-link refusal.
+A slider block is a part, not a meeting point: splitting one leaves it unmoved on its slot with no links, drawn with the empty-joint ring, and gives every rider its own Revolute pin. So a block with one rider can split, where a pin needs two links. Counting only `joint.links` on a floating slider reads one rider as one body -- the carrier is a constraint, not a member, and is not counted.
+
+A weld is no reason to refuse; the service lets it go through `unWeldJoint` first, inside one `batched` edit -- at the start pose a posed edit holds no saves, so without the batch the unweld wrote an undo entry of its own. That means counting bodies *before* it happens: a weld fuses the links at it into one compound, so `joint.links` shows one body. The count is the weld components the compound leaves without this joint, so two leaves welded together again elsewhere are still one body, and a corner of a triangle welded at every corner is refused as one link. A Prismatic block with two riders is the same case -- the block carries `isWelded` -- and unwelding it sets `rotates`, so the service sets it back.
+
+Where the pins go is `placeSplitPins`. One body keeps the point: the link that ends a slot or is a cylinder member, or else the one that keeps the joint's letter. Every other pin takes the cheapest placement that leaves no pin on another bar and no bar over another pin, searched along each direction toward its own body's other joints, with a sideways step charged double because it turns the link rather than shortening it. Spreading the pins evenly around the point instead moved a slot's end out from under its slider -- splitting D in the Shaper fixture left B 16.9 model units off its slot, because `dragJoint(..., false)` skips the rebuild that would reseat it -- and left two plain links lying across each other's pins. Only what happens at the pins counts: a scissor's arms cross by design, and a check on whole bars found nothing that cleared and left the center pin where it was. A bar that ran on through the split point is not held to keep off the kept pin either, since only a bend could change that. Toward the *average* of a body's other joints is no direction at all for a pin in the middle of a straight bar, which is why each joint is a direction of its own. When a lock or hold keeps the pin chosen to move exactly where it was, it becomes the one that stays. Only when two slot ends meet at one pin, and one has to move, does the split call `reseatFloatingSliders()` -- calling it every time nudged blocks the split never touched, since Slider Crank Inversions loads with G and K a hair off their slots. Steps are measured in joint sizes, so a split spec built at raw fixture coordinates has every link shorter than one step and quietly checks the fallback instead: build split fixtures through `inModelUnits`.
+
+### A forced click on the right-click card has to wait for the card to stop growing
+
+The card opens at half size and grows to full over 0.15 s once it carries `show`, so waiting for `#contextMenu.show` waits for the growth to *start*. An ordinary Playwright click then waits for its target to hold still; `click({ force: true })` -- the only way to click a disabled row -- skips that wait, measures the row mid-growth, and lands where the row *was*. Measured right after `show`, the card was at 0.53-0.62 scale and Delete Link sat 200 px above its final place, over Fixed Length or Fixed Angle. When the stray click hits an enabled row, the row runs and closes the card, and the next row a test looks for is gone: `posed-menu` timed out 30 s later on Tracer Point, in seven unrelated branches and three reruns that then passed. The stray row toggled a hold, which moves no joint, so the test's own "nothing changed" check could not see it. Wait for `getComputedStyle(card).scale === '1'` before a forced click.
 
 ### A force flip needs a solve-cache key even when no point moves
 

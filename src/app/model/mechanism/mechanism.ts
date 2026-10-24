@@ -132,10 +132,7 @@ export class Mechanism {
     ownJointIds?: ReadonlySet<string>,
     // Refused before anything is solved: a machine past the most one drawing
     // runs is still built, so every panel can name it, and costs no solve.
-    refused?: MechanismFailure,
-    // Production coordinates use MODEL_SCALE; physical-unit verification
-    // fixtures explicitly pass one at this boundary.
-    readonly coordinateScale: number = MODEL_SCALE
+    refused?: MechanismFailure
   ) {
     joints.forEach((j) => {
       const clone = this.cloneJointAt(j, j.x, j.y);

@@ -10,6 +10,7 @@ import {
   teachingLabSliderCrankFixture,
 } from '../../../test-utils/verification/fixtures';
 import { ForceAnalysisFrame, ForceSolver } from './force-solver';
+import { MODEL_SCALE } from '../render-scale';
 import { Mechanism } from './mechanism';
 
 interface SingleBodyModel {
@@ -23,15 +24,19 @@ function initializeModels(): void {
   new SettingsService();
 }
 
+/**
+ * A 2 m bar pinned at one end, in the given unit system, drawn the way the app
+ * draws it: every coordinate MODEL_SCALE times the reader's number.
+ */
 function singleBody(unit: 'm' | 'cm' | 'in', welded = false): SingleBodyModel {
   initializeModels();
   const factors =
     unit === 'm'
-      ? { distance: 1, mass: 1, inertia: 1, force: 1 }
+      ? { distance: MODEL_SCALE, mass: 1, inertia: 1, force: 1 }
       : unit === 'cm'
-        ? { distance: 100, mass: 1000, inertia: 1 / 0.0001, force: 1 }
+        ? { distance: 100 * MODEL_SCALE, mass: 1000, inertia: 1 / 0.0001, force: 1 }
         : {
-            distance: 1 / 0.0254,
+            distance: MODEL_SCALE / 0.0254,
             mass: 1 / 0.45359237,
             inertia: 1 / (0.45359237 * 0.0254 * 0.0254),
             force: 1 / 4.4482216152605,
@@ -127,19 +132,7 @@ describe('ForceSolver physical model', () => {
   it('adds centripetal inertia dynamically and scales it with speed squared', () => {
     const makeMechanism = (speed: number) => {
       const model = singleBody('m');
-      return new Mechanism(
-        model.joints,
-        model.links,
-        [model.force],
-        [],
-        false,
-        'm',
-        speed,
-        'degree',
-        undefined,
-        undefined,
-        1
-      );
+      return new Mechanism(model.joints, model.links, [model.force], [], false, 'm', speed);
     };
     const slow = makeMechanism(1).getForceAnalysis('dynamic').frames[0];
     const fast = makeMechanism(2).getForceAnalysis('dynamic').frames[0];
@@ -152,19 +145,7 @@ describe('ForceSolver physical model', () => {
 
   it('makes zero-speed dynamic equilibrium identical to static equilibrium', () => {
     const model = singleBody('m');
-    const mechanism = new Mechanism(
-      model.joints,
-      model.links,
-      [model.force],
-      [],
-      true,
-      'm',
-      0,
-      'degree',
-      undefined,
-      undefined,
-      1
-    );
+    const mechanism = new Mechanism(model.joints, model.links, [model.force], [], true, 'm', 0);
     const staticFrame = mechanism.getForceAnalysis('static').frames[0];
     const dynamicFrame = mechanism.getForceAnalysis('dynamic').frames[0];
     expectOk(staticFrame);
