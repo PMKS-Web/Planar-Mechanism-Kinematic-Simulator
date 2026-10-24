@@ -115,6 +115,7 @@ export {
   type PublishedSpeed,
 } from './fixture-payload';
 import { DEFAULT_OBJECT_SCALE, fixturePayload, type PublishedSpeed } from './fixture-payload';
+import { SPLIT_JOINT_GALLERY } from './split-joint-gallery';
 
 export interface GalleryEntry {
   name: string;
@@ -811,6 +812,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     speed: { unitsPerSecond: 0.2 },
     fixture: cylinderOnASlotFixture(),
   },
+  ...SPLIT_JOINT_GALLERY,
 ];
 
 /**
