@@ -22,9 +22,8 @@
  * out the first week it is not.
  *
  * `seconds` is roughly what the suite took on the machine that last measured it.
- * It is only used to balance the shards, so a stale number costs balance and
- * never correctness — and a run that overshoots its own estimate says so, which
- * is the cue to correct it.
+ * It balances the shards; ordinary overruns warn. Only an extreme tenfold
+ * overrun fails, measured per attempt so a retry is not charged twice.
  */
 
 const BOTH = ['gate', 'nightly'];
@@ -69,6 +68,8 @@ export const SUITES = [
   { name: 'disabled-toggles', seconds: 5, lanes: BOTH },
   { name: 'dxf-sweep', seconds: 122, lanes: NIGHTLY },
   { name: 'edit-playback', seconds: 46, lanes: NIGHTLY },
+  { name: 'editor-bug-fixes', seconds: 25, lanes: BOTH },
+  { name: 'editor-followups', seconds: 25, lanes: BOTH },
   { name: 'edit-undo', seconds: 40, lanes: BOTH },
   { name: 'export-flow', seconds: 47, lanes: NIGHTLY },
   { name: 'field-overlay-reassert', seconds: 5, lanes: BOTH },
@@ -78,6 +79,8 @@ export const SUITES = [
     lanes: NIGHTLY,
     note: 'Launches whatever Chrome the machine has, by path, rather than the Chromium Playwright pins — so on a runner it drives whatever was installed that morning. On the first Linux run its own checks passed and `page.screenshot` then hung for thirty seconds. The gate installs Chromium only; this is why.',
   },
+  { name: 'force-frame', seconds: 40, lanes: BOTH },
+  { name: 'force-precision', seconds: 30, lanes: BOTH },
   { name: 'force-edit', seconds: 39, lanes: BOTH },
   { name: 'force-labels-and-legend', seconds: 20, lanes: BOTH },
   { name: 'force-units', seconds: 21, lanes: BOTH },
@@ -220,6 +223,10 @@ export const NOT_RUN = [
   {
     name: 'force-status-survey',
     why: 'A tool: prints what force analysis says for each template.',
+  },
+  {
+    name: 'vector-drag-profile',
+    why: 'A profiling tool: prints the vector-enabled drag cost for comparison.',
   },
   { name: 'drag-profile', why: 'A tool: where one scenario’s drag time goes. Read, not judged.' },
   {

@@ -278,7 +278,7 @@ await section('force', async () => {
     await openAt(point);
   };
   await openForce();
-  if (!(await clickEnabled('Reverse Direction'))) return;
+  if (!(await clickEnabled('Flip Force'))) return;
   const reversed = await snapshot();
   check(
     'force reversal turns the displayed arrow around',

@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../../directives/number-drag.directive';
 import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
@@ -45,7 +46,15 @@ const ROWS: Which[] = ['length', 'angle'];
   templateUrl: './hold-field.component.html',
   styleUrls: ['./hold-field.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip, FormsModule, ReactiveFormsModule, MatFormField, MatInput],
+  imports: [
+    NumberDragDirective,
+    MatIcon,
+    MatTooltip,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormField,
+    MatInput,
+  ],
 })
 export class HoldFieldComponent {
   readonly formGroup = input.required<FormGroup>();

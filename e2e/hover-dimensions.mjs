@@ -19,7 +19,7 @@
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/hover-dimensions.mjs
  */
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
@@ -67,7 +67,13 @@ const drawn = () =>
 
 /** Point at every field of the open panel and collect the dimensions they raise. */
 async function dimensionsOf(template, select) {
-  await openMechanism(page, `${BASE}/?${payloads[template]}`);
+  const payload =
+    payloads[template] ??
+    readFileSync('docs/fixture-urls.md', 'utf8')
+      .split('\n')
+      .find((line) => line.includes(`[${template}](`))
+      .match(/\]\(https?:\/\/[^?]+\?([^)]*)/)[1];
+  await openMechanism(page, `${BASE}/?${payload}`);
   await page.locator('.tabButton', { hasText: 'Edit' }).first().click();
   await page.waitForTimeout(600);
   await page.evaluate(select);
@@ -99,9 +105,9 @@ all.push(
   }))
 );
 all.push(
-  ...(await dimensionsOf('4-Bar', () => {
+  ...(await dimensionsOf('Slider-crank with a tracer', () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints[1]);
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((j) => j.id === 'B'));
   }))
 );
 // A cylinder answers in two panels now: a member states its own Length and the

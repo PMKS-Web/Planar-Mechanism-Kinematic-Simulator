@@ -518,6 +518,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   exportData(): void {
+    if (!this.canExport()) return;
     // Closed first, like every other row that opens a drawer. Left open, the
     // menu's scrim covers the whole window and nothing in the drawer it just
     // opened can be pressed until the reader clicks once to dismiss a menu

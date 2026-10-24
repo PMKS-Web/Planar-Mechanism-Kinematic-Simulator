@@ -29,3 +29,33 @@ describe('making room in a full notification stack', () => {
     expect(notify.live.map((one) => one.id)).toEqual(['w1', 'w2', 'r1']);
   });
 });
+
+describe('notification reading time', () => {
+  let notify: NotificationService;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    notify = new NotificationService();
+  });
+  afterEach(() => {
+    notify.dismissAll();
+    vi.useRealTimers();
+  });
+
+  it('keeps a long message beyond the short-message minimum', () => {
+    notify.news('short', 'Done.');
+    notify.news('long', Array(40).fill('word').join(' '));
+    vi.advanceTimersByTime(4000);
+    expect(notify.live.map((one) => one.id)).toEqual(['long']);
+    vi.advanceTimersByTime(7500);
+    expect(notify.live).toEqual([]);
+  });
+
+  it('honors caller duration and persistence', () => {
+    notify.warning('timed', 'Temporary warning', { durationMs: 500 });
+    notify.success('persistent', 'Keep this', { durationMs: null });
+    vi.advanceTimersByTime(500);
+    expect(notify.live.map((one) => one.id)).toEqual(['persistent']);
+    vi.advanceTimersByTime(60000);
+    expect(notify.live).toHaveLength(1);
+  });
+});

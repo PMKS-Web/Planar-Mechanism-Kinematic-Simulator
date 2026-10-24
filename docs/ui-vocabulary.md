@@ -151,9 +151,9 @@ information. Nothing is clickable and then refused by a snackbar.
 stand without it. `Delete Cylinder` on one of a cylinder's joints deletes the
 cylinder and leaves the joint if another link still holds it; `Delete` on that
 joint deletes the joint. If those two want different outcomes, they need different labels — which
-is why they have them. What goes with it is named **in brackets** — `Delete Joint (and Bar OA)`,
-`Delete Link (and Joints C, D)` — so the row reads as one action with a consequence rather than as
-a list of things. A **Lock never grays a delete row, nor an attach row**: it says where a part is,
+is why they have them. What goes with it is named **on a second line** — `Delete Joint` with `Also removes Link OA`,
+or `Delete Link` with `Also removes Joints C, D`. This keeps the menu compact and leaves its
+keyboard shortcut visible. A **Lock never grays a delete row, nor an attach row**: it says where a part is,
 not whether it may go or what may be built onto it.
 
 ### The mechanism
@@ -275,3 +275,7 @@ whole part: the export catalog's row for it, and a sentence about the part.
 deliberately. This guide governs what the app *says*; rewriting a hundred
 explanations to change a synonym would churn a lot of carefully-worded prose for
 no reader's benefit. Do not use it in new comments, and never in the UI.
+
+### Editor bug-fix wording
+
+Use **Flip Force** for reversing the arrowhead at fixed endpoints; this reverses the physical force while the application-point disc stays on the body. Its ring means Grid; its keyway means Local. **Input** is the noun for a joint that supplies motion; the generic setup hint is “Ground a joint and set one joint as an input.” Keep specific failure explanations when setup is already complete. A context-menu refusal that needs the initial pose says “return to start.” Restarting the tutorial offers **Cancel**. A disconnected joint says “Joint is Orphaned. Drag another joint to merge it or create a new link.”

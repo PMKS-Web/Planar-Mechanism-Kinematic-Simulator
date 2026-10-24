@@ -4,7 +4,7 @@
 // its end joints, a bar `D-E`, welds at `A`, `C` and `D`, and `E` a grounded
 // pin with Driven Input on. The app used to fail to solve it, keep the
 // mechanism it had solved before the input was switched on, and report that
-// machine's blocker -- "Nothing drives this mechanism", about a drawing whose
+// machine's blocker -- "No input is set", about a drawing whose
 // joint E is plainly driven (decision S25).
 //
 // The unit suite (`src/tests/verification/cylinder-frozen-body.spec.ts`) checks
@@ -126,12 +126,12 @@ await page.waitForTimeout(600);
 let text = await drawerText();
 check(
   'with nothing driven, the drawer says nothing drives it',
-  text.includes('Nothing drives this mechanism'),
+  text.includes('No input is set'),
   text.slice(0, 160)
 );
 check(
   'and offers a joint to drive',
-  /Right-click joint [A-Z] and switch on Driven Input/.test(text),
+  /Right-click joint [A-Z] and set it as the input/.test(text),
   text.slice(0, 200)
 );
 
@@ -174,7 +174,7 @@ check(
 );
 check(
   'and never says nothing drives it',
-  readiness.every((r) => !/Nothing drives|switch on Driven Input/.test(r.said)),
+  readiness.every((r) => !/No input is set|set it as the input/.test(r.said)),
   readiness.map((r) => r.said).join(' ')
 );
 

@@ -1,3 +1,4 @@
+import { performanceBudget } from './tools/performance-budget.mjs';
 /**
  * Editing in an analysis mode (docs/analysis-mode-editing-plan.md).
  *
@@ -23,6 +24,19 @@ import { openMechanism } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 
+async function openFirstGraph(page) {
+  const header = page.locator('app-analysis-graph-section').first().locator('.graphHeader');
+  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+}
+async function openOnlyGraph(page, label) {
+  for (const header of await page.locator('.graphHeader[aria-expanded="true"]').all())
+    await header.click();
+  await page
+    .locator('app-analysis-graph-section', { hasText: label })
+    .locator('.graphHeader')
+    .first()
+    .click();
+}
 const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://localhost:4200';
 const SHOTS = 'artifacts/analysis-editing';
 mkdirSync(SHOTS, { recursive: true });
@@ -229,9 +243,24 @@ await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
 await mode('Kinematic');
 await page.locator('.playButton').click();
 await page.waitForTimeout(900);
-const moving = await jointAt('B');
-await page.mouse.move(moving.x, moving.y);
-await page.mouse.down();
+const moving = await page.locator('#joint_B').evaluate((node) => {
+  // Read and press in the same frame: the joint can outrun a protocol round trip.
+  const box = node.getBoundingClientRect();
+  const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  node.dispatchEvent(
+    new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      buttons: 1,
+      clientX: at.x,
+      clientY: at.y,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+  );
+  return at;
+});
 await page.waitForTimeout(250);
 const grabbed = await page.evaluate(
   () => window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isPlaying
@@ -283,11 +312,7 @@ await page.mouse.move(studiedJoint.x, studiedJoint.y);
 await page.mouse.down();
 await page.mouse.up();
 await page.waitForTimeout(700);
-await page
-  .locator('app-analysis-graph-section', { hasText: 'Position' })
-  .locator('.graphHeader')
-  .first()
-  .click();
+await openOnlyGraph(page, 'Position');
 await page.waitForTimeout(900);
 const curvesBefore = await page.locator('.apexcharts-series').count();
 record('one curve before any drag', curvesBefore === 2, { curvesBefore });
@@ -415,11 +440,7 @@ await page.mouse.move(watched.x, watched.y);
 await page.mouse.down();
 await page.mouse.up();
 await page.waitForTimeout(600);
-await page
-  .locator('app-analysis-graph-section', { hasText: 'Velocity' })
-  .locator('.graphHeader')
-  .first()
-  .click();
+await openOnlyGraph(page, 'Velocity');
 await page.waitForTimeout(1200);
 await fit();
 const fastHeld = await jointAt('D');
@@ -477,11 +498,7 @@ await mode('Kinematic');
   await page.mouse.down();
   await page.mouse.up();
   await page.waitForTimeout(600);
-  await page
-    .locator('app-analysis-graph-section', { hasText: 'Position' })
-    .locator('.graphHeader')
-    .first()
-    .click();
+  await openOnlyGraph(page, 'Position');
   await page.waitForTimeout(1200);
   await fit();
   const held = await jointAt('D');
@@ -544,7 +561,7 @@ await page.evaluate(() => {
 await page.waitForTimeout(900);
 const forceCards = await page.locator('app-analysis-graph-section').count();
 record('force analysis offers graphs to tune against', forceCards > 0, { forceCards });
-await page.locator('app-analysis-graph-section').first().locator('button').first().click();
+await openFirstGraph(page);
 await page.waitForTimeout(1200);
 
 const held = await jointAt('B');
@@ -579,9 +596,13 @@ record(
 record('the toggle-gap banner does not flicker under the hand', !forceOverlay.gapShown);
 // Every move here costs a full cycle solve *and* a full force solve. The
 // budget is what keeps this honest rather than a hope.
-record(`force mode holds its budget (${Math.round(perMove)}ms/move, 90ms)`, perMove < 90, {
-  perMove,
-});
+record(
+  'force mode avoids a severe timing regression',
+  performanceBudget('force drag', perMove, 90),
+  {
+    perMove,
+  }
+);
 await page.mouse.up();
 await page.waitForTimeout(1200);
 await page.screenshot({ path: `${SHOTS}/4-force.png` });
@@ -602,7 +623,7 @@ await page.evaluate(() => {
   if (driven) grid.activeObjService.updateSelectedObj(driven);
 });
 await page.waitForTimeout(900);
-await page.locator('app-analysis-graph-section').first().locator('button').first().click();
+await openFirstGraph(page);
 await page.waitForTimeout(1200);
 const axisOf = () =>
   page.evaluate(() => {
