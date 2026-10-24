@@ -54,6 +54,7 @@ import {
   punchPressFixture,
   toggleClampFixture,
 } from './force-fixtures';
+import { spinningBarFixture, weightedRockerFourBarFixture } from './inertia-fixtures';
 import {
   landingGearFixture,
   excavatorBucketFixture,
@@ -120,6 +121,7 @@ export {
   type PublishedSpeed,
 } from './fixture-payload';
 import { DEFAULT_OBJECT_SCALE, fixturePayload, type PublishedSpeed } from './fixture-payload';
+import { SPLIT_JOINT_GALLERY } from './split-joint-gallery';
 
 export interface GalleryEntry {
   name: string;
@@ -232,6 +234,20 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     // per cycle rather than 360, and 16 RPM is what puts that at 6.4 s.
     speed: { rpm: 16 },
     fixture: offsetLoadFourBarFixture(),
+  },
+  {
+    name: 'Spinning bar',
+    purpose: 'A bar pinned at one end and turning steadily: its pin pulls it round with m·ω²·r',
+    spec: 'force-solver.model-scale.spec.ts',
+    floatingSlot: false,
+    fixture: spinningBarFixture(true),
+  },
+  {
+    name: 'Four-bar with a weighted rocker',
+    purpose: 'Only the rocker has mass, so its m·a and I·α loads can be checked by hand',
+    spec: 'force-solver.model-scale.spec.ts',
+    floatingSlot: false,
+    fixture: weightedRockerFourBarFixture(),
   },
   {
     name: 'Hydraulic cylinder',
@@ -829,6 +845,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     speed: { unitsPerSecond: 0.2 },
     fixture: cylinderOnASlotFixture(),
   },
+  ...SPLIT_JOINT_GALLERY,
   // Drawings that do not run on purpose, kept beside their fixtures.
   ...MOBILITY_GALLERY,
   ...STUDENT_MISTAKE_GALLERY,

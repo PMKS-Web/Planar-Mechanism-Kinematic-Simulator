@@ -5,6 +5,7 @@ import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { ColorService } from '../../services/color.service';
 import { SettingsService } from '../../services/settings.service';
+import { MODEL_SCALE } from '../render-scale';
 import { KinematicsSolver } from './kinematic-solver';
 import { Mechanism } from './mechanism';
 import { PositionSolver } from './position-solver';
@@ -274,11 +275,15 @@ describe('the statics of a slider whose mass is the joint’s', () => {
    * is the same whatever the rider weighs, correctly. Standing the guide up puts
    * the weight along the slot, where the normal cannot reach it, so the rod has
    * to carry it back to the crank and the mass becomes visible.
+   *
+   * Drawn in model units, as the app draws it, so `crankLength` is in meters:
+   * the force solver reads moment arms in meters, and a crank one model unit
+   * long would carry a two-hundredth of the torque the hand calculation names.
    */
   function weightAlongTheGuide(mass: number, crankLength = 1): Mechanism {
     const a = new RevJoint('A', 0, 0, true, true);
-    const b = new RevJoint('B', crankLength, 0);
-    const c = new PrisJoint('C', 0, -3, false, true);
+    const b = new RevJoint('B', crankLength * MODEL_SCALE, 0);
+    const c = new PrisJoint('C', 0, -3 * MODEL_SCALE, false, true);
     c.angle_rad = Math.PI / 2;
     c.rotates = true;
     c.mass = mass;
