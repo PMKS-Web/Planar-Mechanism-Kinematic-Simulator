@@ -30,7 +30,7 @@
     align-items: center;
     gap: 0 8px;
     width: 100%;
-    padding: 6px 4px;
+    padding: 6px 0;
     border: none;
     border-radius: 4px;
     background: transparent;
@@ -97,13 +97,13 @@
 
   // The split above the plot: the app's pill, on the row's own gutter.
   .seriesSplit {
-    margin: 2px 4px 10px;
+    margin: 2px 0 10px;
   }
 
   // The height animation needs this clipped; a marker riding the playhead at
   // the plot's edge needs a little of it back.
   .graphBody {
-    padding: 0 2px 2px;
+    padding: 0 0 2px;
     overflow: clip;
     overflow-clip-margin: 30px;
   }

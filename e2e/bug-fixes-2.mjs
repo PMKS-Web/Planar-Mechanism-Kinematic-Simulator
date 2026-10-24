@@ -142,6 +142,34 @@ try {
     'release removes temporary drag traces',
     (await page.locator('#dragTraceHolder path').count()) === 0
   );
+  await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
+  await page.getByRole('button', { name: 'Path', exact: true }).click();
+  check(
+    'link Path chip agrees with its visible trace',
+    (await page.getByRole('button', { name: 'Path', exact: true }).getAttribute('aria-pressed')) ===
+      'true'
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(450);
+  const expand = page.getByRole('button', { name: 'Expand the panel', exact: true });
+  if (await expand.isVisible()) await expand.click();
+  await page.waitForTimeout(450);
+  await page.locator('.drawingChips').scrollIntoViewIfNeeded();
+  const chips = await page.locator('.drawingChips .viewButtonLabel').evaluateAll((nodes) =>
+    nodes.map((n) => ({
+      text: n.textContent.trim(),
+      width: n.clientWidth,
+      content: n.scrollWidth,
+    }))
+  );
+  check(
+    'phone drawing chips retain their complete labels',
+    chips.length === 3 && chips.every((c) => c.width >= c.content),
+    chips
+  );
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${OUT}/phone-chips.png` });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole('button', { name: 'Export Data', exact: true }).click();
   const exportPanel = page.locator('app-export-panel');
   await exportPanel.getByRole('button', { name: 'Next', exact: true }).click();
