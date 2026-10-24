@@ -383,7 +383,9 @@ record(
 const noteNow = () =>
   page.evaluate(() => {
     const bar = ng.getComponent(document.querySelector('app-playback-bar'));
-    return (bar?.rows ?? []).filter((row) => row.isMechanism).map((row) => row.note);
+    // The word the row says while running: paused it says how far it is from
+    // its start instead, so this asks for the word itself.
+    return (bar?.rows ?? []).filter((row) => row.isMechanism).map((row) => bar.noteFor(row.index));
   });
 
 record(

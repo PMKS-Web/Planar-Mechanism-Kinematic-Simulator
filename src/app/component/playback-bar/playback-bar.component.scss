@@ -303,12 +303,20 @@
   // The way to select a machine, and the only one outside the canvas. It no
   // longer has to look like a control on its own: the row it names is the
   // control, so the name is just the name, in the app's own blue.
+  // A machine's own name where it has one, which can be long: it gives way
+  // to the readings on its line and ends in an ellipsis, the whole name on
+  // its tooltip.
   .mechChip {
-    display: flex;
-    align-items: center;
+    display: block;
     height: 22px;
+    line-height: 22px;
     padding: 0;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 14em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     border: none;
     background: transparent;
     color: mat.m2-get-color-from-palette($primary-palette, 500);

@@ -118,6 +118,12 @@
       padding: 8px 0;
     }
 
+    // The machine picked in the panel beside this drawer, marked the way a
+    // selected row is, so the two read as about the same machine.
+    .sectionHeader.picked {
+      background: var(--selection);
+    }
+
     .mechLink {
       text-decoration: underline;
       text-underline-offset: 3px;

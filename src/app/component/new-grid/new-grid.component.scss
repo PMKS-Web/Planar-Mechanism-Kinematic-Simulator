@@ -235,6 +235,14 @@
     fill: var(--canvas-inert-joint);
   }
 
+  // The machines other than the one the reader picked, stepping back so the
+  // panel's machine is the one on show (MechanismService.isMutedBySelectedMechanism).
+  .link-muted,
+  .joint-muted,
+  .muted {
+    opacity: 0.3;
+  }
+
   // A force on a body the analysis modes have nothing to say about. The arrow
   // is the loudest thing on the canvas and it was still full-strength navy over
   // a machine drawn as scenery.

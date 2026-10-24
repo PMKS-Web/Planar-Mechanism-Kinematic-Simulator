@@ -265,6 +265,10 @@
           <input
             class="nameField"
             type="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
             [value]="flow.typedName"
             [placeholder]="flow.defaultName()"
             (input)="onName($event)"

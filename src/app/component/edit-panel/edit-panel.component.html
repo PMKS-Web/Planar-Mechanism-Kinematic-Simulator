@@ -17,67 +17,88 @@
       <app-multi-edit-panel></app-multi-edit-panel>
     }
 
-    @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
-      <div class="helpPanel" [attr.inert]="panelIsFrozen() || null">
-        <div class="helpTitle">Edit</div>
-        <!-- An empty grid has nothing to click, so it is not told to click. -->
-        <p class="helpLead">
-          @if (gridIsEmpty()) {
-            Draw something to edit.
-          } @else {
-            Select a joint or link on the grid to edit its properties.
-          }
-        </p>
-        <div class="helpRule"></div>
-        <div class="helpHints">
-          @if (!gridIsEmpty()) {
-            <div class="helpHint">
-              <mat-icon>touch_app</mat-icon>
-              <span
-                >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint or link to select it. Drag a
-                joint to move it.</span
-              >
-            </div>
-          }
-          <!-- The gesture named is the one this reader has. A phone has no right
-             button, and the panel that teaches the app cannot open by naming a
-             button that is not there. `press` is the word, once, from the
-             viewport service the tutorial uses for the same reason. -->
-          <div class="helpHint">
-            <mat-icon>add_circle_outline</mat-icon>
-            <span>
-              @if (gridIsEmpty()) {
-                {{ press }} the grid to add a link or a cylinder.
-              } @else {
-                {{ press }} the grid to add a link or a cylinder. {{ press }} a link to attach a
-                tracer point or a force to it.
-              }
-            </span>
-          </div>
+    <!-- Nothing selected, or a whole machine picked: on a grid that holds a
+         machine, the machines are what the panel is about -- every one in a
+         list, or the one picked -- with the ways to build on them below. An
+         empty grid, or loose parts that make no machine yet, get the bare help. -->
+    @if (
+      this.activeSrv.objType == 'Grid' ||
+      this.activeSrv.objType == 'Nothing' ||
+      this.activeSrv.objType == 'Mechanism'
+    ) {
+      @if (mechanismService.partitions.length > 0) {
+        <!-- Not inert as a whole while the mechanism plays: picking a machine
+             or going back to the list is selection, not an edit. Only what
+             edits is frozen, inside the panel. -->
+        <app-mechanism-panel [editable]="true" [frozen]="panelIsFrozen()">
+          <ng-container *ngTemplateOutlet="buildHints" />
+        </app-mechanism-panel>
+      } @else {
+        <div class="helpPanel" [attr.inert]="panelIsFrozen() || null">
+          <div class="helpTitle">Edit</div>
+          <!-- An empty grid has nothing to click, so it is not told to click. -->
+          <p class="helpLead">
+            @if (gridIsEmpty()) {
+              Draw something to edit.
+            } @else {
+              Select a joint or link on the grid to edit its properties.
+            }
+          </p>
+          <ng-container *ngTemplateOutlet="buildHints" />
         </div>
+      }
+    }
 
-        <!-- The offer hangs off the panel rather than replacing it: a student who
-           ignores it has still read the sentence about right-click, and the
-           tutorial then uses that same gesture rather than a third of its own. -->
-        @if (tutorial.offerVisible()) {
-          <div class="helpRule"></div>
-          <div class="offer">
-            <mat-icon>school</mat-icon>
-            <div class="offerText">
-              <div class="offerTitle">First time here?</div>
-              <p class="offerWhy">
-                Build a four-bar mechanism on this grid and read a velocity off it. About three
-                minutes, in five steps.
-              </p>
-              <div class="offerButtons">
-                <button class="offerButton" (click)="startTutorial()">Start Tutorial</button>
-                <button class="offerDismiss" (click)="dismissTutorial()">No thanks</button>
-              </div>
-            </div>
+    <ng-template #buildHints>
+      <div class="helpRule"></div>
+      <div class="helpHints">
+        @if (!gridIsEmpty()) {
+          <div class="helpHint">
+            <mat-icon>touch_app</mat-icon>
+            <span
+              >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint or link to select it. Drag a joint
+              to move it.</span
+            >
           </div>
         }
+        <!-- The gesture named is the one this reader has. A phone has no right
+               button, and the panel that teaches the app cannot open by naming a
+               button that is not there. `press` is the word, once, from the
+               viewport service the tutorial uses for the same reason. -->
+        <div class="helpHint">
+          <mat-icon>add_circle_outline</mat-icon>
+          <span>
+            @if (gridIsEmpty()) {
+              {{ press }} the grid to add a link or a cylinder.
+            } @else {
+              {{ press }} the grid to add a link or a cylinder. {{ press }} a link to attach a
+              tracer point or a force to it.
+            }
+          </span>
+        </div>
       </div>
-    }
+
+      <!-- The offer hangs off the panel rather than replacing it: a student who
+             ignores it has still read the sentence about right-click, and the
+             tutorial then uses that same gesture rather than a third of its own. -->
+      @if (tutorial.offerVisible()) {
+        <div class="helpRule"></div>
+        <div class="offer">
+          <mat-icon>school</mat-icon>
+          <div class="offerText">
+            <div class="offerTitle">First time here?</div>
+            <p class="offerWhy">
+              Build a four-bar mechanism on this grid and read a velocity off it. About three
+              minutes, in five steps.
+            </p>
+            <div class="offerButtons">
+              <button class="offerButton" (click)="startTutorial()">Start Tutorial</button>
+              <button class="offerDismiss" (click)="dismissTutorial()">No thanks</button>
+            </div>
+          </div>
+        </div>
+      }
+    </ng-template>
 
     <!--  BACKGROUND IMAGE PANEL: the tracing underlay is scenery, not a part, so
         it has no name to rename and nothing to lock — just where it sits, how
@@ -152,13 +173,6 @@
           </div>
         </panel-section>
       }
-    }
-
-    @if (this.activeSrv.objType == 'Mechanism') {
-      <app-mechanism-panel
-        [editable]="true"
-        [attr.inert]="panelIsFrozen() || null"
-      ></app-mechanism-panel>
     }
 
     <!--  JOINT PANEL-->

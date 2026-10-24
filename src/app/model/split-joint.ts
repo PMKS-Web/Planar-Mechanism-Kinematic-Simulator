@@ -213,6 +213,7 @@ export function splitJoint(
   original.locked = joint.locked;
   original.r = joint.r;
   original.driveSpeed = joint.driveSpeed;
+  original.machineName = joint.machineName;
   joints[joints.findIndex((candidate) => candidate === joint)] = original;
   const created: RevJoint[] = [];
   bodies.forEach((body, index) => {

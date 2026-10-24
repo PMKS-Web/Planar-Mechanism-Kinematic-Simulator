@@ -1,7 +1,8 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { MechanismFixture } from '../../test-utils/verification/fixture';
+import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { followAdvice, readDrawing } from '../../test-utils/verification/follow-advice';
 import { read } from '../../test-utils/verification/issue-text';
 import { plateGroundedEverywhereFixture } from '../../test-utils/verification/mobility-fixtures';
@@ -24,6 +25,7 @@ import {
   missingCouplerFixture,
   rockerBesideCouplerFixture,
   rockerOnTheCouplerPinFixture,
+  secondCrankOnTheInputFixture,
   rodShortOfTheCrankPinFixture,
   sixBarLinkHungBesideAJointFixture,
   STUDENT_MISTAKE_GALLERY,
@@ -88,6 +90,19 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(issues[0].title).toBe('2 degrees of freedom, needs 1');
     expect(issues[0].summary).toBe('With the input held still, link DE can still move.');
     expect(issues[0].fixes).toEqual(['Delete link DE', 'Set joint D to Welded', 'Ground joint E']);
+  });
+
+  it('does not run a drawing whose input pivot joins three bodies', () => {
+    // The solver used to pick one pair and play it, under a drawer that said
+    // the input could not be one.
+    const { machines } = readDrawing(secondCrankOnTheInputFixture());
+    expect(machines.map(({ readiness }) => readiness.ready)).toEqual([false]);
+    expect(machines[0].readiness.checks.map(read)[0].title).toBe("Joint A can't be the input");
+    const built = buildMechanism(secondCrankOnTheInputFixture());
+    const { mechanisms } = partitionMechanisms(built.joints, built.links, []);
+    const solved = new Mechanism(mechanisms[0].joints, mechanisms[0].links, [], [], false, 'cm', 1);
+    expect(solved.isMechanismValid()).toBe(false);
+    expect(solved.failure).toBe('input-refused');
   });
 
   it('names the links on an input pivot, and the one to take off it', () => {

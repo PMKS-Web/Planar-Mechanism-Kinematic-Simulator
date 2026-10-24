@@ -180,6 +180,38 @@ words are fixed where a control or a label repeats:
   part still opens with a capital (`Link AB is also grounded at joint B`); `prose-block` does it,
   through `opening`, so the model writes every part the same way.
 
+### The machines panel
+
+With nothing selected, the left panel is about the machines on the grid.
+
+| Part | Says |
+| --- | --- |
+| Several machines, none picked | `All mechanisms`, `Select one to see its details.` in Edit, then one row each: its name, its chip, a chevron, and under the name how free it is in Edit (`1 degree of freedom`) or its family in an analysis mode (`Not running` where it cannot run) |
+| One picked, or the only one | its name as the title (`Edit Mechanism 2` in Edit), `All mechanisms` with a back arrow above it when there are others; no chip. In Edit, a machine that cannot run gets `Can’t run yet. 2 things to fix before analysis. Open Setup` |
+| Sections | `Mechanism Overview`, a label-and-value list -- in Edit `Degrees of freedom`, `Links` (`3 + ground`), `Joints`, `Input joint`; in an analysis mode the same after the Family, then `Input speed` and `Cycle time` (and `Motion` where no named family says it) -- and `Links` (each link's name, its job, `Input crank`, `Coupler`, `Rocker`, and its length) |
+| The Family | a name PMKS+ matched (`Crank-rocker four-bar`); else `Six-bar linkage`, `Named by its 6 bodies, ground included. Not matched to a named type.`; else `Not recognized` |
+| A shut mode tab | tooltip `Force Analysis opens once a mechanism runs.` |
+| The first Play in Edit | a card under the Kinematic Analysis tab: `Your mechanism runs`, `Kinematic Analysis graphs the position, velocity and acceleration of any joint or link as it moves.`, `Not Now` / `Open Kinematic Analysis` |
+| Past the fourth | `Only 4 mechanisms run at once`; the list adds `Only the first 4 mechanisms are simulated.` |
+
+- **The chip is the setup drawer's chip**, word for word (`Ready`, `1 fix`, `2 to check`), and
+  pressing it opens the drawer.
+- **A family keeps its name.** `Chebyshev straight-line linkage` and `Jansen linkage` are what those
+  mechanisms are called, so the Family row says so; the ban on *linkage* is on the word standing in
+  for *mechanism*. The row is left out where nothing in PMKS+'s catalog matched: a family is a
+  finding, and a guess is worse than nothing.
+
+### A machine's name
+
+A machine is `Mechanism 2` until its author names it in Edit's machine panel (Rename); then it is
+the name, `Pump jack`. The panels and the setup drawer never show the code. The transport shows the
+name too, cut with an ellipsis where it is long, and `M2` only for a machine with no name; its
+tooltip says `Pump jack (M2)`. Its rows say the direction (`Clockwise`, `Opening`) only while
+the input is going, and `42 deg from start` when paused away from the start. A
+name follows the rules every name does (letters, numbers, spaces, hyphens, underscores,
+apostrophes and parentheses), may not repeat another machine's, and an empty one takes it back to
+the code.
+
 ### Refusals wear their reason
 
 A control a reader could reasonably expect is **grayed with the reason beside
