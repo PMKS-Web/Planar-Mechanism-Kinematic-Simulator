@@ -100,6 +100,8 @@ const DRAWING_LAYERS = [
   'linkHolder',
   'sliderHolder',
   'jointHolder',
+  'jointTagHolder',
+  'linkTagHolder',
   'pathsHolder',
   'forcesHolder',
   // Synthesis is drawing too: in that mode the positions being designed for are
@@ -720,6 +722,7 @@ export class SvgGridService {
     // every other message in the app, which meant they were silent for the
     // first twenty seconds of a session and for twenty seconds after any
     // unrelated message: the whole of the time somebody is finding their zoom.
+    if (this.movingTheViewOurselves) return;
     const drawnAt = this.getZoom() * this.settingsService.objectScale;
     // Both fixes are in this service, and the message used to name neither of
     // the buttons that hold them without offering either. Which one somebody

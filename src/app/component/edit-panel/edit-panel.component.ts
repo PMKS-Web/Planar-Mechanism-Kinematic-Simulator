@@ -1494,6 +1494,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             this.settingsService.isInputCW.next(clockwise);
           }
           this.mechanismService.updateMechanism(true);
+        } else {
+          this.notify.refusal(
+            'input.speed',
+            'Input Speed must be a nonzero number. Use Pause to stop the animation.'
+          );
         }
         this.patchInputSpeedField();
       })
