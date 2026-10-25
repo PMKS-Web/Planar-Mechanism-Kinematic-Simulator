@@ -98,27 +98,21 @@ describe('the mechanism audit regressions', () => {
   }
 
   for (const id of [3, 4, 22, 29]) {
-    it(
-      `finding #${id}: every fixed ground pin keeps exactly zero rates`,
-      () => {
-        const { mechanism, samples } = openFinding(id);
-        for (let index = 0; index < mechanism.joints.length; index++) {
-          for (const joint of mechanism.joints[index]) {
-            if (!(joint instanceof RealJoint) || joint instanceof PrisJoint || !joint.ground)
-              continue;
-            for (const property of ['Linear Joint Vel', 'Linear Joint Acc']) {
-              expect(
-                samples.sampleAt(mechanism, index, 'kinematic', '', property, joint.id).slice(0, 2),
-                `${joint.id} at ${index}`
-              ).toEqual([0, 0]);
-            }
+    it(`finding #${id}: every fixed ground pin keeps exactly zero rates`, () => {
+      const { mechanism, samples } = openFinding(id);
+      for (let index = 0; index < mechanism.joints.length; index++) {
+        for (const joint of mechanism.joints[index]) {
+          if (!(joint instanceof RealJoint) || joint instanceof PrisJoint || !joint.ground)
+            continue;
+          for (const property of ['Linear Joint Vel', 'Linear Joint Acc']) {
+            expect(
+              samples.sampleAt(mechanism, index, 'kinematic', '', property, joint.id).slice(0, 2),
+              `${joint.id} at ${index}`
+            ).toEqual([0, 0]);
           }
         }
-        // All frames of eleven parallel cranks are deliberately retained; allow
-        // the shared CI runner time for those large differentiated systems.
-      },
-      id === 29 ? 120_000 : 60_000
-    );
+      }
+    }, 60_000);
   }
 
   for (const test of [
