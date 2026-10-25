@@ -242,6 +242,37 @@ $red: var(--danger);
         height: auto;
       }
 
+      // These two actions sit inside a section heading, so they use compact
+      // heading controls rather than the full-height panel action treatment.
+      .panel-header__actions button-block #button-block.inline {
+        height: 28px;
+        min-height: 28px;
+        padding: 0 8px;
+        font-size: 12.5px;
+        letter-spacing: 0;
+
+        mat-icon {
+          width: 17px;
+          height: 17px;
+          margin: 0 4px 0 0;
+          font-size: 17px;
+          line-height: 17px;
+        }
+      }
+
+      .panel-header__actions button-block #button-block[aria-label='Duplicate Last Position'] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        min-width: 28px;
+        padding: 0;
+
+        mat-icon {
+          margin: 0;
+        }
+      }
+
       .panel-content {
         display: flex;
         flex-direction: column;
