@@ -29,18 +29,33 @@ nothing unless you can still see what it was.
 Designed with Claude Design from the first version of this brief; the mockup is the
 "Analysis Panel Prototype" in that project, and this section describes what shipped from it.
 
-**One card, a row per quantity.** The panel is a list rather than a stack of cards: each row is
-the quantity's name, its value at the pose on screen with the unit once, and a chevron. Pressing
-a row opens it in place. Joint rows are Position, Velocity, Acceleration; link rows are Angle,
-Angular velocity, Angular acceleration, then under a *Center of Mass (CoM)* heading the CoM
-position, velocity and acceleration.
+**One card, a row per quantity.** Each row shows the quantity's name, its value at the pose
+on screen with the unit once, and an indigo chevron. Pressing a row opens it in place.
+Joint kinematics remains one group: Position, Velocity, Acceleration. Link kinematics uses
+underline panel tabs: **Rotation** (Angle, Angular velocity, Angular acceleration) and
+**Center of mass** (Position, Velocity, Acceleration). Rotation is the session default; the
+choice survives changing selections and modes. Each tab remembers which graphs were expanded,
+with its first row open initially. Both link and joint forces use **Static / In-motion** tabs,
+with independent expansion choices and the existing mechanism-wide force mode.
 
-**The head.** "Kinematics for Joint C" (or "Forces for …") over "Readings at 1.26 s". While a part
-is under the hand the subtitle reads "Following your hand" and a chip on the title's line names
-the part being held — *Tuning Joint B* — which need not be the part being graphed, because a
-click selects and a drag tunes. Once a drag has been made, a **Compare with before drag** switch
-sits on the subtitle's line and shows or hides the earlier curves on every open row at once. The
-head is sticky, so the switch is at hand however far the rows have scrolled.
+**The head.** A 20px/500 title over the tabs, with no “Readings at …” subtitle on link or force
+panels. The tuning chip stays beside the title; a compact **Compare** switch at the right shows
+or hides the curves from before the last drag. Its accessible name is “Compare with before
+drag”. These controls can wrap when space is tight. Joint kinematics retains its timestamp
+subtitle and full comparison label. Explanations for parts with no reactions stay in the body.
+The title and tabs form one sticky head, keeping navigation reachable while the card scrolls.
+
+**Alignment and navigation.** Content follows a 15px gutter; rules and open-row tint sit 9px
+in. Every graph row uses the shared 13.5px type, with 6px vertical header padding. The new
+`app-tabs-block` supports 2–4 tabs, 40px height, 13.5px/500 text, and a 3px indigo underline.
+Arrow keys wrap between tabs; Home/End select the first/last and keep focus in the strip,
+without reaching canvas movement shortcuts. The caller supplies paired tab/tabpanel IDs.
+The strip uses immediate selection, including under reduced motion.
+
+**Drawing controls.** Rotation has none. The Center of mass tab has Path, Velocity and
+Acceleration controls, and shows the graph subject's CoM mark while hovered or active—even
+at zero mass and while another part is being dragged. Force panels keep all four drawing
+controls. No divider separates these controls from their graph group.
 
 **The split.** An open row with a magnitude and its components offers a two-way segmented
 control, *Magnitude* / *X & Y components*: two lines or four, never six, and never a lone

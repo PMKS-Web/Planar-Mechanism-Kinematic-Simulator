@@ -99,6 +99,76 @@ await contactSheet(`${OUT}/meter-film/*-switch.png`, `${OUT}/meter-film.png`, 4)
 await openMechanism(page, `${BASE}/?${payloads['4-Bar']}`);
 await page.locator('#linkHolder path').nth(1).click({ force: true });
 await page.getByRole('button', { name: /Kinematic Analysis/ }).click();
+await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
+const analysis = await page.locator('app-analysis-panel').evaluate((host) => {
+  const chips = [...host.querySelectorAll('.drawingChips .viewButton')];
+  const labels = [...host.querySelectorAll('.drawingChips .viewButtonLabel')];
+  const heading = host.querySelector('.panelTitleText');
+  const comRows = host.querySelector('.rowList--com');
+  const switches = host.querySelector('.drawingSwitches');
+  const rowNames = [...comRows.querySelectorAll('.graphTitle')];
+  const rowButtons = [...comRows.querySelectorAll('.graphHeader')];
+  const controlsHead = switches.querySelector('.drawingSwitchesHead');
+  const leftEdges = [heading, ...rowNames, controlsHead, switches.querySelector('.viewButton')].map(
+    (node) => node.getBoundingClientRect().left
+  );
+  return {
+    rows: new Set(chips.map((node) => Math.round(node.getBoundingClientRect().top))).size,
+    labelsFit: labels.every((node) => node.clientWidth >= node.scrollWidth),
+    heading: heading?.textContent.trim(),
+    headingSize: heading && parseFloat(getComputedStyle(heading).fontSize),
+    rowNames: rowNames.map((node) => node.textContent.replace('help_outline', '').trim()),
+    fullNames: rowButtons.map((node) => node.getAttribute('aria-label')),
+    leftSpread: Math.max(...leftEdges) - Math.min(...leftEdges),
+    rowSize: parseFloat(getComputedStyle(rowNames[0]).fontSize),
+    controlsSize: parseFloat(getComputedStyle(controlsHead).fontSize),
+    comRule: comRows && getComputedStyle(comRows, '::after').display,
+    switchRule: switches && getComputedStyle(switches).borderTopWidth,
+  };
+});
+check(
+  'CoM panel places three fully named switches in one row',
+  analysis.rows === 1 && analysis.labelsFit,
+  analysis
+);
+check(
+  'CoM tab uses the same aligned graph rows and drawing controls',
+  analysis.heading.startsWith('Kinematics for Link') &&
+    analysis.headingSize === 20 &&
+    analysis.rowNames.join('|') === 'Position|Velocity|Acceleration' &&
+    analysis.fullNames.every((name) => name.startsWith('Center of mass ')) &&
+    analysis.leftSpread < 1.5 &&
+    analysis.rowSize === 13.5 &&
+    analysis.controlsSize < analysis.rowSize &&
+    analysis.comRule === 'block' &&
+    analysis.switchRule === '0px',
+  analysis
+);
+await page.locator('.drawingChips').scrollIntoViewIfNeeded();
+await page.screenshot({ path: `${OUT}/analysis-wide.png` });
+
+await page.setViewportSize({ width: 390, height: 844 });
+const expand = page.getByRole('button', { name: 'Expand the panel', exact: true });
+if (await expand.isVisible()) await expand.click();
+await page.locator('.drawingChips').scrollIntoViewIfNeeded();
+const narrow = await page.locator('.drawingChips').evaluate((host) => ({
+  rows: new Set(
+    [...host.querySelectorAll('.viewButton')].map((node) =>
+      Math.round(node.getBoundingClientRect().top)
+    )
+  ).size,
+  labelsFit: [...host.querySelectorAll('.viewButtonLabel')].every(
+    (node) => node.clientWidth >= node.scrollWidth
+  ),
+}));
+check(
+  'three CoM switches remain legible on a narrow panel',
+  narrow.rows === 1 && narrow.labelsFit,
+  narrow
+);
+await page.screenshot({ path: `${OUT}/analysis-narrow.png` });
+await page.setViewportSize({ width: 1280, height: 900 });
+
 await openExport();
 const exportPanel = page.locator('app-export-panel');
 await exportPanel.getByRole('button', { name: 'Select All', exact: true }).click();

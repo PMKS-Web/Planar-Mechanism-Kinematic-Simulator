@@ -528,7 +528,12 @@ Not suites — import them from one.
 
 - `bug-fixes-2.mjs` — interaction-audit regressions: synthesis units/Undo and the data-entry and polish findings.
 - `pr33-followups.mjs` — pointer-specific help, compact synthesis actions, meter-scaled pose chips,
-  and context-aware export copy. Writes screenshots and a unit-change filmstrip to
-  `artifacts/pr33-followups/`.
+  responsive analysis switches, and context-aware export copy. Writes screenshots and a unit-change
+  filmstrip to `artifacts/pr33-followups/`.
 
 `template-animations.mjs` also refreshes each selected card's still from its first frame, keeping hover framing identical. Use `ONLY` to regenerate just the intended examples.
+
+- `analysis-tabs.mjs` — Rotation/Center of mass and Static/In-motion navigation, keyboard focus
+  without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
+  gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
+  filmstrip in `artifacts/analysis-tabs/`.
