@@ -79,6 +79,7 @@ try {
   await unitsFilm.during(80, 10, 'si', () =>
     page.getByRole('button', { name: 'SI (m)', exact: true }).click()
   );
+  const scale = await grid((g) => g.settings.objectScale);
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('button', { name: 'Synthesis', exact: true }).click();
   await enter('Region X', '-0.02');
@@ -86,6 +87,12 @@ try {
     'region edits preserve sub-unit dimensions',
     parseFloat(await field('Region width').inputValue()) < 0.1,
     await field('Region width').inputValue()
+  );
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  check(
+    'Undo preserves converted Object Size',
+    Math.abs((await grid((g) => g.settings.objectScale)) - scale) < 1e-6,
+    { scale, after: await grid((g) => g.settings.objectScale) }
   );
   await page.screenshot({ path: `${OUT}/synthesis-si.png` });
   await load('4-Bar');
@@ -105,6 +112,118 @@ try {
     !errors.some((e) => e?.includes('NG0100')),
     errors
   );
+  // Physical cylinder dimensions and solved samples survive every display-only route.
+  const geometry = () =>
+    grid((g) => ({
+      cylinders: g.mechanismSrv.sealedStructures().map((c) => ({
+        barrel: Math.hypot(c.inner.x - c.mountA.x, c.inner.y - c.mountA.y),
+        rod: Math.hypot(c.mountB.x - c.seal.x, c.mountB.y - c.seal.y),
+        start: c.start,
+      })),
+      points: g.mechanismSrv.joints.map((j) => [j.x, j.y]),
+      physical: g.settings.constructor.cylinderObjectScale,
+      visual: g.settings.objectScale,
+      frames: g.mechanismSrv.mechanisms.map((m) => m.joints.length),
+      samples: g.mechanismSrv.mechanisms.map((m) =>
+        m.joints.filter((_, i) => i % 25 === 0).map((js) => js.map((j) => [j.x, j.y]))
+      ),
+      masses: g.mechanismSrv.links.map((l) => [l.mass, l.massMoI]),
+    }));
+  const same = (a, b, scale = 1) => {
+    const near = (x, y) => Math.abs(x * scale - y) < 0.015;
+    return (
+      a.cylinders.every(
+        (c, i) =>
+          near(c.barrel, b.cylinders[i].barrel) &&
+          near(c.rod, b.cylinders[i].rod) &&
+          Math.abs(c.start - b.cylinders[i].start) < 0.002
+      ) &&
+      a.points.every((p, i) => p.every((v, j) => near(v, b.points[i][j]))) &&
+      near(a.physical, b.physical)
+    );
+  };
+  for (const id of ['Hydraulic_Crosshead', 'Offset_Mount_Hatch', 'Cylinder_Boom']) {
+    await load(id);
+    await grid((g) =>
+      g.activeObjService.updateSelectedObj(g.mechanismSrv.sealedStructures()[0].barrel)
+    );
+    const beforeType = await geometry();
+    await page
+      .locator('[data-hold-field="length"]')
+      .fill(String((beforeType.cylinders[0].barrel - 10) / 200));
+    await page.locator('[data-hold-field="length"]').press('Enter');
+    const typed = await geometry();
+    check(
+      `${id}: explicit Barrel Length is accepted`,
+      Math.abs(typed.cylinders[0].barrel - beforeType.cylinders[0].barrel + 10) < 0.1,
+      { before: beforeType.cylinders, after: typed.cylinders }
+    );
+    await grid((g) =>
+      g.activeObjService.updateSelectedObj(g.mechanismSrv.sealedStructures()[0].rod)
+    );
+    await page
+      .locator('[data-hold-field="length"]')
+      .fill(String((typed.cylinders[0].rod + 10) / 200));
+    await page.locator('[data-hold-field="length"]').press('Enter');
+    const authored = await geometry();
+    check(
+      `${id}: explicit Rod Length is accepted`,
+      Math.abs(authored.cylinders[0].rod - typed.cylinders[0].rod - 10) < 0.1
+    );
+    await settings();
+    const sizeFilm = filmstrip(page, `${OUT}/${id}-sizes`);
+    for (const preset of ['Fine', 'Schematic', 'Standard']) {
+      await sizeFilm.during(70, 7, preset, () =>
+        page.getByRole('button', { name: preset, exact: true }).click()
+      );
+      const now = await geometry();
+      check(
+        `${id}: ${preset} changes display only`,
+        same(authored, now) && JSON.stringify(authored.samples) === JSON.stringify(now.samples),
+        { before: authored.cylinders, after: now.cylinders, physical: now.physical }
+      );
+    }
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    // Styles are local view preferences, so Undo still addresses the typed edit.
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    check(`${id}: Undo restores the previous typed rod length`, same(typed, await geometry()));
+    await page.getByRole('button', { name: 'Redo', exact: true }).click();
+    check(`${id}: Redo restores authored lengths`, same(authored, await geometry()));
+    const beforeZoom = await geometry();
+    await grid((g) => g.svgGrid.panZoomObject.zoomBy(2));
+    await grid((g) => g.svgGrid.panZoomObject.zoomBy(0.25));
+    check(
+      `${id}: zoom cannot change document geometry or clearance`,
+      same(authored, await geometry()) && (await geometry()).visual === beforeZoom.visual
+    );
+    const query = await grid((g) => g.saveHistoryService.urlGenerationService.generateUrlQuery());
+    await load(query);
+    const restored = await geometry();
+    check(
+      `${id}: save/reload retains lengths, travel and motion`,
+      same(authored, restored) &&
+        JSON.stringify(authored.frames) === JSON.stringify(restored.frames),
+      {
+        authored: authored.cylinders,
+        restored: restored.cylinders,
+        frames: [authored.frames, restored.frames],
+      }
+    );
+    await settings();
+    await page.getByRole('button', { name: 'SI (m)', exact: true }).click();
+    check(
+      `${id}: unit conversion preserves physical dimensions`,
+      same(restored, await geometry(), 0.01),
+      { before: restored.cylinders, after: (await geometry()).cylinders }
+    );
+    await page.getByRole('button', { name: 'Metric (cm)', exact: true }).click();
+    check(`${id}: unit conversion round-trip`, same(restored, await geometry()));
+    await page.getByRole('button', { name: 'Schematic', exact: true }).click();
+    await page.waitForTimeout(220);
+    await page.screenshot({ path: `${OUT}/${id}-lines.png` });
+    await page.getByRole('button', { name: 'Standard', exact: true }).click();
+    await contactSheet(`${OUT}/${id}-sizes/*.png`, `${OUT}/${id}-size-film.png`, 7, 0.25);
+  }
   await load('4-Bar');
   await page.getByRole('button', { name: 'Synthesis', exact: true }).click();
   await page.getByRole('button', { name: /Motion — 3 positions/ }).click();

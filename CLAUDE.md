@@ -267,6 +267,8 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 
 ### Editor interaction rules
 
+- **Drawing Style is presentation.** Settings offers Standard / Fine / Schematic as one local preference. Symbols scale with the drawing between readable screen limits; Schematic simplifies cylinders and sliders as well as links. Style, zoom and Fit change no geometry, solver inputs, history, or CAD outlines. `drawingScale` is display-only; `objectScale` and `cylinderObjectScale` remain physical compatibility inputs. See [object sizing](docs/object-sizing.md).
+
 - `NumberDragDirective` lets a reader drag the numeric field’s text label vertically; the value itself retains ordinary text selection and editing. Five pixels changes one step (default 0.1; Shift is ten times finer). Escape cancels, and release commits through the existing field validation as one undo entry.
 - A compound selects as a whole on its first click, then selects the primitive under the next click, including cylinder members. `model/link-pick.ts` owns that choice. Distance to Joints stays in the joint panel: `model/joint-distances.ts` offers only neighbors in the same primitive with three or more joints, excluding cylinder members.
 - New links, cylinders, and forces have free placement bearings by default; holding Option/Alt snaps them to 15-degree increments. `placementBearing` serves preview and commit; an eligible existing joint takes precedence and gets the yellow merge ring and merge pulse.

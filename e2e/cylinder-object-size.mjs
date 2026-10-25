@@ -1,25 +1,7 @@
 /**
- * Object Size, driven the way a reader drives it (decision S29).
- *
- * The maintainer's report was *"when I re-size objects, cylinders become weird
- * visually — try a fully expanded cylinder, then reduce the object size"*. The
- * head and the clearance behind it are measured in R and the joints are not, so
- * changing the size moves the travel out from under a head that stayed where it
- * was, and the part is drawn in two pieces with daylight between the barrel's
- * mouth and the head.
- *
- * So the size is changed through the three doors a reader actually has — the
- * Settings field, the Auto-size Objects button, and a drawing that adopts a
- * size when it opens — and after every one of them this asks the same four
- * questions of every cylinder on the grid: is the head inside its own travel,
- * is the silhouette one piece (measured off the drawn paths, not off the
- * model), did any joint a reader can see move, and is *Starts at* a percentage.
- *
- * Two more things ride along, because they are the same reader looking at the
- * same part: the driven arrows keep their proportions at every zoom, and the
- * transport says *Forward* of a slider and *Opening* of a cylinder.
- *
- *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/cylinder-object-size.mjs
+ * Object Size changes presentation while cylinder travel and member lengths
+ * retain their physical scale. Check both the model and the drawn silhouette,
+ * plus Undo and the older controls that remain available before drawing styles.
  */
 
 const { chromium } = await import(
@@ -59,7 +41,7 @@ const survey = () =>
   page.evaluate(() => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const m = grid.mechanismSrv;
-    const r = 0.15 * grid.settings.objectScale;
+    const r = 0.15 * grid.settings.constructor.cylinderObjectScale;
     const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const firstNumber = (path) => Number((path.match(/-?\d+(\.\d+)?(e-?\d+)?/) ?? [NaN])[0]);
     return {
@@ -192,8 +174,8 @@ record('no joint a reader can see moved', sameJoints(open, halved), {
   after: visibleJointsOf(halved),
 });
 record(
-  'the barrel is what gave',
-  halved.cylinders[0].barrel > open.cylinders[0].barrel &&
+  'display sizing preserves both member lengths',
+  Math.abs(halved.cylinders[0].barrel - open.cylinders[0].barrel) < 1e-6 &&
     Math.abs(halved.cylinders[0].rod - open.cylinders[0].rod) < 1e-6,
   { before: open.cylinders[0], after: halved.cylinders[0] }
 );
@@ -205,19 +187,19 @@ record(
 await page.screenshot({ path: `${OUT}-halved.png` });
 
 record(
-  'a size change that repaired something is exactly one undo entry',
+  'a display size change is exactly one undo entry',
   afterSizing.index === beforeSizing.index + 1,
   { beforeSizing, afterSizing }
 );
 
-// One undo, and both the size and the barrel come back together. To a fifth of
+// One undo restores the size and preserves the barrel length. To a fifth of
 // a model unit, because a history entry is a URL and a URL rounds a coordinate
 // onto a grain of about a thousandth of a user unit.
 await pressUndo();
 const undone = await survey();
 const undoneDepth = await historyDepth();
 record(
-  'one Undo puts back the size and the barrel it repaired',
+  'one Undo restores the size with the same barrel',
   Math.abs(undone.scale - open.scale) < 1e-3 &&
     Math.abs(undone.cylinders[0].barrel - open.cylinders[0].barrel) < 0.2,
   { open: open.cylinders[0], undone: undone.cylinders[0], scale: undone.scale }
@@ -244,13 +226,13 @@ record(
   { once: once.cylinders[0], twice: twice.cylinders[0] }
 );
 
-// And up again: not a round trip, but whole at every step.
+// And up again: whole and physically unchanged at every step.
 await typeSize('1.4');
 const grown = await survey();
 record('growing the size keeps the part whole', promises(grown).allInside, grown);
 record('and keeps Starts at inside 0–100%', promises(grown).startInRange, grown.cylinders[0].start);
 record(
-  'it does not pretend the trip back up undoes the repair',
+  'growing the display also preserves the barrel length',
   Math.abs(grown.cylinders[0].barrel - once.cylinders[0].barrel) < 1e-6,
   { down: once.cylinders[0].barrel, up: grown.cylinders[0].barrel }
 );
@@ -308,7 +290,7 @@ record(
 );
 await page.screenshot({ path: `${OUT}-arrived.png` });
 
-// A barrel that holds its length does not give, and the app says so.
+// A fixed barrel stays whole without needing a geometry repair or warning.
 await drawFullyOpenCylinder();
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
@@ -328,8 +310,10 @@ record(
 );
 const said = await page.locator('.notification').allInnerTexts();
 record(
-  'and the reader is told why, naming Object Size and no hidden joint',
-  said.some((line) => /Object Size/.test(line) && /fixed at its length/.test(line)),
+  'and it stays whole without a refused resize warning',
+  promises(heldAfter).allInside &&
+    promises(heldAfter).onePiece &&
+    !said.some((line) => /fixed at its length/.test(line)),
   said
 );
 record(
