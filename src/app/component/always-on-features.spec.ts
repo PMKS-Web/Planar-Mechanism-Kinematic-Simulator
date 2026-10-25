@@ -66,7 +66,7 @@ describe('always-on force and weld UI', () => {
     active.selectedLink = bc;
     active.fakeUpdateSelectedObj();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Add force');
+    expect(fixture.nativeElement.textContent).toContain('Add Force');
 
     active.objType = 'Force';
     active.selectedForce = new Force(

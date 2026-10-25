@@ -280,14 +280,14 @@ describe('the right-click menu', () => {
       expect(split.hint).toBe('2 links');
       expect(split.disabled).toBe(false);
       const labels = rows(harness.builder.build(parts.a, noHandlers)).map((one) => one.label);
-      expect(labels.indexOf('Split Joint')).toBeLessThan(labels.indexOf('Delete entire mechanism'));
+      expect(labels.indexOf('Split Joint')).toBeLessThan(labels.indexOf('Delete Entire Mechanism'));
     });
 
     it('groups every trace directly below Locked', () => {
       const parts = fourBar(harness.mechanism);
       const labels = rows(harness.builder.build(parts.a, noHandlers)).map((r) => r.label);
       expect(labels.slice(labels.indexOf('Locked') + 1, labels.indexOf('Locked') + 5)).toEqual([
-        'Trace path',
+        'Trace Path',
         'Velocity Vectors',
         'Acceleration Vectors',
         'Force Vectors',
@@ -304,7 +304,7 @@ describe('the right-click menu', () => {
         const destructive = all.filter((one) => one.destructive);
         expect(destructive.length).toBe(2);
         expect(all.slice(-2)).toEqual(destructive);
-        expect(destructive[1].label.startsWith('Delete entire mechanism')).toBe(true);
+        expect(destructive[1].label.startsWith('Delete Entire Mechanism')).toBe(true);
       }
     });
 
@@ -531,7 +531,7 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
       for (const target of [parts.a, parts.coupler]) {
-        const machine = row(harness.builder.build(target, noHandlers), 'Delete entire mechanism')!;
+        const machine = row(harness.builder.build(target, noHandlers), 'Delete Entire Mechanism')!;
         expect(machine.destructive).toBe(true);
         expect(machine.hint).toBe('5 joints');
         expect(machine.disabled).toBe(false);
@@ -542,14 +542,14 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       // Nothing partitioned, so no part belongs to a machine — the state a
       // bar dropped on the grid on its own is in.
-      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete entire mechanism')!;
+      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete Entire Mechanism')!;
       expect(machine.refusal!.short).toBe('not in a mechanism');
     });
 
     it('takes the whole machine when the row is used', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
-      row(harness.builder.build(parts.crank, noHandlers), 'Delete entire mechanism')!.action();
+      row(harness.builder.build(parts.crank, noHandlers), 'Delete Entire Mechanism')!.action();
       expect(harness.mechanism.joints.length).toBe(0);
       expect(harness.mechanism.links.length).toBe(0);
     });
@@ -725,7 +725,7 @@ describe('the right-click menu', () => {
       harness.mechanism.mechanismTimeStep = 12;
       const paused = harness.builder.build(parts.t, noHandlers);
       expect(row(paused, 'Grounded')!.refusal!.short).toBe('return to start');
-      expect(row(paused, 'Trace path')!.disabled).toBe(false);
+      expect(row(paused, 'Trace Path')!.disabled).toBe(false);
       expect(row(paused, 'Locked')!.disabled).toBe(false);
       expect(rows(paused).find((r) => r.label.startsWith('Delete Joint'))!.disabled).toBe(false);
       const body = harness.builder.build(parts.crank, noHandlers);
@@ -744,14 +744,14 @@ describe('the right-click menu', () => {
 
       // A trace is a view of the mechanism, not a change to it -- so parking
       // mid-cycle, which is exactly when a reader wants one, leaves it live.
-      expect(row(paused, 'Trace path')!.refusal).toBeUndefined();
+      expect(row(paused, 'Trace Path')!.refusal).toBeUndefined();
 
       harness.mechanism.isPlaying = true;
       const running = harness.builder.build(parts.t, noHandlers);
       expect(row(running, 'Grounded')!.refusal!.short).toBe('animation running');
       // Including the trace, while it runs. `showCurve` is serialized, and
       // undo is blocked here -- so a toggle made now could not be taken back.
-      expect(row(running, 'Trace path')!.refusal!.short).toBe('animation running');
+      expect(row(running, 'Trace Path')!.refusal!.short).toBe('animation running');
       harness.mechanism.isPlaying = false;
     });
 
@@ -799,7 +799,7 @@ describe('the right-click menu', () => {
       // own pose-preserving restore path, so remains available.
       expect(row(model, 'Grounded')!.refusal!.short).toBe('a mechanism is mid-cycle');
       expect(harness.grid.canRestoreHistory()).toBe(true);
-      expect(row(model, 'Trace path')!.disabled).toBe(false);
+      expect(row(model, 'Trace Path')!.disabled).toBe(false);
 
       // And while it runs, both refuse, with the words that name the machine
       // rather than the shared clock the reader can see reading zero.
@@ -1027,7 +1027,7 @@ describe('the right-click menu, on a cylinder', () => {
         expect(labels(model), gone).not.toContain(gone);
       }
       expect(labels(model)).toContain('Delete Cylinder');
-      expect(labels(model)).toContain('Delete entire mechanism');
+      expect(labels(model)).toContain('Delete Entire Mechanism');
     });
 
     it('holds its own length and the whole part’s angle (decision S5)', () => {
@@ -1128,7 +1128,7 @@ describe('the right-click menu, on a cylinder', () => {
       const machine = harness.mechanism.sealedStructures()[0];
       const model = harness.builder.build(machine.seal, noHandlers);
       expect(harness.mechanism.partitions[0].ownJoints.length).toBe(4);
-      expect(row(model, 'Delete entire mechanism')!.hint).toBe('3 joints');
+      expect(row(model, 'Delete Entire Mechanism')!.hint).toBe('3 joints');
     });
 
     it('leaves Lock All counting the marks it sets that anyone can see', () => {

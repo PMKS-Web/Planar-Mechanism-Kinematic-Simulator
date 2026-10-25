@@ -540,7 +540,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   get addLabel(): string {
-    return this.design.armed ? 'Cancel' : 'Add position ' + this.nextPositionNumber;
+    return this.design.armed ? 'Cancel' : 'Add Position ' + this.nextPositionNumber;
   }
 
   /**
@@ -852,7 +852,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
 
   get primaryLabel(): string {
     if (this.primaryIsGenerate) {
-      return this.solution.generating ? 'Searching…' : 'Generate solutions';
+      return this.solution.generating ? 'Searching…' : 'Generate Solutions';
     }
     return this.insertLabel;
   }
@@ -1308,7 +1308,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
     // Which crank is turning, because with a driver fitted it is not the
     // four-bar's: naming it "crank rotation" beside a six-bar left the reader
     // to guess which of the two the transport was scrubbing.
-    const crank = this.solution.dyad() ? 'driver crank' : 'crank';
+    const crank = this.solution.dyad() ? 'input crank' : 'crank';
     return range.full
       ? `full ${crank} rotation`
       : `${crank} rocks through ${Math.round(range.to - range.from)}°`;
@@ -1329,8 +1329,8 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   get insertLabel(): string {
-    if (!this.solution.inserted) return 'Insert into grid';
-    return this.solutionIsOnGrid ? 'Inserted into grid' : 'Replace on grid';
+    if (!this.solution.inserted) return 'Insert into Grid';
+    return this.solutionIsOnGrid ? 'Inserted into Grid' : 'Replace on Grid';
   }
 
   /** Whether what is on the grid is the solution now being looked at. */
@@ -1488,7 +1488,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
 
   insertedNote(): string {
     if (this.solution.needsReinsert()) {
-      return 'Changes are in the preview. Choose Replace on grid to update the inserted mechanism.';
+      return 'Changes are in the preview. Choose Replace on Grid to update the inserted mechanism.';
     }
     const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
     return `Left on the grid as a ${kind}. Change a position and insert again to revise it.`;
