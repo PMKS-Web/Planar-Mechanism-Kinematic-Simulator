@@ -157,6 +157,43 @@ export class SvgGridService {
     const units = this.settingsService.lengthUnit.subscribe(() => (this.cursorAt = null));
     this.destroyRef.onDestroy(() => units.unsubscribe());
   }
+
+  /**
+   * Settles once the canvas has first been framed, and the frame showing it
+   * has been drawn.
+   *
+   * What the boot splash waits for. Until the first fit lands the view is the
+   * one svg-pan-zoom gives itself, fitted to the whole SVG, which put a drawing
+   * at hundreds of times its size; the splash lifting on Angular's first render
+   * showed that for a few frames on a small drawing and for over a second on a
+   * large one, before the fit snapped it out.
+   */
+  readonly firstFramed = new Promise<void>((resolve) => (this.resolveFirstFramed = resolve));
+  private resolveFirstFramed!: () => void;
+
+  /**
+   * Settles once the next fit has landed and been drawn: what the loading
+   * cover waits for after a new drawing is decoded behind it, for the same
+   * reason the splash waits for the first. Taken down with the decode, the
+   * cover showed the new drawing at the old drawing's zoom for a frame.
+   */
+  nextFramed(): Promise<void> {
+    return new Promise<void>((resolve) => this.awaitingFrame.push(resolve));
+  }
+  private awaitingFrame: (() => void)[] = [];
+
+  /**
+   * The library applies a new matrix on the next animation frame, from a
+   * callback registered before this one: by the time this runs, the matrix is
+   * on the canvas and the frame about to paint is the framed one.
+   */
+  private framed(): void {
+    const waiting = this.awaitingFrame.splice(0);
+    requestAnimationFrame(() => {
+      this.resolveFirstFramed();
+      for (const resolve of waiting) resolve();
+    });
+  }
   public panZoomObject!: SvgPanZoom.Instance;
   public CTM!: SVGMatrix;
   public viewBoxMinX: number = 0;
@@ -898,6 +935,7 @@ export class SvgGridService {
       this.viewIsFitted = true;
       this.viewIsFittedToMotion = false;
       this.chosenView = null;
+      this.framed();
       return;
     }
     this.settledFree = free;
@@ -912,6 +950,7 @@ export class SvgGridService {
     // it back as though it were still theirs. `rescueFrame` puts it back where
     // the fit was the app's idea rather than a request.
     this.chosenView = null;
+    this.framed();
   }
 
   /** The box swept by every joint over every valid solved cycle. */
@@ -960,6 +999,7 @@ export class SvgGridService {
     this.viewIsFitted = true;
     this.viewIsFittedToMotion = true;
     this.chosenView = null;
+    this.framed();
   }
 
   /**

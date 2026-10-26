@@ -17,6 +17,7 @@ import {
 import { BackgroundImageService } from 'src/app/services/background-image.service';
 import { BACKDROP_HASH, placeTemplateBackdrop } from './template-catalog';
 import { LoadingService } from 'src/app/services/loading.service';
+import { SvgGridService } from 'src/app/services/svg-grid.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -93,6 +94,7 @@ export class TemplatesComponent {
   private mechanismSrv = inject(MechanismService);
   private urlProcessor = inject(UrlProcessorService);
   private loading = inject(LoadingService);
+  private svgGrid = inject(SvgGridService);
   private backdrop = inject(BackgroundImageService);
   private design = inject(SynthesisBuilderService);
 
@@ -283,8 +285,12 @@ export class TemplatesComponent {
     // unhandled rejection would still be the console's loudest message about a
     // load that had visibly recovered.
     this.loading
-      .during('Opening mechanism…', () =>
-        this.urlProcessor.updateFromURL(content, true, true, true)
+      .during(
+        'Opening mechanism…',
+        () => this.urlProcessor.updateFromURL(content, true, true, true),
+        // Up until the new drawing is framed, not just decoded: dropped with
+        // the decode, it showed the new drawing at the old one's zoom.
+        () => this.svgGrid.nextFramed()
       )
       .then(() => this.placeBackdrop(backdrop))
       .catch((error) => console.error('Unable to open the mechanism', error));
