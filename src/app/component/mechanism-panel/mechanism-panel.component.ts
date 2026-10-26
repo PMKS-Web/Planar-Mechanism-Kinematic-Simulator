@@ -1,13 +1,19 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DoCheck, inject, input } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
+import { RealJoint } from '../../model/joint';
 import { MOST_MACHINES } from '../../model/mechanism/mechanism-partition';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { DriveControlService } from '../../services/drive-control.service';
 import { MechanismOverviewService } from '../../services/mechanism-overview.service';
+import { MechanismPanelStateService } from '../../services/mechanism-panel-state.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { ViewportService } from '../../services/viewport.service';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
 import { PartLinkComponent } from '../BLOCKS/part-link/part-link.component';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 
@@ -23,20 +29,31 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
  *
  * The same panel in Edit and in the analysis modes, because what a machine is
  * does not change with the question being asked; Edit adds Rename and Delete.
+ * In every mode the input's speed and direction can be changed from here, as
+ * they can from the input joint's own panel -- both through `DriveControlService`.
  */
 @Component({
   selector: 'app-mechanism-panel',
   templateUrl: './mechanism-panel.component.html',
   styleUrls: ['./mechanism-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ChipComponent, EditableTitleComponent, PartLinkComponent],
+  imports: [
+    MatIcon,
+    ButtonComponent,
+    ChipComponent,
+    EditableTitleComponent,
+    InputComponent,
+    PartLinkComponent,
+  ],
 })
-export class MechanismPanelComponent {
+export class MechanismPanelComponent implements DoCheck {
   protected overview = inject(MechanismOverviewService);
   protected mechanism = inject(MechanismService);
   private activeObj = inject(ActiveObjService);
   private tabs = inject(SelectedTabService);
   protected viewport = inject(ViewportService);
+  protected drive = inject(DriveControlService);
+  protected sections = inject(MechanismPanelStateService);
 
   /** Edit offers to rename and delete; the analysis modes only report. */
   readonly editable = input(false);
@@ -50,8 +67,52 @@ export class MechanismPanelComponent {
 
   protected readonly mostMachines = MOST_MACHINES;
 
-  overviewOpen = true;
-  linksOpen = true;
+  /**
+   * The Input speed field. Blur is the commit, as in every panel, so a speed
+   * half typed is not solved at each keystroke.
+   */
+  protected readonly speedForm = new FormGroup(
+    { speed: new FormControl('') },
+    { updateOn: 'blur' }
+  );
+
+  constructor() {
+    this.speedForm.controls.speed.valueChanges.subscribe((typed) => {
+      const joint = this.drivenJoint;
+      if (joint) this.drive.setSpeed(joint, Number(String(typed ?? '').trim()));
+      this.showSpeed(true);
+    });
+  }
+
+  /**
+   * Keep the field on the drive's speed, which the joint's own panel, the
+   * transport and undo all change too. Not while it is being typed in.
+   */
+  ngDoCheck(): void {
+    this.showSpeed(false);
+  }
+
+  /** The machine's driven joint, whose speed and direction this panel edits. */
+  protected get drivenJoint(): RealJoint | undefined {
+    return this.overview.drivenJoint(this.index);
+  }
+
+  protected readonly flipDirection = () => {
+    const joint = this.drivenJoint;
+    if (joint) this.drive.flip(joint);
+  };
+
+  private showSpeed(evenWhileTyping: boolean): void {
+    const joint = this.drivenJoint;
+    if (!joint) return;
+    const field = document.activeElement;
+    const typing = field instanceof HTMLInputElement && field.closest('.speedFact') !== null;
+    if (typing && !evenWhileTyping) return;
+    const text = this.drive.speedText(joint);
+    if (this.speedForm.controls.speed.value !== text) {
+      this.speedForm.controls.speed.setValue(text, { emitEvent: false });
+    }
+  }
 
   /** Whether the panel lists every machine rather than showing one. */
   protected get showsList(): boolean {
