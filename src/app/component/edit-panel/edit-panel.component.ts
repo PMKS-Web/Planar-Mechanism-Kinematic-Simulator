@@ -49,6 +49,7 @@ import { NumberUnitParserService } from 'src/app/services/number-unit-parser.ser
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
+import { DriveControlService, INPUT_SPEED_UNITS } from '../../services/drive-control.service';
 import { EditRefusal } from '../../model/edit-permission';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { Link, RealLink } from '../../model/link';
@@ -91,16 +92,6 @@ import {
   ORPHANED_JOINT,
   isOrphanedJoint,
 } from '../../model/joint-type';
-
-/**
- * Input Settings unit choices, in the order the picker shows them. The labels
- * match how the unit parser prints these units everywhere else in the app.
- */
-const INPUT_SPEED_UNITS = [
-  { unit: AngularVelocityUnit.RPM, label: 'RPM' },
-  { unit: AngularVelocityUnit.DEG_PER_SEC, label: 'deg/s' },
-  { unit: AngularVelocityUnit.RAD_PER_SEC, label: 'rad/s' },
-];
 
 @Component({
   selector: 'app-edit-panel',
@@ -153,6 +144,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /** The one place that says whether an edit may happen, and in what words. */
   /** Read from the template too: the CoM frame selector is not a form control. */
   readonly permission = inject(EditPermissionService);
+  private drive = inject(DriveControlService);
   gridUtils = inject(GridUtilsService);
   bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
@@ -429,10 +421,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     if (joint) {
       // This mechanism's drive, not the document's. A drawing can hold several
       // and turning one round must leave the others turning as they were.
-      this.mechanismService.setDriveSpeed(joint, -this.mechanismService.driveSpeedOf(joint));
-    } else {
-      this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
+      this.drive.flip(joint);
+      return;
     }
+    this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
     this.mechanismService.updateMechanism(true);
   }
 
@@ -801,21 +793,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
-   * A ram parked at one end of its travel: 0 fully closed, 1 fully open.
-   *
-   * The bound is the panel's own resolution — *Starts at* shows one decimal, so
-   * anything that reads 0.0% or 100.0% counts as parked. A tighter test would
-   * leave the field saying 100.0 beside a control still offering both
-   * directions, which is the disagreement this exists to prevent.
-   */
-  private cylinderTravelEnd(sealed: Cylinder): 0 | 1 | undefined {
-    const { start } = this.cylinderSize(sealed);
-    if (start < 5e-4) return 0;
-    if (start > 1 - 5e-4) return 1;
-    return undefined;
-  }
-
-  /**
    * A ram at a stop has one way to go, so its direction stops being a choice.
    *
    * Not a refusal — the control is grayed rather than left to be pressed and
@@ -825,7 +802,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   get cylinderDirectionForced(): boolean {
     const sealed = this.sealCylinder;
-    return !!sealed && !!sealed.seal.input && this.cylinderTravelEnd(sealed) !== undefined;
+    return !!sealed && !!sealed.seal.input && this.drive.travelEnd(sealed) !== undefined;
   }
 
   /**
@@ -838,7 +815,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   private syncCylinderDirection(sealed: Cylinder): void {
     if (!sealed.seal.input) return;
-    const end = this.cylinderTravelEnd(sealed);
+    const end = this.drive.travelEnd(sealed);
     if (end === undefined) return;
     const wantsRetract = end === 1;
     const signed = this.mechanismService.driveSpeedOf(sealed.seal);
@@ -1472,9 +1449,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         // The unit comes from the picker beside the field, never from the text, so
         // this reads as a plain number rather than going through the unit parser.
         const typed = Number(String(val ?? '').trim());
-        // A rejected value changes nothing, so it must not mint an undo entry.
-        if (Number.isFinite(typed) && typed !== 0) {
-          const joint = this.drivenJoint;
+        const joint = this.drivenJoint;
+        if (joint) {
+          this.drive.setSpeed(joint, typed);
+        } else if (Number.isFinite(typed) && typed !== 0) {
+          // No driven joint selected: the document-wide default, which the
+          // next joint switched on starts from.
           const magnitude = this.isSliderInput
             ? Math.abs(typed)
             : this.nup.convertAngularVelocity(
@@ -1482,25 +1462,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
                 this.settingsService.inputSpeedUnit.value,
                 AngularVelocityUnit.RPM
               );
-          // The field carries magnitude; a minus sign reads as "the other way",
-          // so -20 becomes 20 with the direction flipped.
-          const wasClockwise = turnsClockwise(this.mechanismService.driveSpeedOf(joint));
-          const clockwise = typed < 0 ? !wasClockwise : wasClockwise;
-          if (joint) {
-            this.mechanismService.setDriveSpeed(joint, speedTurning(clockwise, magnitude));
-          } else if (this.isSliderInput) {
+          const clockwise =
+            typed < 0
+              ? !this.settingsService.isInputCW.value
+              : this.settingsService.isInputCW.value;
+          if (this.isSliderInput) {
             this.settingsService.linearInputSpeed.next(magnitude);
-            this.settingsService.isInputCW.next(clockwise);
           } else {
             this.settingsService.inputSpeed.next(magnitude);
-            this.settingsService.isInputCW.next(clockwise);
           }
+          this.settingsService.isInputCW.next(clockwise);
           this.mechanismService.updateMechanism(true);
         } else {
-          this.notify.refusal(
-            'input.speed',
-            'Input Speed must be a nonzero number. Use Pause to stop the animation.'
-          );
+          this.drive.refuseSpeed();
         }
         this.patchInputSpeedField();
       })

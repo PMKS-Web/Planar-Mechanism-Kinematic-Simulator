@@ -24,12 +24,10 @@ export interface LinkRow {
   name: string;
   role: string;
   /**
-   * How big it is: a bar's length; a three-joint plate's three sides; for more
-   * joints than that, how many, since one number cannot say a plate's shape.
+   * How big it is: a bar's length, or for a plate how many joints it has,
+   * since no one number says a plate's shape.
    */
   length: string;
-  /** Each span by the joints it runs between, for the tooltip. */
-  spans: string;
 }
 
 /** Whether a machine runs, as the chip beside its name says it everywhere. */
@@ -80,8 +78,31 @@ export class MechanismOverviewService {
       .filter((name): name is string => !!name);
   }
 
+  /** Whether it has been solved and runs: what its family and motion are read off. */
   ready(index: number): boolean {
     return this.mechanism.mechanisms[index]?.isMechanismValid() ?? false;
+  }
+
+  /**
+   * Whether something stops it running. Not the same as "not ready": a large
+   * drawing in Edit is not solved until Play is pressed, so it is not ready and
+   * has nothing wrong with it either -- and a banner saying it could not run
+   * with "0 things to fix" was the two answers contradicting each other.
+   */
+  blocked(index: number): boolean {
+    return this.blockers(index) > 0;
+  }
+
+  /** True while the drawing is too large to solve in Edit before Play is pressed. */
+  unsolved(): boolean {
+    return this.mechanism.solvingIsDeferred;
+  }
+
+  /** The joint that drives this machine, whose speed and direction it runs at. */
+  drivenJoint(index: number): RealJoint | undefined {
+    return this.mechanism.partitions[index]?.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
   }
 
   /** How many things stop it running. */
@@ -160,7 +181,7 @@ export class MechanismOverviewService {
           // barrel mount carries the buried inner end in its id (D14, S11).
           name: this.mechanism.visibleBodyName(link),
           role: job ? panelRole(job) : jobs ? '' : heldAs(link),
-          ...this.sizeOf(link),
+          length: this.sizeOf(link),
         };
       });
   }
@@ -186,48 +207,41 @@ export class MechanismOverviewService {
 
   /**
    * A link's size, in the units the mechanism is drawn in, over the joints a
-   * reader can see on it. A bar has one length. A plate of three joints has
-   * three sides, and quoting one of them -- end to end, whichever two the list
-   * happened to hold first -- described a triangle by an arbitrary edge. Past
-   * three, the spans are not sides and there are too many to list in a row,
-   * so the row says how many joints and the tooltip has every span.
+   * reader can see on it. A bar has one length. A plate has as many spans as
+   * pairs of joints, and listing them -- or picking one -- describes its shape
+   * badly in a row, so the row says how many joints it has instead.
    */
-  private sizeOf(link: RealLink): { length: string; spans: string } {
+  private sizeOf(link: RealLink): string {
     const shown = new Set(this.mechanism.visibleJoints().map((joint) => joint.id));
     const joints = link.joints.filter((joint) => shown.has(joint.id));
-    if (joints.length < 2) return { length: '—', spans: '' };
-    const unit = this.settings.lengthUnit.value;
-    const pairs = joints.flatMap((a, i) => joints.slice(i + 1).map((b) => [a, b] as const));
-    const spans = pairs.map(([a, b]) => ({
-      name: `${a.name || a.id}${b.name || b.id}`,
-      value: Math.hypot(b.x - a.x, b.y - a.y),
-    }));
-    const said = spans.map(
-      (span) => `${span.name} ${this.nup.formatModelLength(span.value, unit)}`
+    if (joints.length < 2) return '—';
+    if (joints.length > 2) return `${joints.length} joints`;
+    const [a, b] = joints;
+    return this.nup.formatModelLength(
+      Math.hypot(b.x - a.x, b.y - a.y),
+      this.settings.lengthUnit.value
     );
-    if (joints.length === 2) {
-      return { length: this.nup.formatModelLength(spans[0].value, unit), spans: '' };
-    }
-    if (joints.length === 3) {
-      // One unit for the three, after the last, as a row has room for.
-      const numbers = spans.map((span) => this.nup.formatModelLength(span.value, unit));
-      const suffix = numbers[0].replace(/^[-\d.,\s]+/, '');
-      const bare = numbers.map((number) => number.slice(0, number.length - suffix.length).trim());
-      return { length: `${bare.join(' · ')} ${suffix}`.trim(), spans: said.join(' · ') };
-    }
-    return { length: `${joints.length} joints`, spans: said.join(' · ') };
   }
 }
 
-/** The facts Edit shows: the count, what it is built from, and what drives it. */
-const BUILDING_FACTS = new Set(['Degrees of freedom', 'Links', 'Joints', 'Input joint']);
+/**
+ * The facts Edit shows: the count, what it is built from, and what drives it
+ * and how fast -- the speed is a setting, so it is offered here to change.
+ */
+const BUILDING_FACTS = new Set([
+  'Degrees of freedom',
+  'Links',
+  'Joints',
+  'Input joint',
+  'Input speed',
+]);
 
 /**
  * The facts the analysis modes show under the Family: the same, and the
  * input's speed beside the cycle time it sets (60 / rpm), so a student can
  * check one against the other.
  */
-const ANALYZING_FACTS = new Set([...BUILDING_FACTS, 'Input speed', 'Cycle time']);
+const ANALYZING_FACTS = new Set([...BUILDING_FACTS, 'Cycle time']);
 
 /** Red if anything stops it running, amber if it runs with something to check, green if not. */
 export function chipOf(issues: readonly SetupIssue[]): MachineChip {
