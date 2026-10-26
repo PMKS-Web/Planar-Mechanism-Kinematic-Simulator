@@ -8,6 +8,12 @@ import { PrisJoint } from '../../app/model/joint';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
 /**
+ * The linear input speed every published payload was written at before the
+ * app's default fell from five units a second to one.
+ */
+const PUBLISHED_LINEAR_SPEED = 5;
+
+/**
  * Turning a fixture into the query string the app opens it from.
  *
  * A fixture is a TypeScript object and the app only speaks URLs, so every
@@ -274,7 +280,11 @@ export function fixturePayload(
     // per call, so nothing here leaks into the next mechanism's payload.
     const settings = new SettingsService();
     if (speed.rpm !== undefined) settings.inputSpeed.next(speed.rpm);
-    if (speed.unitsPerSecond !== undefined) settings.linearInputSpeed.next(speed.unitsPerSecond);
+    // The speed the library and the gallery were published at, where a
+    // fixture names none. The app's own default fell to one unit a second
+    // for new drawings; a published mechanism keeps the payload it was
+    // tuned at, byte for byte, until someone retunes it on purpose.
+    settings.linearInputSpeed.next(speed.unitsPerSecond ?? PUBLISHED_LINEAR_SPEED);
     return urlGeneratorFor(
       {
         joints: built.joints,

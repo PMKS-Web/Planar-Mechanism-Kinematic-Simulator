@@ -79,7 +79,7 @@ record(
 );
 record(
   'and the panel reports what it is',
-  /Degrees of freedom[\s\S]*Driven joint[\s\S]*Cycle time/.test(text),
+  /Degrees of freedom[\s\S]*Input joint[\s\S]*Cycle time/.test(text),
   text
 );
 record('with a line per link', (await page.locator('.linkRow').count()) >= 3);

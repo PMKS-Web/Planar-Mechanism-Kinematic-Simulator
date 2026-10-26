@@ -47,6 +47,15 @@ Open it before debugging anything about a mechanism, a unit, a direction or an e
 - **Do not assume mechanism index 0.** One drawing can hold several machines, each with its own
   input, speed and playback row. Ask `partitions`. `mechanisms[0]` is not necessarily the master —
   `masterMechanism()` is, and the transport steps by *its* frame count.
+- **What makes two machines one is a shared joint, a grounded pivot included.** Chains on pivots
+  of their own are separate machines; a link hung off a pivot the linkage already uses is part of
+  that linkage, and it runs or fails with it. It used to be a machine of its own, which ran the
+  linkage and left the reader's extra link beside it as though it had been meant. Only the ground
+  itself does not join: were it to, every library drawing with two machines would be one.
+- **Where one linkage is drawn as two machines**, the setup drawer asks for the join before
+  anything else (`join-machines.ts`): a joint dropped beside another, a free end short of a joint,
+  or a link never drawn between two free ends -- each counted on the two machines together, and
+  offered only where they come out one machine that the input drives.
 - **A cycle's last sample repeats the first**, and the period *is* the last sample's time. A step
   that lands exactly on the period wraps to zero, so the final frame is reachable only by accident
   unless you index frames rather than add time.
@@ -74,8 +83,9 @@ Open it before debugging anything about a mechanism, a unit, a direction or an e
 direction: it charges twice for constraints that say the same thing, so a linkage whose redundancy
 is *geometric* comes out too low. The textbook case gets drawn here — a parallelogram with a third
 parallel crank counts as zero and turns perfectly well, because the third crank repeats what the
-first two already said. So when the count says a mechanism cannot move, and only then,
-`model/mechanism/mobility.ts` asks the drawing instead: **freedoms = coordinates − rank(J)**, over
+first two already said. The same redundancy can hide a freedom from a count that reads one: a
+duplicated constraint somewhere pays for a motion nothing holds somewhere else. So
+`model/mechanism/mobility.ts` asks the drawing every time: **freedoms = coordinates − rank(J)**, over
 three coordinates per moving body and two rows per joint.
 
 **A rank deficiency is not a motion, and believing it is will break a working app.** It says the
@@ -86,11 +96,13 @@ and put back together — if the gap that opens has a part no first-order correc
 a tangency and the freedom is dropped. Two existing specs (`slide-mobility`, `motiongen-gripper`)
 encode exactly that case and are what caught it.
 
-Two rules keep the whole thing conservative, and both matter:
+One rule keeps it honest, and one keeps it conservative:
 
-- The geometry is asked **only when the count says < 1**, so nothing the count already gets right can
-  be reached.
-- Its answer is taken **only when it is ≥ 1** — a rescue, never a demotion. Where both agree nothing
+- The geometry's answer is taken **wherever it finds more than the count** (decision S30). The
+  library's Cylinder Gripper once counted 1 with nothing fixing its carriage's height, and ran
+  only because the solver kept the carriage where it was drawn; that is a freedom decided for the
+  reader rather than by the drawing.
+- It is taken **only when it is ≥ 1** — never a demotion. Where both agree nothing
   moves, Gruebler's own number is the more useful: `-2` says how much has to come out, and a flat
   zero from a rank count says only that it is stuck. `e2e/phase1-drag.mjs` pins that.
 
@@ -106,17 +118,13 @@ remove all three freedoms between them — and that is a redundancy Gruebler can
 charges for the slot row, counts **0**, and the geometry rescues it to **1**. One is right: the
 pair is rigid to itself and turns as one body about whatever grounds it.
 
-**And the third way the count is not the answer: it counts the drawing, and a reader means the
-machine.** A cylinder nothing drives and nothing moves is a strut — a ram with its valves shut — so
-a triangle of three of them turns as one rigid body even though Gruebler counts three freedoms and
-is right to. `model/mechanism/cylinder-hold.ts` decides which passive rams are *held* by asking the
-**same Jacobian** one more question: hold the driven coordinate still, and can this slide still
-move? A ram that can is a length nothing is deciding and it holds; a ram that cannot is a follower
-the machine itself moves, and it is left alone (decision S28). A held ram is then merged into one
-body by the same `assignBodies` call a frozen one is, and the count is taken of what results — so
-`Degrees of freedom` is the machine's mobility, and the drawer's note is what explains the
-difference. It fires **only where the count is above one**, which is a drawing that refuses to run,
-so nothing that animates today is touched.
+**A cylinder nothing drives is not a strut.** It is a sliding joint, and its freedom counts like
+any Prismatic joint's: a four-bar whose coupler is a passive ram counts two and is refused, with
+the drawer naming the cylinder as the part that is loose (decision S30). For a while a passive ram
+was taken to hold the length it was drawn at wherever the machine did not move it (S28), so a
+triangle of three rams turned as one rigid body; that rule was withdrawn because it made the count
+disagree with the drawing, and taught a student that a cylinder is a bar. The only cylinder that
+adds no freedom is S25's, with both ends on one rigid body.
 
 The projection in `outsideRange` orthogonalizes the Jacobian's columns against each other before
 projecting. Subtracting each column in turn without that leaves part of the span behind and reports

@@ -1,67 +1,103 @@
+// joint.ts first: the model modules form an import cycle that only
+// initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
-import { MechanismService } from '../../app/services/mechanism.service';
+import { MODEL_SCALE } from '../../app/model/render-scale';
+import { createMechanismHarness, MechanismHarness } from '../../test-utils/mechanism-harness';
 
 // §6: "this linkage is not valid" is true of every failure and useful for none
-// of them. An excavator boom is three cylinders and therefore three degrees of
-// freedom, which the plan named as the most likely disappointment once
-// cylinders existed -- so the reason has to name the number, or the joints, or
-// whatever it actually is.
+// of them. The one-line reason names the number, or the joint, or whatever it
+// actually is -- and it is the setup drawer's own first blocker, title and
+// summary, rather than a second set of sentences free to drift from the first.
 
-/** A service standing on its own, with whatever joints and links are given. */
-function serviceWith(joints: RealJoint[], links: RealLink[]): MechanismService {
-  const service = Object.create(MechanismService.prototype) as MechanismService;
-  Object.assign(service, { joints, links, forces: [], mechanisms: [] });
-  return service;
+const S = MODEL_SCALE;
+
+/** A pin, grounded or driven by name rather than by argument position. */
+function pin(id: string, x: number, y: number, flags: { ground?: boolean; input?: boolean } = {}) {
+  const joint = new RevJoint(id, x * S, y * S);
+  joint.ground = flags.ground ?? false;
+  joint.input = flags.input ?? false;
+  return joint;
 }
 
-const bar = (id: string, joints: RealJoint[]) => {
-  const link = new RealLink(id, joints, 1, 1);
-  joints.forEach((joint) => joint.links.push(link));
-  return link;
-};
+/** Joints and bars into a real service, then the drawing rebuilt. */
+function drawing(harness: MechanismHarness, joints: RealJoint[], bars: [number, number][]) {
+  bars.forEach(([i, j]) => {
+    const link = new RealLink(joints[i].id + joints[j].id, [joints[i], joints[j]]);
+    joints[i].links.push(link);
+    joints[j].links.push(link);
+    joints[i].connectedJoints.push(joints[j]);
+    joints[j].connectedJoints.push(joints[i]);
+    harness.service.links.push(link);
+  });
+  harness.service.joints.push(...joints);
+  harness.service.updateMechanism();
+  return harness.service;
+}
 
 describe('why a mechanism will not run', () => {
   it('names the degrees of freedom when there are too many', () => {
-    const a = new RevJoint('A', 0, 0, false, true);
-    const b = new RevJoint('B', 1, 0);
-    const service = serviceWith([a, b], [bar('AB', [a, b])]);
-    a.input = true;
-    // A bar on one ground pin: two degrees of freedom short of nothing, and one
-    // input cannot drive them.
-    (service as unknown as { mechanisms: unknown[] }).mechanisms = [
-      { dof: 2, isMechanismValid: () => false } as never,
-    ];
-
-    const reason = service.invalidReason();
-    expect(reason).toContain('2 degrees of freedom');
-    expect(reason).toContain('one input');
+    const service = drawing(
+      createMechanismHarness(),
+      [pin('A', 0, 0, { ground: true, input: true }), pin('B', 1, 0), pin('C', 2, 0)],
+      [
+        [0, 1],
+        [1, 2],
+      ]
+    );
+    expect(service.invalidReason()).toBe(
+      '2 degrees of freedom, needs 1. With the input held still, link BC can still move.'
+    );
   });
 
-  it('explains how to assign the missing input', () => {
-    const a = new RevJoint('A', 0, 0, false, true);
-    const b = new RevJoint('B', 1, 0);
-    const service = serviceWith([a, b], [bar('AB', [a, b])]);
-    (service as unknown as { mechanisms: unknown[] }).mechanisms = [
-      { dof: 1, isMechanismValid: () => false } as never,
-    ];
-
-    expect(service.invalidReason()).toContain('Set one joint as an input');
+  it('says the input is missing', () => {
+    const service = drawing(
+      createMechanismHarness(),
+      [
+        pin('A', 0, 0, { ground: true }),
+        pin('B', 0, 1),
+        pin('C', 3, 2),
+        pin('D', 4, 0, { ground: true }),
+      ],
+      [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+      ]
+    );
+    expect(service.invalidReason()).toBe('No input is set. Nothing drives the motion yet.');
   });
 
   it('names the slider that has nowhere to slide', () => {
-    const pin = new RevJoint('C', 0, 0);
-    const slider = new PrisJoint('P', 0, 0);
-    const service = serviceWith([pin, slider], []);
-    expect(service.invalidReason()).toContain('nothing to slide along');
+    const slider = new PrisJoint('C', 3 * S, 0);
+    slider.detach();
+    const service = drawing(
+      createMechanismHarness(),
+      [pin('A', 0, 0, { ground: true, input: true }), pin('B', 0, 1), slider],
+      [
+        [0, 1],
+        [1, 2],
+      ]
+    );
+    expect(service.invalidReason()).toContain('Slider C has no slot.');
   });
 
   it('says nothing at all when the mechanism is fine', () => {
-    const a = new RevJoint('A', 0, 0, false, true);
-    const service = serviceWith([a], []);
-    (service as unknown as { oneValidMechanismExists: () => boolean }).oneValidMechanismExists =
-      () => true;
+    const service = drawing(
+      createMechanismHarness(),
+      [
+        pin('A', 0, 0, { ground: true, input: true }),
+        pin('B', 0, 1),
+        pin('C', 3, 2),
+        pin('D', 4, 0, { ground: true }),
+      ],
+      [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+      ]
+    );
     expect(service.invalidReason()).toBeUndefined();
   });
 });

@@ -62,11 +62,9 @@ function byJointId(a: string, b: string): number {
  * anything pairing held per-machine state across a rebuild keys on this
  * instead, and gets to discard the entries whose machine has gone.
  *
- * The lowest id among the joints the machine owns and the world does not.
- * Grounded joints are shared with every machine bolted to the same point, so
- * they cannot tell two cranks on one pivot apart; a moving joint belongs to
- * exactly one component by construction, because a joint between two moving
- * bodies is precisely what unions them.
+ * The lowest id among the joints the machine owns and the world does not: a
+ * moving joint belongs to exactly one component by construction, because a
+ * joint between two moving bodies is precisely what unions them.
  */
 export function partitionKey(partition: MechanismPartition): string {
   const moving = partition.ownJoints
@@ -80,11 +78,12 @@ export function partitionKey(partition: MechanismPartition): string {
  * Split a drawing into the machines it actually contains.
  *
  * Two bodies belong to the same mechanism when a joint holds them to each
- * other. Ground is not such a joint: it anchors what meets it without joining
- * those things to one another, so two cranks pinned to the same fixed point
- * turn independently and are two mechanisms, not one. Were ground allowed to
- * connect, every grounded chain in the drawing would collapse into a single
- * component and the whole distinction would be lost.
+ * other, and a grounded pivot is such a joint: two cranks pinned to the same
+ * fixed point are one mechanism, with a freedom each. The ground itself is not:
+ * chains that reach it at pivots of their own are separate machines, which is
+ * what lets one drawing hold several, each with its own input. Were the ground
+ * allowed to connect, every grounded chain in the drawing would collapse into a
+ * single component and the whole distinction would be lost.
  *
  * A component that reaches ground is a mechanism — even one whose mobility is
  * wrong, because "your mechanism is 2-DoF" is a far more useful thing to say
@@ -112,23 +111,16 @@ export function partitionMechanisms(
 
   const realJoints = joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
 
-  // A grounded joint anchors; it does not connect. Everything else joins the
-  // moving bodies that meet at it into one machine.
-  //
-  // "Grounded" has to mean *pinned* here rather than merely flagged. A grounded
-  // slider holds a line, not a point: the joint travels along that line, so two
-  // bodies meeting there share a moving point and belong to one machine. The
-  // coincident pin used to do that unioning and carried no ground flag of its
-  // own; with the slider as the joint, reading the flag alone cuts every chain
-  // that runs through one -- a parallel gripper whose two halves hang off its
-  // ram fell into two machines, and the transport then played half a gripper.
-  const pinnedDown = (joint: RealJoint): boolean => joint.ground && !(joint instanceof PrisJoint);
-  realJoints
-    .filter((joint) => !pinnedDown(joint))
-    .forEach((joint) => {
-      const moving = [...bodiesAt(joint)].filter((body) => parent.has(body));
-      moving.slice(1).forEach((body) => union(moving[0], body));
-    });
+  // Every joint joins the moving bodies that meet at it into one machine, a
+  // grounded pivot included. Two chains on one pivot were two machines once, on
+  // the grounds that neither can feel the other; but a reader who hangs a link
+  // off a pivot the linkage already uses has drawn one thing, and splitting it
+  // ran the linkage and set the link aside, when the linkage as drawn does not
+  // run. Chains on pivots of their own are still machines of their own.
+  realJoints.forEach((joint) => {
+    const moving = [...bodiesAt(joint)].filter((body) => parent.has(body));
+    moving.slice(1).forEach((body) => union(moving[0], body));
+  });
 
   const groundedComponents = new Set<string>();
   realJoints.forEach((joint) => {
@@ -252,8 +244,8 @@ export function partitionMechanisms(
     });
   }
 
-  // A grounded joint sits on the frame, so it belongs to every machine bolted
-  // to it — added by body above, and by name here for a joint whose links all
+  // A grounded joint sits on the frame, so it belongs to the machine bolted to
+  // it — added by body above, and by name here for a joint whose links all
   // turned out to be world.
   realJoints
     .filter((joint) => joint.ground)
