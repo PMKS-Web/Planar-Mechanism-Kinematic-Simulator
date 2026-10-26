@@ -77,7 +77,9 @@
         >
           Edit
         </editable-title-block>
-        @if (!overview.ready(index)) {
+        <!-- Only when something is wrong. A large drawing waiting for Play is
+             not ready and not broken, and said "0 things to fix" here. -->
+        @if (overview.blocked(index)) {
           <div class="mechBanner" role="status">
             <mat-icon>error_outline</mat-icon>
             <span
@@ -94,15 +96,16 @@
         </div>
       }
 
+      <!-- Folded or not, the choice holds across modes for the session. -->
       <button
         class="sectionHeader"
-        [attr.aria-expanded]="overviewOpen"
-        (click)="overviewOpen = !overviewOpen"
+        [attr.aria-expanded]="sections.overviewOpen()"
+        (click)="sections.overviewOpen.set(!sections.overviewOpen())"
       >
         <span>Mechanism Overview</span>
-        <mat-icon>{{ overviewOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        <mat-icon>{{ sections.overviewOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
-      @if (overviewOpen) {
+      @if (sections.overviewOpen()) {
         <div class="factList">
           <!-- Analyzing, the Family leads, and never hides: a name PMKS+
                matched, its body count, or that it could not say. -->
@@ -117,23 +120,55 @@
             </div>
           }
           @for (fact of overview.facts(index, editable()); track fact.label) {
-            <div class="fact">
-              <span class="factLabel">{{ fact.label }}</span>
-              <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
-            </div>
+            @if (fact.label === 'Input speed' && drivenJoint; as joint) {
+              <!-- A setting, so it is offered to change: the same speed and
+                   direction the input joint's own panel edits. -->
+              <div class="fact speedFact">
+                <span class="factLabel">{{ fact.label }}</span>
+                <div class="speedControls" [attr.inert]="frozen() || null">
+                  <input-block
+                    cell
+                    class="speedField"
+                    [formGroup]="speedForm"
+                    _formControl="speed"
+                    [unit]="drive.speedUnitLabel(joint)"
+                    tooltip="How fast the input drives the mechanism. Negative reverses it."
+                  />
+                  <button-block
+                    inline
+                    [icon]="drive.directionIcon(joint)"
+                    [disabled]="drive.directionLocked(joint)"
+                    [click]="flipDirection"
+                    tooltip="Reverse the input's direction"
+                    >{{ drive.directionLabel(joint) }}</button-block
+                  >
+                </div>
+              </div>
+            } @else {
+              <div class="fact">
+                <span class="factLabel">{{ fact.label }}</span>
+                <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
+              </div>
+            }
+          } @empty {
+            @if (overview.unsolved()) {
+              <!-- A large drawing is solved when Play is pressed, not at every
+                   edit, and these facts are read off that solve. -->
+              <p class="factNote">This drawing's motion is worked out when you press Play.</p>
+            }
           }
         </div>
       }
 
       <button
         class="sectionHeader"
-        [attr.aria-expanded]="linksOpen"
-        (click)="linksOpen = !linksOpen"
+        [attr.aria-expanded]="sections.linksOpen()"
+        (click)="sections.linksOpen.set(!sections.linksOpen())"
       >
         <span>Links</span>
-        <mat-icon>{{ linksOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        <mat-icon>{{ sections.linksOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
-      @if (linksOpen) {
+      @if (sections.linksOpen()) {
         <!-- Two columns: the name, then its job and its size in tabular
              figures, so the lengths line up. By position, not by name: two
              bodies can share a name once a welded body stops being called
@@ -144,11 +179,10 @@
               ><part-link [part]="link.part">{{ link.name }}</part-link></span
             >
             <!-- The job and the size share a line when they fit, and the size
-                 wraps under the job, still flush right, only when they do not:
-                 a plate's three sides at Edit's width. -->
+                 wraps under the job, still flush right, only when they do not. -->
             <span class="linkRest">
               <span class="linkRole">{{ link.role }}</span>
-              <span class="linkLength" [attr.title]="link.spans || null">{{ link.length }}</span>
+              <span class="linkLength">{{ link.length }}</span>
             </span>
           }
         </div>

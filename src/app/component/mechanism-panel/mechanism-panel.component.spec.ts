@@ -7,7 +7,9 @@ import { PART_LINK_TARGET } from '../BLOCKS/part-link/part-link-target';
 import { TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { RealJoint } from '../../model/joint';
 import { MechanismService } from '../../services/mechanism.service';
+import { MechanismPanelStateService } from '../../services/mechanism-panel-state.service';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismPanelComponent } from './mechanism-panel.component';
 
@@ -24,6 +26,7 @@ async function createPanel(payload: string, editable = false) {
   const data = harness;
   const tabs = {
     getCurrentTab: () => (editable ? TabID.EDIT : TabID.ANALYZE),
+    isAnalysisMode: () => !editable,
   } as unknown as SelectedTabService;
   await TestBed.configureTestingModule({
     imports: [NoopAnimationsModule, MechanismPanelComponent],
@@ -92,6 +95,7 @@ describe('MechanismPanelComponent', () => {
       'Links',
       'Joints',
       'Input joint',
+      'Input speed',
     ]);
     fixture.destroy();
   });
@@ -128,6 +132,72 @@ describe('MechanismPanelComponent', () => {
     expect(rows[1]).toContain('1 degree of freedom');
     expect(rows[1]).not.toContain('M2');
     expect(rows[1]).not.toContain('Peaucellier');
+    fixture.destroy();
+  });
+
+  it('counts the ground as one of the links', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
+    const labels = text(fixture, '.fact .factLabel');
+    const values = text(fixture, '.fact .factValue');
+    expect(values[labels.indexOf('Links')]).toBe('4 (including ground)');
+    fixture.destroy();
+  });
+
+  it('gives a plate its joint count rather than its sides, and no tooltip', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Watt_I'], true);
+    const sizes = text(fixture, '.linkLength');
+    expect(sizes).toContain('3 joints');
+    expect(sizes.some((size) => size.includes('·'))).toBe(false);
+    expect(fixture.nativeElement.querySelector('.linkLength[title]')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('raises the banner only when something stops the machine running', async () => {
+    const { fixture, data } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
+    expect(fixture.nativeElement.querySelector('.mechBanner')).toBeNull();
+    // Unground the rocker's pivot: now there is something to fix.
+    const pivot = data.service.joints.find((joint) => joint.id === 'D') as RealJoint;
+    pivot.ground = false;
+    data.service.updateMechanism();
+    fixture.detectChanges();
+    const banner = text(fixture, '.mechBanner')[0] ?? '';
+    expect(banner).toContain('Can’t run yet.');
+    expect(banner).not.toContain('0 things');
+    fixture.destroy();
+  });
+
+  it('keeps folded sections folded in the next mode’s panel', async () => {
+    const first = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
+    (first.fixture.nativeElement.querySelector('.sectionHeader') as HTMLButtonElement).click();
+    first.fixture.detectChanges();
+    expect(first.fixture.nativeElement.querySelector('.factList')).toBeNull();
+    const state = TestBed.inject(MechanismPanelStateService);
+    // A mode switch mounts a new panel; the choice lives in the root service.
+    const second = TestBed.createComponent(MechanismPanelComponent);
+    second.detectChanges();
+    expect(second.nativeElement.querySelector('.factList')).toBeNull();
+    expect(state.overviewOpen()).toBe(false);
+    state.overviewOpen.set(true);
+    first.fixture.destroy();
+    second.destroy();
+  });
+
+  it('changes the input speed and its direction from the overview, in Edit', async () => {
+    const { fixture, data } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
+    const driven = data.service.joints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    )!;
+    const field = fixture.nativeElement.querySelector('.speedFact input') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    field.value = '25';
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(Math.abs(data.service.driveSpeedOf(driven))).toBeCloseTo(25);
+    const wasClockwise = data.service.driveSpeedOf(driven) < 0;
+    (fixture.nativeElement.querySelector('.speedFact button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(data.service.driveSpeedOf(driven) < 0).toBe(!wasClockwise);
     fixture.destroy();
   });
 });
