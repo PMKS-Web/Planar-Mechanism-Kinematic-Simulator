@@ -4,8 +4,12 @@
  *
  * - A background click shows "All mechanisms", a row per machine with its chip
  *   and the family PMKS+ recognized; a lone machine shows in detail at once.
- * - A link's job and size share its row, the size wrapping under it only
- *   where they do not fit: a plate's three sides at Edit's width.
+ * - A link's job and size share its row; a plate's size is its joint count,
+ *   with no tooltip of lengths.
+ * - Links counts the ground: "4 (including ground)" on a four-bar.
+ * - Input speed and direction change from the Overview, as from the joint.
+ * - A folded section stays folded in the next mode's panel.
+ * - A large drawing waiting for Play says so, with no "Can't run yet" banner.
  * - Pointing at a row lights its machine; picking it shows its detail, fades
  *   the others, and folds the setup drawer to its section. "All mechanisms"
  *   goes back.
@@ -27,7 +31,10 @@ import { readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
-import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import {
+  TEMPLATE_LINKAGES as payloads,
+  DEV_TEMPLATE_LINKAGES as devPayloads,
+} from './template-payloads.mjs';
 
 /** A gallery drawing's query, as docs/fixture-urls.md publishes it. */
 const galleryQuery = (name) => {
@@ -117,6 +124,57 @@ record(
   gutter
 );
 
+// --- the ground is one of the links -----------------------------------------
+const factValue = (label) =>
+  page.evaluate((label) => {
+    const fact = [...document.querySelectorAll('app-mechanism-panel .fact')].find(
+      (row) => row.querySelector('.factLabel')?.textContent.trim() === label
+    );
+    return fact?.querySelector('.factValue')?.textContent.trim();
+  }, label);
+record(
+  'a four-bar has 4 links, the ground counted',
+  (await factValue('Links')) === '4 (including ground)',
+  await factValue('Links')
+);
+
+// --- the input's speed and direction change from the Overview ---------------
+const drive = () =>
+  page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const joint = srv.joints.find((one) => one.input);
+    return srv.driveSpeedOf(joint);
+  });
+const speedField = page.locator('app-mechanism-panel .speedFact input');
+record('Edit offers Input speed as a field', (await speedField.count()) === 1);
+await speedField.fill('25');
+await speedField.press('Enter');
+await page.waitForTimeout(400);
+let speed = await drive();
+record('typing a speed there sets the drive', Math.abs(Math.abs(speed) - 25) < 1e-6, speed);
+const signBefore = Math.sign(speed);
+await page.locator('app-mechanism-panel .speedFact button').click();
+await page.waitForTimeout(400);
+speed = await drive();
+record('its direction button turns the drive round', Math.sign(speed) === -signBefore, speed);
+
+// --- a folded section stays folded in the next mode -------------------------
+const overviewShown = () =>
+  page.evaluate(() => !!document.querySelector('app-mechanism-panel .factList'));
+await page.locator('app-mechanism-panel .sectionHeader', { hasText: 'Mechanism Overview' }).click();
+await page.waitForTimeout(200);
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+record(
+  'Mechanism Overview folded in Edit stays folded in Kinematic Analysis',
+  !(await overviewShown())
+);
+await page.locator('app-mechanism-panel .sectionHeader', { hasText: 'Mechanism Overview' }).click();
+await page.waitForTimeout(200);
+await tab('Edit').click();
+await page.waitForTimeout(600);
+record('and opened there, it is open back in Edit', await overviewShown());
+
 // --- a link's job and size share its row when they fit ----------------------
 /** Per link row: does the size sit on the job's line? */
 const linkRowsOnOneLine = () =>
@@ -133,9 +191,15 @@ const linkRowsOnOneLine = () =>
 await open(payloads['Watt_I']);
 let rows = await linkRowsOnOneLine();
 record(
-  "in Edit's width a bar's length stays on its row, and only a plate's sides may wrap",
-  rows.length > 0 && rows.every((row) => row.oneLine || row.size.includes('·')),
+  "in Edit's width every link's size stays on its row, a plate's as its joint count",
+  rows.length > 0 &&
+    rows.every((row) => row.oneLine && !row.size.includes('·')) &&
+    rows.some((row) => /^\d+ joints$/.test(row.size)),
   rows
+);
+record(
+  'and no size carries a tooltip of lengths',
+  await page.evaluate(() => !document.querySelector('app-mechanism-panel .linkLength[title]'))
 );
 await tab('Kinematic').click();
 await page.waitForTimeout(600);
@@ -309,6 +373,20 @@ record(
   'undoing a rename leaves every link its job',
   before.includes('Input crank') && JSON.stringify(after) === JSON.stringify(before),
   { before, after }
+);
+
+// --- a large drawing waiting for Play is not "can't run" --------------------
+await open(devPayloads['Dev_Render_Stress']);
+text = await panelText();
+record(
+  'a drawing solved on Play has no "Can\'t run yet" banner',
+  !text.includes('run yet') && !text.includes('0 things'),
+  text.slice(0, 300)
+);
+record(
+  'and its Overview says when its motion is worked out',
+  text.includes('worked out when you press Play'),
+  text.slice(0, 300)
 );
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
