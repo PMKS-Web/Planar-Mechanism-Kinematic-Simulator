@@ -752,9 +752,10 @@ function factsOf(
       value: Number.isFinite(dof) ? String(dof) : '—',
       bad: !Number.isFinite(dof) || dof !== 1,
     },
-    // The two numbers the count of degrees of freedom is built from, spelled
-    // out: a frame drawn as a bar is the ground, not one more link.
-    { label: 'Links', value: `${moving} + ground` },
+    // The two numbers the count of degrees of freedom is built from. The ground
+    // is one of the links, as Gruebler counts it -- "3 + ground" read as if it
+    // were not -- and a frame drawn as a bar is that ground, not one more.
+    { label: 'Links', value: `${moving + 1} (including ground)` },
     { label: 'Joints', value: String(shown(partition.ownJoints, partition.joints).length) },
     { label: 'Input joint', value: driven ? driven.name || driven.id : 'Not set' },
   ];
