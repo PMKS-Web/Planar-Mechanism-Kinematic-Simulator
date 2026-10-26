@@ -249,6 +249,32 @@
     padding: 5px 0;
   }
 
+  // The speed is a field and a direction, too wide to share the label's line
+  // at Edit's 250px, so the controls take the line under it.
+  .mechanismPanel .speedFact {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .mechanismPanel .speedControls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .speedField {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  .mechanismPanel .factNote {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--text-secondary);
+  }
+
   .mechanismPanel .factLabel {
     font-size: 13px;
     line-height: 20px;
