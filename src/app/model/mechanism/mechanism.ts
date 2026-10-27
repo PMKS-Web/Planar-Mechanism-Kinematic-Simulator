@@ -1,4 +1,5 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
+import { actuatorOrRefusal } from '../actuator';
 import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment } from './bodies';
 import { mobilityFromGeometry } from './mobility';
@@ -28,7 +29,15 @@ export type MechanismFailure =
   | 'cycle-never-closes'
   | 'cylinder-has-no-travel'
   /** The solve threw. Nothing is known but that, and readiness says so. */
-  | 'solver-error';
+  | 'solver-error'
+  /** Past the most machines one drawing runs (`MOST_MACHINES`), so not solved at all. */
+  | 'too-many-machines'
+  /**
+   * An input the actuator model refuses -- three bodies at a driven pin, a
+   * welded one. Not solved: the solver would pick a pair and run, under a
+   * setup drawer saying the input could not be one.
+   */
+  | 'input-refused';
 
 /**
  * One component of a rate, as a cell of an exported table.
@@ -120,7 +129,10 @@ export class Mechanism {
     // driven pin reads as this machine's input: it is handed the foreign
     // speed, skips the "nothing drives this" blocker, and then solves a
     // mechanism nothing actually turns. Omitted means every joint is its own.
-    ownJointIds?: ReadonlySet<string>
+    ownJointIds?: ReadonlySet<string>,
+    // Refused before anything is solved: a machine past the most one drawing
+    // runs is still built, so every panel can name it, and costs no solve.
+    refused?: MechanismFailure
   ) {
     joints.forEach((j) => {
       const clone = this.cloneJointAt(j, j.x, j.y);
@@ -185,16 +197,31 @@ export class Mechanism {
       (joint) => joint instanceof PrisJoint && joint.isDangling
     );
     const driven = this._joints[0].some((j) => j instanceof RealJoint && j.input);
+    const drivenJoint = joints.find(
+      (joint): joint is RealJoint =>
+        joint instanceof RealJoint && joint.input && (!ownJointIds || ownJointIds.has(joint.id))
+    );
+    // A pin's refusal only: a slider on a floating slot has no actuator the
+    // model can describe and is driven correctly all the same (the gripper's
+    // ram), while a pin the model refuses is a drive with no one pair to turn.
+    const inputRefused =
+      drivenJoint !== undefined &&
+      !(drivenJoint instanceof PrisJoint) &&
+      typeof actuatorOrRefusal(drivenJoint) === 'string';
     // Ordered the way the fixes depend on each other, because this is also the
     // order the panel reports them in: a slider with nothing to slide along has
     // no mobility worth counting, and adding an input to a linkage whose
     // mobility is wrong will not make it run.
-    if (dangling) {
+    if (refused) {
+      this.setMechanismInvalid(refused);
+    } else if (dangling) {
       this.setMechanismInvalid('dangling-slider');
     } else if (this._dof !== 1) {
       this.setMechanismInvalid('mobility');
     } else if (!driven) {
       this.setMechanismInvalid('not-driven');
+    } else if (inputRefused) {
+      this.setMechanismInvalid('input-refused');
     } else {
       try {
         this.solveFromTheDrawnPose(inputAngVel);

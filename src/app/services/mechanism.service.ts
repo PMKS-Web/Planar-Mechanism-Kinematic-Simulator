@@ -1,3 +1,4 @@
+import { writeMechanismName } from '../model/mechanism/mechanism-name';
 import { orphanedByLinkRemoval } from '../model/link-removal';
 import { graftJoint } from '../model/graft-joint';
 import { pruneUnlinkedJoints } from '../model/prune-unlinked-joints';
@@ -47,6 +48,7 @@ import {
 import { Mechanism } from '../model/mechanism/mechanism';
 import {
   MechanismPartition,
+  MOST_MACHINES,
   partitionKey,
   partitionMechanisms,
   UnassignedGeometry,
@@ -573,9 +575,12 @@ export class MechanismService {
     // from reads the same as last time.
     const built = new Map<string, { fingerprint: string; mechanism: Mechanism }>();
     const buildEach = () =>
-      this.partitions.map((partition) => {
+      this.partitions.map((partition, index) => {
         const key = partitionKey(partition);
-        const fingerprint = this.solveFingerprint(partition, unitStr);
+        // A machine that moves past the fourth, or back under it, is a
+        // different build even where nothing it is made of changed.
+        const fingerprint =
+          this.solveFingerprint(partition, unitStr) + (index >= MOST_MACHINES ? '|past' : '');
         const kept = this.lastBuilt.get(key);
         const mechanism =
           kept && kept.fingerprint === fingerprint
@@ -589,7 +594,8 @@ export class MechanismService {
                 unitStr,
                 this.inputVelocityFor(partition),
                 'adaptive',
-                new Set(partition.ownJoints.map((joint) => joint.id))
+                new Set(partition.ownJoints.map((joint) => joint.id)),
+                index >= MOST_MACHINES ? 'too-many-machines' : undefined
               );
         built.set(key, { fingerprint, mechanism });
         return mechanism;
@@ -3121,6 +3127,7 @@ export class MechanismService {
     if (from.name !== from.id) to.name = from.name;
     to.showCurve = from.showCurve;
     to.driveSpeed = from.driveSpeed;
+    to.machineName = from.machineName;
     to.locked = from.locked;
     to.colorFamily = from.colorFamily;
     to.r = from.r;
@@ -7172,14 +7179,11 @@ export class MechanismService {
     if (this.isLinkedPart(joint)) {
       return 'joint-pointed';
     }
-    // Selecting a whole machine selects everything in it, so every one of its
-    // joints reads as selected rather than the reader having to infer the
-    // extent of the thing they just picked.
     if (this.isPartInert(joint)) {
       return 'joint-inert';
     }
-    if (this.isInSelectedMechanism(joint)) {
-      return 'joint-selected';
+    if (this.isMutedBySelectedMechanism(joint)) {
+      return 'joint-muted';
     }
     if (this.isHoveredPart(joint)) {
       return 'joint-pointed';
@@ -7240,6 +7244,38 @@ export class MechanismService {
   /** Is this part of the machine the reader is pointing at? */
   isPartInHoveredMechanism(part: Joint | Link): boolean {
     return this.isInHoveredMechanism(part);
+  }
+
+  /**
+   * Is this part of another machine than the one the reader picked?
+   *
+   * A picked machine used to draw every one of its parts as selected, which
+   * left nothing to show when its panel then pointed at one of them: the part
+   * a link names was already amber. So a picked machine is left as drawn and
+   * the others step back instead, and with one machine on the grid nothing
+   * changes at all -- which machine the panel means is not a question then.
+   */
+  private isMutedBySelectedMechanism(part: Joint | Link): boolean {
+    return (
+      this.activeObjService.objType === 'Mechanism' &&
+      this.partitions.length > 1 &&
+      !this.isInSelectedMechanism(part)
+    );
+  }
+
+  /** The same, for a mark drawn apart from its joint: a slider's block, a motor. */
+  isMutedJointId(id: string): boolean {
+    if (this.activeObjService.objType !== 'Mechanism' || this.partitions.length < 2) return false;
+    const joint = this.joints.find((candidate) => candidate.id === id);
+    return !!joint && this.isMutedBySelectedMechanism(joint);
+  }
+
+  /** Name a machine, or clear its name with an empty one; one undo entry. */
+  renameMechanism(index: number, name: string): void {
+    const partition = this.partitions[index];
+    if (!partition) return;
+    writeMechanismName(partition, name);
+    this.updateMechanism(true);
   }
 
   /** Is this part of the machine the reader has selected as a whole? */
@@ -7404,8 +7440,8 @@ export class MechanismService {
     if (chosen) {
       return 'link-selected';
     }
-    if (this.isInSelectedMechanism(link)) {
-      return 'link-selected';
+    if (this.isMutedBySelectedMechanism(link)) {
+      return 'link-muted';
     }
     if (this.isHoveredPart(link)) {
       return 'link-pointed';

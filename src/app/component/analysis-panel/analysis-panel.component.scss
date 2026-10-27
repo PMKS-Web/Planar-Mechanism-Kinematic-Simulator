@@ -146,8 +146,13 @@
   padding: 10px 0 0;
   margin-bottom: -3px;
 
+  .panelTitle,
+  .panelSub {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
   .panelTitle {
-    padding: 0 15px;
     flex-wrap: wrap;
   }
 

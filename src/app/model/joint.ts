@@ -7,6 +7,12 @@ import { Coord } from './coord';
 export class Joint extends Coord {
   private _id: string;
   private _name: string = '';
+  /**
+   * The name of the mechanism this joint belongs to, when its author gave one
+   * and this is the joint that keeps it (`model/mechanism/mechanism-name.ts`).
+   * Empty on every other joint.
+   */
+  public machineName: string = '';
   private _showHighlight: boolean = false; //?
 
   constructor(id: string, x: number, y: number) {

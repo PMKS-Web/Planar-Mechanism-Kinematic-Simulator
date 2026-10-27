@@ -63,6 +63,17 @@ export function braceAtInputFixture(): MechanismFixture {
   return fixture;
 }
 
+/**
+ * A second crank drawn from the driven pivot, its coupler landing on the rocker
+ * pin: the count is one, and the input has two links to turn.
+ */
+export function secondCrankOnTheInputFixture(): MechanismFixture {
+  const fixture = fourBar();
+  fixture.joints.push({ id: 'E', x: -0.8, y: 0.9 });
+  fixture.links.push({ joints: 'AE' }, { joints: 'CE' });
+  return fixture;
+}
+
 /** Both ground pivots set as the input. It runs, from one of them. */
 export function twoInputsFixture(): MechanismFixture {
   const fixture = fourBar();
@@ -392,6 +403,11 @@ export const STUDENT_MISTAKE_GALLERY = [
     'Four-bar braced from its input pivot',
     'Does not run on purpose: the bar AC leaves the input three bodies',
     braceAtInputFixture()
+  ),
+  entry(
+    'Four-bar with a second crank on its input',
+    'Does not run on purpose: one freedom, but the input joins three bodies and names no pair',
+    secondCrankOnTheInputFixture()
   ),
   entry(
     'Four-bar with two inputs',

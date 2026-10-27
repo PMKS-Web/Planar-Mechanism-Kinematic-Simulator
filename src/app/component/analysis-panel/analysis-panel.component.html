@@ -33,7 +33,7 @@
   -->
 
   <!-- Title and navigation stay together when the graph list scrolls. -->
-  <ng-template #compareControl let-short="short">
+  <ng-template #compareControl>
     @if (hasComparison) {
       <toggle-block
         class="compareToggle"
@@ -42,7 +42,7 @@
         _formControl="compare"
         ariaLabel="Compare with before drag"
         tooltip="Shows the curves from before your last drag, dashed and faded, under the live ones."
-        >{{ short ? 'Compare' : 'Compare with before drag' }}</toggle-block
+        >Compare with before drag</toggle-block
       >
     }
   </ng-template>
@@ -53,14 +53,12 @@
         @if (tuning) {
           <span class="tuningChip"><mat-icon>pan_tool</mat-icon>Tuning {{ heldLabel }}</span>
         }
-        @if (usesTabs) {
-          <ng-container
-            [ngTemplateOutlet]="compareControl"
-            [ngTemplateOutletContext]="{ short: true }"
-          ></ng-container>
-        }
       </div>
-      @if (showKinematic && shownType === 'Joint') {
+      <!-- Two rows in every head, tabbed or not: the title, then when the
+           readings are from and the comparison toggle. The toggle used to ride
+           the tabbed title's row, arriving and leaving as a drag made a
+           comparison possible, and the tabs under it jumped each time. -->
+      @if ((showKinematic && shownType === 'Joint') || usesTabs) {
         <div class="panelSub">
           <span class="panelSubText">{{ subtitle }}</span>
           <ng-container [ngTemplateOutlet]="compareControl"></ng-container>
@@ -125,6 +123,12 @@
 
   <!-- Nothing selected, or a selection whose own machine cannot be solved -->
 
+  <!-- Nothing selected, or a machine picked: the machines are what the reader
+       is asking about -- every one in a list, or the one picked. -->
+  @if (showOverview) {
+    <app-mechanism-panel />
+  }
+
   @if (showAnalysisHelp) {
     <div class="helpPanel">
       <div class="helpTitle">Analysis Help</div>
@@ -141,10 +145,6 @@
         </div>
       </div>
     </div>
-  }
-
-  @if (shownType == 'Mechanism') {
-    <app-mechanism-panel></app-mechanism-panel>
   }
 
   <ng-template #forceContent>

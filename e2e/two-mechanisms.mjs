@@ -169,8 +169,8 @@ for (let press = 0; press < 2; press++) {
 const drawer = await page.locator('app-analysis-setup').innerText();
 record(
   'the drawer names both mechanisms and blames only the broken one',
-  drawer.includes('Mechanism M1') &&
-    drawer.includes('Mechanism M2') &&
+  drawer.includes('Mechanism 1') &&
+    drawer.includes('Mechanism 2') &&
     drawer.includes('No input is set'),
   drawer
 );

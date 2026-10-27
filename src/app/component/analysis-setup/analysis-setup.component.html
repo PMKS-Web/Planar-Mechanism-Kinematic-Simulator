@@ -15,19 +15,28 @@
         <button
           class="sectionHeader"
           [class.fixed]="item.checks.length === 0"
-          [attr.aria-expanded]="item.checks.length > 0 ? isOpen(item) : null"
-          (click)="toggle(item)"
+          [class.picked]="pickedIndex() === $index"
+          [attr.aria-expanded]="item.checks.length > 0 ? isOpen(item, $index) : null"
+          (click)="toggle(item, $index)"
         >
           <span class="sectionName">
-            <span class="mechLink" (click)="select($index, $event)">Mechanism {{ item.id }}</span>
+            <!-- The machine's name picks it, here as in its panel's list: the
+                 panel on the left shows it and the grid fades the others. -->
+            <span
+              class="mechLink"
+              (click)="select($index, $event)"
+              (pointerenter)="point($index)"
+              (pointerleave)="point(-1)"
+              >{{ labelOf(item, $index) }}</span
+            >
             <chip-block [kind]="chipFor(item).kind">{{ chipFor(item).text }}</chip-block>
           </span>
           @if (item.checks.length > 0) {
-            <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+            <mat-icon>{{ isOpen(item, $index) ? 'expand_less' : 'expand_more' }}</mat-icon>
           }
         </button>
 
-        @if (isOpen(item)) {
+        @if (isOpen(item, $index)) {
           <div class="issueList">
             @for (issue of item.checks; track issue.title) {
               <issue-block [issue]="issue" [startOpen]="item.checks.length === 1" />

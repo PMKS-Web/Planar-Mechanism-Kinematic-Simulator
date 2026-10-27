@@ -81,6 +81,55 @@ describe('top bar modes', () => {
     expect(tabs.getCurrentTab()).toBe(TabID.FORCE);
   });
 
+  it('shuts Force Analysis until a mechanism runs, and says why', () => {
+    ready(false);
+    mechanism.joints = [new RevJoint('A', 0, 0)];
+    fixture.detectChanges();
+
+    const force = fixture.nativeElement.querySelectorAll('.tabButton')[3] as HTMLElement;
+    expect(force.classList).toContain('locked');
+    expect(force.getAttribute('aria-disabled')).toBe('true');
+    expect(bar.tipFor(TabID.FORCE, 'Force Analysis')).toBe(
+      'Force Analysis opens once a mechanism runs.'
+    );
+    // Nothing happens: no mode, and no drawer asking for masses.
+    bar.select(TabID.FORCE);
+    expect(tabs.getCurrentTab()).toBe(TabID.EDIT);
+    expect(RightPanelComponent.isOpen).toBe(false);
+  });
+
+  it('says Kinematic Analysis is ready the first time Play is pressed in Edit, once', async () => {
+    localStorage.removeItem('analysisInviteSeen');
+    fixture = TestBed.createComponent(TopBarComponent);
+    bar = fixture.componentInstance;
+    ready(true);
+    mechanism.joints = [new RevJoint('A', 0, 0)];
+    fixture.detectChanges();
+    expect(bar.inviteOpen).toBe(false);
+
+    mechanism.isPlaying = true;
+    fixture.detectChanges();
+    await Promise.resolve();
+    fixture.detectChanges();
+    expect(bar.inviteOpen).toBe(true);
+    expect(document.querySelector('.analysisInvite')?.textContent).toContain('Your mechanism runs');
+
+    // The action it steers toward, and then it is gone for good.
+    bar.acceptInvite();
+    expect(tabs.getCurrentTab()).toBe(TabID.ANALYZE);
+    expect(bar.inviteOpen).toBe(false);
+    expect(localStorage.getItem('analysisInviteSeen')).toBe('true');
+
+    bar.select(TabID.EDIT);
+    mechanism.isPlaying = false;
+    fixture.detectChanges();
+    mechanism.isPlaying = true;
+    fixture.detectChanges();
+    await Promise.resolve();
+    expect(bar.inviteOpen).toBe(false);
+    localStorage.removeItem('analysisInviteSeen');
+  });
+
   it('sends the mode keys through the same three-way gate', () => {
     ready(false);
     // Through the service's own subject, so what runs is the component's
@@ -100,8 +149,10 @@ describe('top bar modes', () => {
     mechanism.joints = [new RevJoint('A', 0, 0)];
     fixture.detectChanges();
 
+    // One chip: Force Analysis is shut while nothing runs, and a shut mode
+    // has nothing to count.
     const chips = fixture.nativeElement.querySelectorAll('chip-block');
-    expect(chips.length).toBe(2);
+    expect(chips.length).toBe(1);
     for (const chip of chips) {
       // `chip-block` draws itself on its own host, so what is asserted here is
       // that the host is inert: not a button, given no role of its own, and
