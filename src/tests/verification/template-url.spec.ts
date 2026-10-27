@@ -49,12 +49,15 @@ describe('built-in template URLs', () => {
           transcoder.getJoints().map((joint) => ({
             id: joint.id,
             type: joint.type,
-            x: joint.x,
-            y: joint.y,
+            // The topology snapshot predates the precision extension. Retain
+            // its original thousandth-unit layout contract here; exact modern
+            // round trips are asserted separately below.
+            x: Math.round(joint.x * 1000) / 1000,
+            y: Math.round(joint.y * 1000) / 1000,
             isGrounded: joint.isGrounded,
             isInput: joint.isInput,
             isWelded: joint.isWelded,
-            angleRadians: joint.angleRadians,
+            angleRadians: Math.round(joint.angleRadians * 1000) / 1000,
           }))
         ).toEqual(baseline.joints);
 
