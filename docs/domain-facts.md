@@ -389,6 +389,20 @@ body. `anchoredTo` retains the member so unwelding can restore the load to it. D
 replacement, pass the new owner explicitly: the service's old graph still contains the compound.
 Paused tracer attachment uses `indexOfMechanismSolving`, including leaves and shared frame parts.
 
+### Forces are assembled in SI, and a floating motor pushes back
+
+The force solver converts model coordinates and accelerations to SI at equation assembly. Its
+length factor is the reader's `distanceToM` divided by `MODEL_SCALE`, applied once where the solver
+reads its units. Mass and inertia are already SI. Returned force is newtons and torque is
+newton-meters; display conversion must not divide a physical torque by model scale. A floating
+motor's torque acts equally and oppositely on the body it drives and the body it is mounted on.
+
+### Reversed playback keeps the poses and turns the clock round
+
+Cached reversal reuses poses but reverses their elapsed-time ordering. `elapsedTimeAtSample`,
+`samplesInPlaybackOrder` and `playbackRowOfSample` keep plotted rows, CSV and graph markers on the
+playback clock. Velocities negate; accelerations at the same pose do not.
+
 ### A link pinned to ground twice is frame, and the force solver treats it so
 
 A bar with two distinct ground pins cannot move. The position solver never minded one (it holds
