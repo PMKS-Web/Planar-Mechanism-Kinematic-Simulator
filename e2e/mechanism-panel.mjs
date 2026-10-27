@@ -7,7 +7,7 @@
  * - A link's job and size share its row; a plate's size is its joint count,
  *   with no tooltip of lengths.
  * - Links counts the ground: "4 (including ground)" on a four-bar.
- * - Input speed and direction change from the Overview, as from the joint.
+ * - Input joint is a part link that opens the joint; Input speed is only read.
  * - A folded section stays folded in the next mode's panel.
  * - A large drawing waiting for Play says so, with no "Can't run yet" banner.
  * - Pointing at a row lights its machine; picking it shows its detail, fades
@@ -138,25 +138,32 @@ record(
   await factValue('Links')
 );
 
-// --- the input's speed and direction change from the Overview ---------------
-const drive = () =>
-  page.evaluate(() => {
-    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-    const joint = srv.joints.find((one) => one.input);
-    return srv.driveSpeedOf(joint);
-  });
-const speedField = page.locator('app-mechanism-panel .speedFact input');
-record('Edit offers Input speed as a field', (await speedField.count()) === 1);
-await speedField.fill('25');
-await speedField.press('Enter');
+// --- click to edit: the input joint links to its panel, the speed is read ---
+const speedFact = page.locator('app-mechanism-panel .fact', { hasText: 'Input speed' });
+record(
+  'Input speed is a fact, not a field',
+  (await speedFact.locator('input, button').count()) === 0,
+  await factValue('Input speed')
+);
+await page
+  .locator('app-mechanism-panel .fact', { hasText: 'Input joint' })
+  .locator('part-link button')
+  .click();
 await page.waitForTimeout(400);
-let speed = await drive();
-record('typing a speed there sets the drive', Math.abs(Math.abs(speed) - 25) < 1e-6, speed);
-const signBefore = Math.sign(speed);
-await page.locator('app-mechanism-panel .speedFact button').click();
-await page.waitForTimeout(400);
-speed = await drive();
-record('its direction button turns the drive round', Math.sign(speed) === -signBefore, speed);
+const picked = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const active = grid.activeObjService;
+  return { type: active.objType, input: !!active.selectedJoint?.input };
+});
+record(
+  'its Input joint link selects the driven joint',
+  picked.type === 'Joint' && picked.input,
+  picked
+);
+await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).activeObjService.updateSelectedObj(null)
+);
+await page.waitForTimeout(300);
 
 // --- a folded section stays folded in the next mode -------------------------
 const overviewShown = () =>
