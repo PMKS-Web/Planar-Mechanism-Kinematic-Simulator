@@ -1,3 +1,4 @@
+import { auditGalleryRows } from './audit-gallery';
 import { MechanismFixture } from './fixture';
 import { PASSIVE_CYLINDER_GALLERY } from './passive-cylinder-fixtures';
 import {
@@ -864,6 +865,7 @@ export function galleryMarkdown(baseUrl: string): string {
     '| Mechanism | What it is for | Floating slot | Slide | Asserted in |',
     '| --- | --- | --- | --- | --- |',
     ...rows,
+    ...auditGalleryRows(baseUrl),
     '',
   ].join('\n');
 }

@@ -102,7 +102,7 @@ export function freedomsOf(
   constraints: Constraint[] = system.constraints
 ): number {
   const { width, reach } = system;
-  const rows = constraints.flatMap((one) => rowsFor(one, width));
+  const rows = constraints.flatMap((one) => rowsFor(one, width, reach));
   const free = nullSpace(rows, width);
   if (free.length === 0) return 0;
 
@@ -125,7 +125,7 @@ export function freeDirectionsOf(
   constraints: Constraint[] = system.constraints
 ): { direction: number[]; survives: boolean }[] {
   const { width, reach } = system;
-  const rows = constraints.flatMap((one) => rowsFor(one, width));
+  const rows = constraints.flatMap((one) => rowsFor(one, width, reach));
   return nullSpace(rows, width).map((direction) => ({
     direction,
     survives: survivesSecondOrder(direction, constraints, rows, reach, width),
@@ -191,7 +191,7 @@ function survivingSubspace(
   if (steps.some((step) => step === undefined)) return 0;
   const count = steps.length;
   const gapOf = (d: number[]): number[] =>
-    constraints.flatMap((constraint) => residual(constraint, d));
+    constraints.flatMap((constraint) => residual(constraint, d, reach));
   const leftOver = (d: number[]): number[] => outsideRangeVector(gapOf(d), rows, width);
   const norm = (v: number[]): number => Math.hypot(...v);
 
@@ -526,8 +526,12 @@ function slidePair(
   };
 }
 
-/** One constraint's two rows: what it forbids, to first order. */
-function rowsFor(constraint: Constraint, width: number): number[][] {
+/**
+ * All residual rows measure lengths. An angle constraint is weighted by the
+ * drawing's reach, so a small angle cannot masquerade as a negligible error
+ * just because the drawing is stored in model units rather than user units.
+ */
+function rowsFor(constraint: Constraint, width: number, angularScale: number): number[][] {
   const row = () => new Array<number>(width).fill(0);
   const arm = (body: Body, at: { x: number; y: number }) => ({
     x: at.x - body.pivot.x,
@@ -555,7 +559,7 @@ function rowsFor(constraint: Constraint, width: number): number[][] {
     const turning = row();
     if (constraint.a.at !== undefined) turning[constraint.a.at + 2] += 1;
     if (constraint.b.at !== undefined) turning[constraint.b.at + 2] -= 1;
-    return [turning];
+    return [turning.map((value) => value * angularScale)];
   }
 
   if (constraint.kind === 'along') {
@@ -595,7 +599,7 @@ function rowsFor(constraint: Constraint, width: number): number[][] {
   // is what the block used to absorb: the block could not turn, and the rider
   // got its freedom back through the pin they shared. With the block gone there
   // is no second joint to give it back, so the row has to go instead.
-  return constraint.rotates ? [across] : [across, turning];
+  return constraint.rotates ? [across] : [across, turning.map((value) => value * angularScale)];
 }
 
 /** Where a body's copy of a point ends up after a displacement is applied. */
@@ -613,7 +617,7 @@ function moved(body: Body, at: { x: number; y: number }, d: number[]): { x: numb
 }
 
 /** How far apart a constraint's two sides really are, after a displacement. */
-function residual(constraint: Constraint, d: number[]): number[] {
+function residual(constraint: Constraint, d: number[], angularScale: number): number[] {
   if (constraint.kind === 'pin') {
     const a = moved(constraint.a, constraint.at, d);
     const b = moved(constraint.b, constraint.at, d);
@@ -621,7 +625,7 @@ function residual(constraint: Constraint, d: number[]): number[] {
   }
   const turnOf = (body: Body) => (body.at === undefined ? 0 : d[body.at + 2]);
   if (constraint.kind === 'turn') {
-    return [turnOf(constraint.a) - turnOf(constraint.b)];
+    return [(turnOf(constraint.a) - turnOf(constraint.b)) * angularScale];
   }
   if (constraint.kind === 'along') {
     const angle = constraint.angle + turnOf(constraint.carrier);
@@ -642,7 +646,7 @@ function residual(constraint: Constraint, d: number[]): number[] {
   // One entry per row `rowsFor` wrote, or the second-order test reads a
   // Pin-in-slot's gap against a Slide's Jacobian and compares vectors of
   // different lengths -- which comes back as a freedom that dies for no reason.
-  return constraint.rotates ? [across] : [across, riderTurn - carrierTurn];
+  return constraint.rotates ? [across] : [across, (riderTurn - carrierTurn) * angularScale];
 }
 
 /**
@@ -682,7 +686,7 @@ function survivesSecondOrder(
   const step = (reach * 1e-3) / worst;
   const displaced = direction.map((value) => value * step);
 
-  const gap = constraints.flatMap((constraint) => residual(constraint, displaced));
+  const gap = constraints.flatMap((constraint) => residual(constraint, displaced, reach));
   const size = Math.hypot(...gap);
   // The step closed nothing: the freedom is exact to the precision of the
   // arithmetic, which is what a genuine motion looks like.
@@ -713,10 +717,15 @@ function outsideRangeVector(gap: number[], rows: number[][], width: number): num
   const basis: number[][] = [];
   for (let col = 0; col < width; col++) {
     const direction = rows.map((row) => row[col]);
-    for (const already of basis) {
-      const along = already.reduce((total, value, index) => total + value * direction[index], 0);
-      for (let index = 0; index < direction.length; index++) {
-        direction[index] -= along * already[index];
+    // Reorthogonalize: at a tangency, angular columns can be hundreds of
+    // times larger than translation columns. One pass left a false range
+    // direction that swallowed the unclosable second-order gap.
+    for (let pass = 0; pass < 2; pass++) {
+      for (const already of basis) {
+        const along = already.reduce((total, value, index) => total + value * direction[index], 0);
+        for (let index = 0; index < direction.length; index++) {
+          direction[index] -= along * already[index];
+        }
       }
     }
     const length = Math.hypot(...direction);

@@ -697,8 +697,9 @@ export class Mechanism {
   private findFullMovementPos(
     inputAngVel: number,
     revoluteStep: number = Math.PI / 180,
-    prismaticStep?: number
-  ) {
+    prismaticStep?: number,
+    startupCuts = 0
+  ): void {
     // The loop below flips inputAngVel at each reversal; a re-solve has to
     // start from the speed that was asked for, not the one the loop ended on.
     const requestedAngVel = inputAngVel;
@@ -714,7 +715,7 @@ export class Mechanism {
     // fully rotating revolute input closes its cycle after exactly this many samples.
     // Ending on that count instead of on a position tolerance keeps the sample count
     // — and therefore the t=0 pose — identical every time the mechanism is rebuilt.
-    const STEPS_PER_REVOLUTION = 360;
+    const STEPS_PER_REVOLUTION = Math.round((2 * Math.PI) / revoluteStep);
     // How many turns a crank is given to bring the whole drawing home. One
     // closes most cycles; a rod that passes through tangency with its slot
     // comes home on the second; a winding of three is the most this will
@@ -744,6 +745,7 @@ export class Mechanism {
     // Before anything is measured from t = 0, put t = 0 on its own constraints.
     PositionSolver.settleInitialPose(this.joints[0]);
     PositionSolver.setUpSolvingForces(this.forces[0]);
+    const startCoordinates = this._joints[0].map((joint) => [joint.x, joint.y]);
 
     // How far one sample advances the input: a degree of crank for a revolute
     // input, a length along the slot for a prismatic one. Dividing by the
@@ -988,12 +990,31 @@ export class Mechanism {
         // any other. Falling back to the one-turn cycle instead left it
         // labeled as looping, with the drawing teleporting at every wrap.
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
-          // No first step either way is a walk that could not start before it
-          // is a dead position; see `solveWholeInstead`.
+          // A blocked dyadic ordering needs the coupled route before a finer
+          // command. Otherwise repeated startup cuts hand that route a step
+          // below its useful resolution even when the original step works.
           if (
             currentTimeStamp === 0 &&
             this.solveWholeInstead(requestedAngVel, revoluteStep, prismaticStep)
           ) {
+            return;
+          }
+          // Refusing the first prescribed step says nothing about a shorter
+          // step. Retry the whole walk on a finer grid, in both directions,
+          // before treating a valid narrow stroke as a dead starting pose.
+          if (currentTimeStamp === 0 && this.sampling === 'adaptive' && startupCuts < 10) {
+            this._joints[0].forEach((joint, index) => {
+              [joint.x, joint.y] = startCoordinates[index];
+            });
+            this._joints.length = this._links.length = this._forces.length = 1;
+            this._timeNum = [];
+            this._inputAngularVelocities = [requestedAngVel];
+            this.findFullMovementPos(
+              requestedAngVel,
+              revoluteInput ? revoluteStep / 2 : revoluteStep,
+              revoluteInput ? prismaticStep : sampleStep / 2,
+              startupCuts + 1
+            );
             return;
           }
           this.explainDeadPosition();
@@ -1074,7 +1095,9 @@ export class Mechanism {
     // into a handful of frames. Its stroke is only known once walked too, so
     // it is refined the same way; a cylinder is not, its stroke being known
     // before the walk and already cut into SAMPLES_PER_STROKE.
-    const prismaticAtFixedStep = !revoluteInput && PositionSolver.drivenSampleStep === undefined;
+    const prismaticAtFixedStep =
+      !revoluteInput &&
+      (prismaticStep !== undefined || PositionSolver.drivenSampleStep === undefined);
     if (
       this.sampling === 'adaptive' &&
       !this.refineAttempted &&
@@ -1093,14 +1116,13 @@ export class Mechanism {
       const samples = Math.round(gridSteps);
       const TARGET_SAMPLES = 360;
       // Sixty-four cuts per degree matches the boundary solver's own halving
-      // cap, and keeps every sample's motion far above the four decimals a
-      // solved position is held to.
-      const FINEST = Math.PI / 180 / 64;
+      // cap, while bounding the work needed to resolve a narrow stroke.
+      const FINEST = revoluteStep / 64;
       if (samples > 0 && samples < TARGET_SAMPLES * (2 / 3)) {
         this.refineAttempted = true;
         const refined = Math.max((revoluteStep * samples) / TARGET_SAMPLES, FINEST);
         const refinedPrismatic = prismaticAtFixedStep
-          ? (PRISMATIC_INPUT_STEP * samples) / TARGET_SAMPLES
+          ? (sampleStep * samples) / TARGET_SAMPLES
           : undefined;
         // The editable pose and what the caller derived from it, because a
         // failed attempt rewinds all the way to here. The fine pass is not
@@ -1239,7 +1261,7 @@ export class Mechanism {
    * A seam wide enough to mean "different pose", not solver noise.
    *
    * Relative to the drawing's own size because coordinates arrive at whatever
-   * scale the caller drew in: solved positions are held to four decimals, so
+   * scale the caller drew in: nearby roots can be indistinguishable numerically, so
    * noise is orders below a thousandth of the drawing while a branch swap is
    * on the order of a link length.
    *

@@ -5,7 +5,6 @@ import {
   circleLineIntersection,
   determineUnknownJointUsingTriangulation,
   euclideanDistance,
-  roundNumber,
 } from '../utils';
 import { Force } from '../force';
 import { Coord } from '../coord';
@@ -32,6 +31,7 @@ import {
 } from './simultaneous-solver';
 import { angleReference, drivenLink, resolveActuator } from '../actuator';
 import { MARK } from '../joint-marks';
+import { parallelGuideHeadings } from './parallel-guide-headings';
 import { SettingsService } from '../../services/settings.service';
 
 /**
@@ -67,7 +67,7 @@ export const SAMPLES_PER_STROKE = 180;
 /**
  * How far outside its stroke a solved pin may land before the step is refused.
  *
- * Positions are rounded to four decimals per timestep, so a command that lands
+ * A command can land within the position solve tolerance, so one that lands
  * exactly on the end of the travel can measure a hair beyond it. Refusing that
  * would cut the stroke a sample short at each end and stop the cycle closing.
  */
@@ -83,7 +83,7 @@ const POSE_RECALL_TOLERANCE = 1e-4;
 
 /**
  * How close two solve-circle centers must be to count as coincident. Joint
- * positions are rounded to four decimals each timestep, so the bound is absolute
+ * the position solve has an absolute tolerance in model units, so the bound is absolute
  * rather than mechanism-scale relative — matching circleCircleIntersection's own
  * tangent tolerance.
  */
@@ -1256,6 +1256,8 @@ export class PositionSolver {
       ]);
     }
 
+    constraints.push(...parallelGuideHeadings(links, unknown));
+
     for (const joint of joints) {
       if (!(joint instanceof PrisJoint)) continue;
       if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
@@ -1972,10 +1974,10 @@ export class PositionSolver {
       const settled = this.jointMapPositions.get(id)!;
       const joint = joints.find((candidate) => candidate.id === id);
       if (joint) {
-        joint.x = roundNumber(settled[0], 4);
-        joint.y = roundNumber(settled[1], 4);
+        joint.x = settled[0];
+        joint.y = settled[1];
       }
-      this.jointMapPositions.set(id, [roundNumber(settled[0], 4), roundNumber(settled[1], 4)]);
+      this.jointMapPositions.set(id, [settled[0], settled[1]]);
     }
     // The pose the motion has to come back to, which is the one command a
     // solve approaching from the other side may not manage on its own.
@@ -3686,10 +3688,7 @@ export class PositionSolver {
           f.endCoord.x + (this.forcePositionMap.get(f.id + 'start')!.x - f.startCoord.x);
         const y_calc =
           f.endCoord.y + (this.forcePositionMap.get(f.id + 'start')!.y - f.startCoord.y);
-        this.forcePositionMap.set(
-          f.id + 'end',
-          new Coord(roundNumber(x_calc, 3), roundNumber(y_calc, 3))
-        );
+        this.forcePositionMap.set(f.id + 'end', new Coord(x_calc, y_calc));
       } else {
         this.determineTracerForce(f.link.joints[0], f.link.joints[1], f, 'end');
       }
@@ -3710,11 +3709,8 @@ export class PositionSolver {
     const angle = Math.atan2(unknownJoint.y - inputJoint.y, unknownJoint.x - inputJoint.x);
     const x = Math.cos(angle + increment) * r + inputJoint.x;
     const y = Math.sin(angle + increment) * r + inputJoint.y;
-    this.jointMapPositions.set(inputJoint.id, [
-      roundNumber(inputJoint.x, 4),
-      roundNumber(inputJoint.y, 4),
-    ]);
-    this.jointMapPositions.set(unknownJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(inputJoint.id, [inputJoint.x, inputJoint.y]);
+    this.jointMapPositions.set(unknownJoint.id, [x, y]);
   }
 
   /**
@@ -3802,7 +3798,7 @@ export class PositionSolver {
     // its bar is solved from it by the walk rather than dragged onto it.
     const x = inputJoint.x + increment * Math.cos(inputJointAngle);
     const y = inputJoint.y + increment * Math.sin(inputJointAngle);
-    this.jointMapPositions.set(inputJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(inputJoint.id, [x, y]);
   }
 
   // https://www.petercollingridge.co.uk/tutorials/computational-geometry/circle-circle-intersections/
@@ -3826,7 +3822,7 @@ export class PositionSolver {
     if (previous) {
       this.priorJointPositions.set(id, previous);
     }
-    this.jointMapPositions.set(id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(id, [x, y]);
   }
 
   /**
@@ -3865,6 +3861,20 @@ export class PositionSolver {
     const prior = this.priorJointPositions.get(unknownJoint.id) ?? current;
     const predicted = [2 * current[0] - prior[0], 2 * current[1] - prior[1]];
 
+    const fixed = [j1, j2].find(
+      (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+    );
+    if (fixed) {
+      // At a concentric change point a grounded circle still fixes radius.
+      // Continue its heading, not the chord's linear extrapolation, which
+      // introduces a false sideways velocity in a square parallelogram.
+      const center = this.jointMapPositions.get(fixed.id)!;
+      const u = [current[0] - center[0], current[1] - center[1]];
+      const v = [prior[0] - center[0], prior[1] - center[1]];
+      const turn = Math.atan2(v[0] * u[1] - v[1] * u[0], v[0] * u[0] + v[1] * u[1]);
+      predicted[0] = center[0] + u[0] * Math.cos(turn) - u[1] * Math.sin(turn);
+      predicted[1] = center[1] + u[0] * Math.sin(turn) + u[1] * Math.cos(turn);
+    }
     let towardX = predicted[0] - center1[0];
     let towardY = predicted[1] - center1[1];
     let reach = Math.hypot(towardX, towardY);
@@ -3970,7 +3980,7 @@ export class PositionSolver {
     // blindly and threw.
     const [x, y] = this.solutionNearestCurrent(solutions, unknownJoint);
     this.recordJointPosition(unknownJoint.id, x, y);
-    this.jointMapPositions.set(j2.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(j2.id, [x, y]);
     return true;
   }
 
@@ -4195,8 +4205,8 @@ export class PositionSolver {
     const ux = (x2 - x1) / span;
     const uy = (y2 - y1) / span;
     this.jointMapPositions.set(unknown_joint.id, [
-      roundNumber(x1 + along * ux - across * uy, 4),
-      roundNumber(y1 + along * uy + across * ux, 4),
+      x1 + along * ux - across * uy,
+      y1 + along * uy + across * ux,
     ]);
   }
 
@@ -4229,7 +4239,7 @@ export class PositionSolver {
 
   static setUpInitialJointLocations(joints: Joint[]) {
     joints.forEach((j) => {
-      this.jointMapPositions.set(j.id, [roundNumber(j.x, 4), roundNumber(j.y, 4)]);
+      this.jointMapPositions.set(j.id, [j.x, j.y]);
     });
   }
 
@@ -4276,9 +4286,6 @@ export class PositionSolver {
       angle,
       internal_angle
     );
-    this.forcePositionMap.set(
-      force.id + startOrEnd,
-      new Coord(roundNumber(x_calc, 3), roundNumber(y_calc, 3))
-    );
+    this.forcePositionMap.set(force.id + startOrEnd, new Coord(x_calc, y_calc));
   }
 }
