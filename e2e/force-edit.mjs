@@ -25,6 +25,7 @@ import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -411,11 +412,15 @@ await page.goto(`${BASE}/?${payloads['Derrick_Crane']}`, { waitUntil: 'domconten
 await waitForReady(page);
 
 const anchorAt = async (width) => {
-  await page.evaluate((visual) => {
-    ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces[0].setVisualWidth(
-      visual
-    );
-  }, width);
+  await inAngular(
+    page,
+    (visual) => {
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces[0].setVisualWidth(
+        visual
+      );
+    },
+    width
+  );
   // A real pointer event, so Angular runs change detection over the change.
   await page.mouse.move(700, 500);
   await page.mouse.move(701, 501);
@@ -623,7 +628,7 @@ const beyond = [
   centroid[0] + (far[0] - centroid[0]) * 2.5,
   centroid[1] + (far[1] - centroid[1]) * 2.5,
 ];
-await page.evaluate(() =>
+await inAngular(page, () =>
   ng
     .getComponent(document.querySelector('app-new-grid'))
     .activeObjService.updateSelectedObj(

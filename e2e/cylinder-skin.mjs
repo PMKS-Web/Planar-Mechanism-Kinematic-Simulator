@@ -18,6 +18,7 @@ const { chromium } = await import(
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const ctx = await chromium.launchPersistentContext('/tmp/pmks-chrome-cylskin', {
   headless: true,
@@ -32,7 +33,7 @@ await waitForReady(page);
 
 // *Starts at* is the slide's own field since Stage 2c (D9), so the square
 // mid-skin is what this selects to reach it.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].seal);
 });
@@ -149,7 +150,7 @@ const skinFill = () =>
     [...document.querySelectorAll('.cylinder-barrel')].map((node) => node.getAttribute('fill'))
   );
 const paintedBefore = await skinFill();
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   // The way the Visual Settings picker recolors: the link's own fill, and
   // nothing else touched.

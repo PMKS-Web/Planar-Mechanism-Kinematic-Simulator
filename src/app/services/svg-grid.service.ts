@@ -1,4 +1,4 @@
-import { afterNextRender, DestroyRef, Injectable, Injector, inject } from '@angular/core';
+import { afterNextRender, DestroyRef, Injectable, Injector, NgZone, inject } from '@angular/core';
 // TS 6 no longer allows calling/constructing `import * as` namespaces of
 // CommonJS (export =) modules - use default imports for these two.
 import svgPanZoom from 'svg-pan-zoom';
@@ -141,6 +141,8 @@ export class SvgGridService {
   private dragState = inject(DragStateService);
   private injector = inject(Injector);
   private destroyRef = inject(DestroyRef);
+  /** Absent under `createMechanismHarness`, which builds this service with no app around it. */
+  private zone = inject(NgZone, { optional: true });
 
   /**
    * Where the cursor last was, in model units.
@@ -1410,7 +1412,15 @@ export class SvgGridService {
     // that covers the mechanism is not something a reader can read around, and
     // the move is small: the drawing slides left ahead of it, and only zooms
     // out if sliding would take it under the panel on the other side.
-    const chrome = CHROME_MOVED.subscribe(() => this.notifyChromeChanged());
+    //
+    // Inside Angular, whoever announced it. The phone sheet and the playback
+    // card announce from a ResizeObserver, which Zone.js does not patch, so the
+    // settle ran outside: the view moved and the grid lines, their weights and
+    // every symbol's size stayed drawn for the view it left. A whole-app check
+    // the top bar used to run every frame covered for it until that went.
+    const chrome = CHROME_MOVED.subscribe(() =>
+      this.zone ? this.zone.run(() => this.notifyChromeChanged()) : this.notifyChromeChanged()
+    );
     // A root service outlives everything in an ordinary session, but not a test
     // harness or a hot reload -- and a listener that outlives its service goes
     // on measuring a canvas that has gone.

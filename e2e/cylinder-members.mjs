@@ -24,6 +24,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-members';
@@ -67,36 +68,40 @@ async function oneCylinder(options = {}) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  return page.evaluate((how) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const m = grid.mechanismSrv;
-    // `from` and `to` are for the two shapes the mark has to survive: a ram too
-    // short to carry a full-size piston head, and one at an angle that is
-    // neither of the two the axes hand you for free.
-    m.createCylinderFrom(how.from ?? { x: -600, y: 0 }, how.to ?? { x: 600, y: 0 });
-    const ram = m.sealedStructures()[0];
-    if (how.groundA || how.groundB) {
-      for (const end of [how.groundA && ram.mountA, how.groundB && ram.mountB].filter(Boolean)) {
-        grid.activeObjService.updateSelectedObj(end);
-        m.toggleGround();
+  return inAngular(
+    page,
+    (how) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const m = grid.mechanismSrv;
+      // `from` and `to` are for the two shapes the mark has to survive: a ram too
+      // short to carry a full-size piston head, and one at an angle that is
+      // neither of the two the axes hand you for free.
+      m.createCylinderFrom(how.from ?? { x: -600, y: 0 }, how.to ?? { x: 600, y: 0 });
+      const ram = m.sealedStructures()[0];
+      if (how.groundA || how.groundB) {
+        for (const end of [how.groundA && ram.mountA, how.groundB && ram.mountB].filter(Boolean)) {
+          grid.activeObjService.updateSelectedObj(end);
+          m.toggleGround();
+        }
       }
-    }
-    // A Lock on a mount holds that mount (S8), which is the ladder's top
-    // priority: nothing locked ever moves, whatever was typed (S17).
-    for (const end of [how.lockA && ram.mountA, how.lockB && ram.mountB].filter(Boolean)) {
-      m.toggleLock(end);
-    }
-    grid.settings.isShowID.next(true);
-    grid.activeObjService.updateSelectedObj(null);
-    return {
-      a: ram.mountA.id,
-      b: ram.mountB.id,
-      s: ram.seal.id,
-      n: ram.inner.id,
-      barrel: ram.barrel.id,
-      rod: ram.rod.id,
-    };
-  }, options);
+      // A Lock on a mount holds that mount (S8), which is the ladder's top
+      // priority: nothing locked ever moves, whatever was typed (S17).
+      for (const end of [how.lockA && ram.mountA, how.lockB && ram.mountB].filter(Boolean)) {
+        m.toggleLock(end);
+      }
+      grid.settings.isShowID.next(true);
+      grid.activeObjService.updateSelectedObj(null);
+      return {
+        a: ram.mountA.id,
+        b: ram.mountB.id,
+        s: ram.seal.id,
+        n: ram.inner.id,
+        barrel: ram.barrel.id,
+        rod: ram.rod.id,
+      };
+    },
+    options
+  );
 }
 
 /** What the drawing says about the part right now. */
@@ -321,7 +326,7 @@ console.log("\nthe seal's own mark, and the head it rides");
 // Section 1 left S picked and the pointer parked on it, and a picked or
 // pointed-at joint is drawn in amber: the mark at rest is what the reference
 // drawing shows, so this starts from nothing picked and nothing under the mouse.
-await page.evaluate(() =>
+await inAngular(page, () =>
   ng.getComponent(document.querySelector('app-new-grid')).activeObjService.updateSelectedObj(null)
 );
 await page.mouse.move(8, 8);
@@ -364,7 +369,7 @@ check(
 );
 await page.screenshot({ path: `${MARK_OUT}/cylinder-selected.png`, clip: await clipRam() });
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const seal = grid.mechanismSrv.sealedStructures()[0].seal;
   grid.activeObjService.updateSelectedObj(seal);
@@ -414,7 +419,7 @@ await page.screenshot({ path: `${MARK_OUT}/cylinder-60deg.png`, clip: await clip
 await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(250);
-const drivenRam = await page.evaluate(() => {
+const drivenRam = await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
   const pick = (j) => grid.activeObjService.updateSelectedObj(j);
@@ -442,12 +447,16 @@ const drivenRam = await page.evaluate(() => {
 });
 await page.waitForTimeout(400);
 const atRest = await sealMark();
-await page.evaluate((samples) => {
-  ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(
-    Math.max(1, Math.round(samples * 0.35)),
-    false
-  );
-}, drivenRam.samples);
+await inAngular(
+  page,
+  (samples) => {
+    ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(
+      Math.max(1, Math.round(samples * 0.35)),
+      false
+    );
+  },
+  drivenRam.samples
+);
 await page.waitForTimeout(400);
 const midCycle = await sealMark();
 check(
@@ -468,10 +477,14 @@ ids = await oneCylinder();
 await page.waitForTimeout(500);
 part = await ram();
 sealPoint = await screenAt(part.s);
-await page.evaluate((at) => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  for (let step = 0; step < 3; step += 1) grid.svgGrid.panZoomObject.zoomAtPointBy(1.6, at);
-}, sealPoint);
+await inAngular(
+  page,
+  (at) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    for (let step = 0; step < 3; step += 1) grid.svgGrid.panZoomObject.zoomAtPointBy(1.6, at);
+  },
+  sealPoint
+);
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${MARK_OUT}/cylinder-detail-idle.png`, clip: await clipHead(240) });
 await clickAt(await screenAt((await ram()).s));
@@ -533,19 +546,23 @@ check(
 
 // A selection that closes over the whole part lights all three, as bars in a
 // selection do.
-const closed = await page.evaluate((where) => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  grid.activeObjService.replacePartSelection(
-    grid.mechanismSrv.links.find((link) => link.id === where.barrel)
-  );
-  grid.activeObjService.togglePartSelection(
-    grid.mechanismSrv.links.find((link) => link.id === where.rod)
-  );
-  grid.activeObjService.togglePartSelection(
-    grid.mechanismSrv.joints.find((joint) => joint.id === where.s)
-  );
-  return grid.activeObjService.objType;
-}, ids);
+const closed = await inAngular(
+  page,
+  (where) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.replacePartSelection(
+      grid.mechanismSrv.links.find((link) => link.id === where.barrel)
+    );
+    grid.activeObjService.togglePartSelection(
+      grid.mechanismSrv.links.find((link) => link.id === where.rod)
+    );
+    grid.activeObjService.togglePartSelection(
+      grid.mechanismSrv.joints.find((joint) => joint.id === where.s)
+    );
+    return grid.activeObjService.objType;
+  },
+  ids
+);
 await page.waitForTimeout(250);
 const allThree = await litUp();
 check(
@@ -633,7 +650,7 @@ check(
 // Both ends locked, and both members keeping their length: now there really is
 // nothing to give, and a pointermove is not the place to say so (S17 rung 4).
 ids = await oneCylinder({ lockA: true, lockB: true });
-await page.evaluate(() => {
+await inAngular(page, () => {
   const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const one = m.sealedStructures()[0];
   one.barrel.hold = 'length';
@@ -656,7 +673,7 @@ const notifications = () => page.locator('app-notification-stack .notification')
 const quiet = await notifications();
 // Grounding the slide is refused, says so, and changes nothing -- which makes
 // it the cheapest proof that the selector above can find a message.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
   grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].seal);
@@ -736,7 +753,7 @@ console.log('\nan old payload opens with its seal lettered');
 await page.goto(`${BASE}?${payloads['Excavator_Bucket']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(700);
-const legacy = await page.evaluate(() => {
+const legacy = await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
   grid.settings.isShowID.next(true);
@@ -780,12 +797,16 @@ console.log('\neach piece opens its own panel');
 
 /** Select a piece without hunting for its pixels; the click path is section 2. */
 async function pick(which) {
-  await page.evaluate((what) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const one = grid.mechanismSrv.sealedStructures()[0];
-    const target = what === 'seal' ? one.seal : what === 'barrel' ? one.barrel : one.rod;
-    grid.activeObjService.updateSelectedObj(target);
-  }, which);
+  await inAngular(
+    page,
+    (what) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const one = grid.mechanismSrv.sealedStructures()[0];
+      const target = what === 'seal' ? one.seal : what === 'barrel' ? one.barrel : one.rod;
+      grid.activeObjService.updateSelectedObj(target);
+    },
+    which
+  );
   // The line above ran outside Angular's zone, so nothing has scheduled change
   // detection; a nudge across the canvas enters it and the DOM settles.
   await page.mouse.move(900, 300);
@@ -1200,7 +1221,7 @@ await page.waitForTimeout(500);
 await pick('barrel');
 await page.locator('[data-hold-toggle="length"]').click();
 await page.waitForTimeout(500);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const one = m.sealedStructures()[0];
   m.toggleLock(one.mountA);
@@ -1410,7 +1431,7 @@ await page.waitForTimeout(150);
 
 // Give it that second link and all four are live: an end joint is a pin, and
 // welding a cylinder into a bracket is the ordinary thing to want (D13).
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
   const end = m.sealedStructures()[0].mountA;
@@ -1449,7 +1470,7 @@ await page.keyboard.press('Escape');
 await page.waitForTimeout(150);
 
 // And it grounds like any pin, which the slide's card refuses outright.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].mountA);
   grid.mechanismSrv.toggleGround();
@@ -1457,7 +1478,8 @@ await page.evaluate(() => {
 await page.waitForTimeout(300);
 check(
   'grounding an end joint is allowed and takes',
-  await page.evaluate(
+  await inAngular(
+    page,
     () =>
       ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.sealedStructures()[0]
         .mountA.ground === true
@@ -1479,7 +1501,7 @@ async function drivenCylinder() {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  const built = await page.evaluate(() => {
+  const built = await inAngular(page, () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const m = grid.mechanismSrv;
     const choose = (joint) => grid.activeObjService.updateSelectedObj(joint);
@@ -1571,7 +1593,8 @@ for (let i = 0; i < FRAMES; i++) {
   // outside is a seek, so the frames land on sample boundaries this can name
   // instead of wherever a timer happened to fire.
   const sample = Math.round((i * (cycle.samples - 1)) / (FRAMES - 1));
-  await page.evaluate(
+  await inAngular(
+    page,
     (at) => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(at, false),
     sample
   );
@@ -1761,7 +1784,8 @@ const TWO_RAMS_ONE_BRACKET =
 
 /** Select one member of the cylinder whose barrel runs out to `inner`. */
 async function pickMemberOf(inner, which) {
-  await page.evaluate(
+  await inAngular(
+    page,
     ([buried, what]) => {
       const grid = ng.getComponent(document.querySelector('app-new-grid'));
       const one = grid.mechanismSrv.sealedStructures().find((sealed) => sealed.inner.id === buried);
@@ -1880,7 +1904,7 @@ const triangleNow = () =>
 
 /** Set joint F's type from the Edit panel, the way a reader does. */
 async function typeOfF(label) {
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
   });

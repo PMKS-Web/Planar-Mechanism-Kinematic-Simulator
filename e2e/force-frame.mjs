@@ -1,6 +1,7 @@
 /** Compound tracer ownership and the designer’s force frame interaction. */
 import { mkdirSync, readFileSync } from 'node:fs';
 import { openMechanism } from './app-ready.mjs';
+import { onGrid } from './in-angular.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 const { chromium } = await import(
@@ -22,15 +23,7 @@ function check(label, ok, detail) {
   results.push(ok);
   console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${ok ? '' : ' ' + JSON.stringify(detail)}`);
 }
-const grid = (fn, arg) =>
-  page.evaluate(
-    ({ source, arg }) =>
-      new Function('g', 'arg', `return (${source})(g, arg)`)(
-        ng.getComponent(document.querySelector('app-new-grid')),
-        arg
-      ),
-    { source: fn.toString(), arg }
-  );
+const grid = (fn, arg) => onGrid(page, fn, arg);
 const load = (payload) => openMechanism(page, `${BASE}/?${payload}`);
 const compound =
   '2v.9x,1E8.A,0.1011.0H,H,ve,0Cg,0.8I,I,11m,He,0.0J,J,1YS,01G,0..ARHIJ,HIJ,0,0,17v,5L,303e9f,H,I,J,,HI,IJ.aRHI,HI,0,0,zi,2V,303e9f,H,I,,.aRIJ,IJ,0,0,1I6,8C,0d125a,I,J,,...N_l*2yNYpD';

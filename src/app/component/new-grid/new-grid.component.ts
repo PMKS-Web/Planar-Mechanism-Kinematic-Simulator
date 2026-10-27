@@ -14,8 +14,8 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  HostListener,
   ChangeDetectionStrategy,
+  NgZone,
   inject,
   viewChild,
 } from '@angular/core';
@@ -250,6 +250,7 @@ export class NewGridComponent implements OnDestroy {
    * order-dependent cross-spec failures the static below describes in a suite.
    */
   private destroyRef = inject(DestroyRef);
+  private zone = inject(NgZone);
 
   public static debugValue: unknown;
   static debugPoints: Coord[] = [];
@@ -435,6 +436,8 @@ export class NewGridComponent implements OnDestroy {
     this.tabService.tabChanged
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.abandonGesture());
+
+    this.listenForKeys();
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -6059,7 +6062,6 @@ export class NewGridComponent implements OnDestroy {
    * releases a captured joint back to the cursor, because suppressing the snap
    * while leaving the joint parked on the target says the opposite.
    */
-  @HostListener('window:keyup', ['$event'])
   onAltReleased($event: KeyboardEvent) {
     this.reconsiderDrop($event, false);
   }
@@ -6077,12 +6079,31 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
   }
 
-  // Angular keys host listeners by event name, so this component gets exactly
-  // one window:keydown. Alt is the only key the canvas reads for itself: it
-  // means something only while a drag is in flight, which is state no registry
-  // outside this component can see. Every other key is a shortcut, and those
-  // are declared once in KeyboardShortcutsService and answered below.
-  @HostListener('window:keydown', ['$event'])
+  /**
+   * Hear the window's keys outside Angular, and go back in only for Alt and
+   * Escape -- the two keys `onKeyPress` and `onAltReleased` act on.
+   *
+   * As host listeners these were a whole-app change-detection pass for every
+   * key pressed anywhere: two per character typed into the feedback form or
+   * any other field, on top of the field's own, and the typing lagged for it.
+   */
+  private listenForKeys(): void {
+    const read = (type: 'keydown' | 'keyup', keys: string[], answer: (e: KeyboardEvent) => void) =>
+      fromEvent<KeyboardEvent>(window, type)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((event) => {
+          if (keys.includes(event.key)) this.zone.run(() => answer(event));
+        });
+    this.zone.runOutsideAngular(() => {
+      read('keydown', ['Alt', 'Escape'], (event) => this.onKeyPress(event));
+      read('keyup', ['Alt'], (event) => this.onAltReleased(event));
+    });
+  }
+
+  // Alt is the only key the canvas reads for itself: it means something only
+  // while a drag is in flight, which is state no registry outside this
+  // component can see. Every other key is a shortcut, and those are declared
+  // once in KeyboardShortcutsService and answered below.
   onKeyPress($event: KeyboardEvent) {
     this.reconsiderDrop($event, true);
     if ($event.key === 'Escape') this.abandonGesture();

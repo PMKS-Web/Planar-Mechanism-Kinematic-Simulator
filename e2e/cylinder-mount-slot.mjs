@@ -18,6 +18,7 @@ const { chromium } = await import(
 import { mkdirSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-mount-slot';
@@ -131,34 +132,38 @@ async function scene(how = {}) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  const ids = await page.evaluate((options) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const srv = grid.mechanismSrv;
-    srv.createCylinderFrom({ x: -700, y: 300 }, { x: -100, y: 300 });
-    const ram = srv.sealedStructures()[0];
-    grid.activeObjService.updateSelectedObj(ram.mountA);
-    srv.toggleGround();
-    const rail = srv.addBar({ x: 100, y: -100 }, { x: 600, y: 400 });
-    const ground = options.railEnds ?? 2;
-    rail.joints.slice(0, ground).forEach((joint) => {
-      grid.activeObjService.updateSelectedObj(joint);
+  const ids = await inAngular(
+    page,
+    (options) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const srv = grid.mechanismSrv;
+      srv.createCylinderFrom({ x: -700, y: 300 }, { x: -100, y: 300 });
+      const ram = srv.sealedStructures()[0];
+      grid.activeObjService.updateSelectedObj(ram.mountA);
       srv.toggleGround();
-    });
-    if (options.input) {
-      grid.activeObjService.updateSelectedObj(ram.seal);
-      srv.adjustInput();
-    }
-    srv.updateMechanism(true);
-    const now = srv.sealedStructures()[0];
-    return {
-      mountA: now.mountA.id,
-      mountB: now.mountB.id,
-      seal: now.seal.id,
-      railA: rail.joints[0].id,
-      railB: rail.joints[1].id,
-      rail: rail.id,
-    };
-  }, how);
+      const rail = srv.addBar({ x: 100, y: -100 }, { x: 600, y: 400 });
+      const ground = options.railEnds ?? 2;
+      rail.joints.slice(0, ground).forEach((joint) => {
+        grid.activeObjService.updateSelectedObj(joint);
+        srv.toggleGround();
+      });
+      if (options.input) {
+        grid.activeObjService.updateSelectedObj(ram.seal);
+        srv.adjustInput();
+      }
+      srv.updateMechanism(true);
+      const now = srv.sealedStructures()[0];
+      return {
+        mountA: now.mountA.id,
+        mountB: now.mountB.id,
+        seal: now.seal.id,
+        railA: rail.joints[0].id,
+        railB: rail.joints[1].id,
+        rail: rail.id,
+      };
+    },
+    how
+  );
   await page.waitForTimeout(200);
   // Where the middle of the rail is on screen, now. Recomputed per scene: the
   // camera frames what is drawn, and a scene with one ground mark instead of
@@ -571,19 +576,23 @@ if (sceneA.valid) {
     return bar?.maxStep ?? grid.mechanismSrv.mechanisms[0]?.joints?.[0]?.length ?? 0;
   });
   await film.during(160, 8, '12-playing', async () => {
-    await page.evaluate(() => {
+    await inAngular(page, () => {
       ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(0, true);
     });
     await page.waitForTimeout(1200);
   });
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(0, false);
   });
   for (const fraction of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
     const step = Math.max(0, Math.round((steps - 1) * fraction));
-    await page.evaluate((which) => {
-      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(which, false);
-    }, step);
+    await inAngular(
+      page,
+      (which) => {
+        ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(which, false);
+      },
+      step
+    );
     await page.waitForTimeout(120);
     const now = await drawing();
     const a = railA;
@@ -599,7 +608,7 @@ if (sceneA.valid) {
       rod: now.rod,
     });
   }
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(0, false);
   });
 }
@@ -738,7 +747,7 @@ await page.mouse.move(onRail ? onRail.x : 700, 420, { steps: 12 });
 await page.waitForTimeout(180);
 await page.mouse.up();
 await page.waitForTimeout(600);
-await page.evaluate(() => {
+await inAngular(page, () => {
   ng.getComponent(document.querySelector('app-new-grid')).saveHistoryService.undo();
 });
 await page.waitForTimeout(700);
@@ -748,7 +757,7 @@ check(
   undoneReopened.valid && undoneReopened.failure === null,
   undoneReopened
 );
-await page.evaluate(() => {
+await inAngular(page, () => {
   ng.getComponent(document.querySelector('app-new-grid')).saveHistoryService.redo();
 });
 await page.waitForTimeout(700);

@@ -12,6 +12,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const SHOTS = new URL('../artifacts/background-image/', import.meta.url).pathname;
@@ -547,7 +548,7 @@ const jointSpan = () =>
 
 const spanBefore = await jointSpan();
 const screenBefore = (await image()).screen.width;
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.svgGrid.zoomIn();
 });
@@ -566,7 +567,7 @@ record(
 // rather than an equality: the grid's own hiding races the render, so the exact
 // figure moves between the two legitimate answers.
 await typeField('Image Width', '100');
-await page.evaluate(() => {
+await inAngular(page, () => {
   ng.getComponent(document.querySelector('app-new-grid')).svgGrid.scaleToFitLinkage(false);
 });
 await page.waitForTimeout(1200);
@@ -602,10 +603,14 @@ const openSettings = async () => {
 };
 const setLengthUnit = async (value) => {
   await openSettings();
-  await page.evaluate((unit) => {
-    const panel = ng.getComponent(document.querySelector('app-settings-panel'));
-    panel.settingsForm.controls.lengthunit.setValue(unit);
-  }, value);
+  await inAngular(
+    page,
+    (unit) => {
+      const panel = ng.getComponent(document.querySelector('app-settings-panel'));
+      panel.settingsForm.controls.lengthunit.setValue(unit);
+    },
+    value
+  );
   await page.waitForTimeout(1200);
 };
 await setLengthUnit('2'); // METER
@@ -652,7 +657,7 @@ record(
 // answers for a joint, a link or a force and throws for anything else, so a
 // deny-list in the history's selection-holding threw on Undo and left the
 // mechanism edited with the history index already moved past it.
-const undone = await page.evaluate(async () => {
+const undone = await inAngular(page, async () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   const joint = c.mechanismSrv.joints.find((candidate) => !candidate.ground);
   const before = joint.x;
@@ -707,7 +712,7 @@ await page.screenshot({ path: SHOTS + '03-saved.png' });
 
 // --- Scenery in the analysis modes too --------------------------------------
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(2); // ANALYZE
 });
 await page.waitForTimeout(500);
@@ -716,7 +721,7 @@ record(
   'and nothing is outlined there, because nothing is being edited',
   await page.evaluate(() => !document.querySelector('.bgImageOutline'))
 );
-await page.evaluate(() => {
+await inAngular(page, () => {
   ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(1); // EDIT
 });
 await page.waitForTimeout(400);

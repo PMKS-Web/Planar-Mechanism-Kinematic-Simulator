@@ -24,6 +24,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const results = [];
 const record = (what, ok, detail) => {
@@ -85,10 +86,14 @@ const setSnap = async (on) => {
   await page.locator('.menuItem', { hasText: 'Settings' }).click();
   await page.waitForTimeout(800);
   const listed = /Snap to Grid/.test(await page.locator('app-settings-panel').innerText());
-  await page.evaluate((on) => {
-    const panel = ng.getComponent(document.querySelector('app-settings-panel'));
-    panel.settingsForm.controls['snapToGrid'].setValue(on);
-  }, on);
+  await inAngular(
+    page,
+    (on) => {
+      const panel = ng.getComponent(document.querySelector('app-settings-panel'));
+      panel.settingsForm.controls['snapToGrid'].setValue(on);
+    },
+    on
+  );
   await page.waitForTimeout(400);
   await page.locator('.closeDrawer').click({ force: true });
   await page.waitForTimeout(400);

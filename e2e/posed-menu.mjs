@@ -7,6 +7,7 @@ import { openMechanism } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/posed-menu/browser';
@@ -124,7 +125,7 @@ const loadPaused = async () => {
   await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
   // The library four-bar is massless; give Force Analysis something to solve
   // so its tab opens rather than showing a setup drawer in Kinematic mode.
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     const g = ng.getComponent(document.querySelector('app-new-grid'));
     g.mechanismSrv.links.forEach((link) => g.mechanismSrv.assignBodyMass(link, 1));
     g.settings.isGravity.next(true);
@@ -132,7 +133,7 @@ const loadPaused = async () => {
   });
   await page.locator('.tabButton').filter({ hasText: 'Kinematic Analysis' }).click();
   await page.waitForTimeout(400);
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
     m.seekMechanism(0, m.mechanisms[0].cyclePeriod / 4);
   });
@@ -344,7 +345,7 @@ await section('properties', async () => {
     );
     // Each drag must be attempted at a displaced pose. A mode change is a
     // separate navigation action, so reseek if that transition rewound.
-    await page.evaluate(() => {
+    await inAngular(page, () => {
       const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
       m.seekMechanism(0, m.mechanisms[0].cyclePeriod / 4);
     });

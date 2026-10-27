@@ -11,6 +11,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/phase4-cylinder';
@@ -101,7 +102,7 @@ function offAxis(a, b, p) {
 
 // ----------------------------------------- 0. the gesture can be aborted
 console.log('\nan aborted gesture creates nothing, like link creation');
-const abort = await page.evaluate(() => {
+const abort = await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   const canvas = document.querySelector('#canvas').getBoundingClientRect();
   const start = { x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 - 120 };
@@ -130,7 +131,7 @@ checkThat(
 
 // ----------------------------------------- 1. creation, two-point gesture
 console.log('\ncreate a cylinder with the two-point gesture');
-const gesture = await page.evaluate(() => {
+const gesture = await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   const canvas = document.querySelector('#canvas').getBoundingClientRect();
   const start = { x: canvas.x + canvas.width / 2 - 160, y: canvas.y + canvas.height / 2 };
@@ -369,15 +370,19 @@ checkThat(
 
 // -------------------------------------------------------- 3. ground a mount
 console.log('\nground mount A from its context menu');
-await page.evaluate((mountId) => {
-  const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const mount = c.mechanismSrv.joints.find((j) => j.id === mountId);
-  c.setLastRightClick(mount);
-  c.cMenu.groups
-    .flatMap((g) => g.rows)
-    .find((r) => r.label === 'Grounded')
-    ?.action();
-}, barrelFar);
+await inAngular(
+  page,
+  (mountId) => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    const mount = c.mechanismSrv.joints.find((j) => j.id === mountId);
+    c.setLastRightClick(mount);
+    c.cMenu.groups
+      .flatMap((g) => g.rows)
+      .find((r) => r.label === 'Grounded')
+      ?.action();
+  },
+  barrelFar
+);
 await page.waitForTimeout(500);
 state = await model();
 checkThat('mount A is grounded', !!byId(state, barrelFar).ground);
@@ -457,7 +462,7 @@ checkThat(
 
 // ------------------------------------------- 5. set the speed from the panel
 console.log("\nset the expansion speed on the slide's panel");
-await page.evaluate(() => {
+await inAngular(page, () => {
   // Select the slide, as a click on the square mid-skin would: the drive is
   // that joint's, and so are the rows that describe it (D9).
   const c = ng.getComponent(document.querySelector('app-new-grid'));
@@ -498,15 +503,19 @@ await page.screenshot({ path: `${OUT}/04-driven-body-panel.png` });
 
 // -------------------------------------------------- 6. delete the whole part
 console.log('\ndelete the cylinder as one part, then undo/redo');
-await page.evaluate((mountId) => {
-  const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
-  c.setLastRightClick(barrel);
-  c.cMenu.groups
-    .flatMap((g) => g.rows)
-    .find((r) => r.label === 'Delete Cylinder')
-    ?.action();
-}, barrelFar);
+await inAngular(
+  page,
+  (mountId) => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
+    c.setLastRightClick(barrel);
+    c.cMenu.groups
+      .flatMap((g) => g.rows)
+      .find((r) => r.label === 'Delete Cylinder')
+      ?.action();
+  },
+  barrelFar
+);
 // The action above ran via evaluate — outside Angular's zone — so nothing
 // schedules change detection. A real user reaches this through a menu click,
 // which is in-zone; the test nudges the pointer across the canvas (the svg's
