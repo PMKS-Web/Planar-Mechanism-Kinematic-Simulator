@@ -98,10 +98,13 @@ await page.waitForTimeout(600);
 // The grid mirrors the direction on the input joint itself: flipping the button
 // must swap the joint's arrow image, not just the panel. (The template used to
 // test the BehaviorSubject object instead of its value, so the arrow never moved.)
+// The shown one: both directions stay mounted, so a flip never blanks the mark.
 const gridArrowHref = () =>
   page.evaluate(() => {
-    const image = [...document.querySelectorAll('svg image')].find((el) =>
-      (el.getAttribute('xlink:href') ?? el.getAttribute('href') ?? '').includes('Input')
+    const image = [...document.querySelectorAll('svg image')].find(
+      (el) =>
+        (el.getAttribute('xlink:href') ?? el.getAttribute('href') ?? '').includes('Input') &&
+        el.getAttribute('visibility') !== 'hidden'
     );
     return image ? (image.getAttribute('xlink:href') ?? image.getAttribute('href')) : null;
   });
