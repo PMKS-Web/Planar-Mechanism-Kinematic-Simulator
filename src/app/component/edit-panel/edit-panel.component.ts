@@ -167,10 +167,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   protected readonly orphanedJoint = ORPHANED_JOINT;
   /** The CoM frame choice does two jobs, and its help mark names both. */
   protected readonly comFrameHelp =
-    'X and Y are measured from this point. While you edit, the center of mass also keeps ' +
-    'its place against it: the centroid carries it with the link, a joint keeps it the same ' +
-    'offset from that joint, and the grid origin leaves it where it is on the drawing. ' +
-    'When the mechanism runs, it moves with the link whichever you pick.';
+    'X and Y are measured from this point. While you edit, the center of mass keeps its ' +
+    'place relative to it.';
   protected jointIsOrphaned(): boolean {
     return isOrphanedJoint(this.activeSrv.selectedJoint);
   }
