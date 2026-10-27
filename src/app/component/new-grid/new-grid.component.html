@@ -353,29 +353,26 @@
         @if (
           gridUtils.getGround(joint) &&
           gridUtils.typeOfJoint(joint) !== 'P' &&
-          gridUtils.getInput(joint) &&
-          drivenClockwise(joint)
+          gridUtils.getInput(joint)
         ) {
           <!-- The grid's y-flip reverses each asset's apparent chirality, so the
                file that *looks* clockwise here is InputCW.svg, verified on screen
-               against the actual motion. -->
+               against the actual motion. Both stay mounted and only one is
+               shown: swapping the image instead left a frame with no mark at all
+               while the other file decoded. -->
+          @let clockwise = drivenClockwise(joint);
           <image
             xlink:href="../../../assets/InputCW.svg"
+            [attr.visibility]="clockwise ? null : 'hidden'"
             [attr.width]="settings.drawingScale * 1.2"
             [attr.x]="settings.drawingScale * -0.505 * 1.2"
             [attr.y]="settings.drawingScale * -0.435 * 1.2"
             [attr.height]="settings.drawingScale * 1.2"
             upright
           />
-        }
-        @if (
-          gridUtils.getGround(joint) &&
-          gridUtils.typeOfJoint(joint) !== 'P' &&
-          gridUtils.getInput(joint) &&
-          !drivenClockwise(joint)
-        ) {
           <image
             xlink:href="../../../assets/InputCCW.svg"
+            [attr.visibility]="clockwise ? 'hidden' : null"
             [attr.width]="settings.drawingScale * 1.2"
             [attr.x]="settings.drawingScale * -0.505 * 1.2"
             [attr.y]="settings.drawingScale * -0.435 * 1.2"
@@ -1305,10 +1302,20 @@
         [attr.transform]="'translate(' + motor.x + ' ' + motor.y + ') rotate(' + motor.angle + ')'"
         [class.muted]="mechanismSrv.isMutedJointId(motor.id)"
       >
+        <!-- Both arrows mounted, one shown, so a flip never blanks the mark
+             while the other file decodes. -->
         <image
-          [attr.xlink:href]="
-            motor.cw ? '../../../assets/InputArrowCW.svg' : '../../../assets/InputArrowCCW.svg'
-          "
+          xlink:href="../../../assets/InputArrowCW.svg"
+          [attr.visibility]="motor.cw ? null : 'hidden'"
+          [attr.width]="motorArrowBox.size"
+          [attr.x]="motorArrowBox.x"
+          [attr.y]="motorArrowBox.y"
+          [attr.height]="motorArrowBox.size"
+          upright
+        />
+        <image
+          xlink:href="../../../assets/InputArrowCCW.svg"
+          [attr.visibility]="motor.cw ? 'hidden' : null"
           [attr.width]="motorArrowBox.size"
           [attr.x]="motorArrowBox.x"
           [attr.y]="motorArrowBox.y"
@@ -1826,11 +1833,17 @@
                  nothing a reader could see. -->
               @if (gd.input) {
                 <image
-                  [attr.xlink:href]="
-                    synthCanvas.previewClockwise()
-                      ? '../../../assets/InputCW.svg'
-                      : '../../../assets/InputCCW.svg'
-                  "
+                  xlink:href="../../../assets/InputCW.svg"
+                  [attr.visibility]="synthCanvas.previewClockwise() ? null : 'hidden'"
+                  [attr.width]="settings.drawingScale * 1.2"
+                  [attr.height]="settings.drawingScale * 1.2"
+                  [attr.x]="settings.drawingScale * -0.505 * 1.2"
+                  [attr.y]="settings.drawingScale * -0.435 * 1.2"
+                  upright
+                />
+                <image
+                  xlink:href="../../../assets/InputCCW.svg"
+                  [attr.visibility]="synthCanvas.previewClockwise() ? 'hidden' : null"
                   [attr.width]="settings.drawingScale * 1.2"
                   [attr.height]="settings.drawingScale * 1.2"
                   [attr.x]="settings.drawingScale * -0.505 * 1.2"
