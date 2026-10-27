@@ -182,22 +182,25 @@ describe('MechanismPanelComponent', () => {
     second.destroy();
   });
 
-  it('changes the input speed and its direction from the overview, in Edit', async () => {
+  it('links the input joint to its panel and only reads the speed', async () => {
+    const opened: unknown[] = [];
+    TestBed.overrideProvider(PART_LINK_TARGET, {
+      useValue: { point: () => undefined, open: (part: unknown) => opened.push(part) },
+    });
     const { fixture, data } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
     const driven = data.service.joints.find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     )!;
-    const field = fixture.nativeElement.querySelector('.speedFact input') as HTMLInputElement;
-    expect(field).not.toBeNull();
-    field.value = '25';
-    field.dispatchEvent(new Event('input'));
-    field.dispatchEvent(new Event('blur'));
-    fixture.detectChanges();
-    expect(Math.abs(data.service.driveSpeedOf(driven))).toBeCloseTo(25);
-    const wasClockwise = data.service.driveSpeedOf(driven) < 0;
-    (fixture.nativeElement.querySelector('.speedFact button') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(data.service.driveSpeedOf(driven) < 0).toBe(!wasClockwise);
+    const labels = text(fixture, '.fact .factLabel');
+    const facts = [...fixture.nativeElement.querySelectorAll('.fact')] as HTMLElement[];
+    const inputJoint = facts[labels.indexOf('Input joint')];
+    const link = inputJoint.querySelector('part-link button') as HTMLButtonElement;
+    expect(link.textContent?.trim()).toBe(driven.name || driven.id);
+    link.click();
+    expect(opened).toEqual([driven]);
+    // Click to edit: the speed is a fact here, changed in the joint's panel.
+    expect(facts[labels.indexOf('Input speed')].querySelector('input, button')).toBeNull();
+    expect(text(fixture, '.fact .factValue')[labels.indexOf('Input speed')]).toContain('RPM');
     fixture.destroy();
   });
 });

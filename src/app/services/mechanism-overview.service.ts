@@ -9,7 +9,7 @@ import {
 } from '../model/machine-facts/machine-facts';
 import { panelRole } from '../model/machine-facts/roles';
 import { mechanismLabel, mechanismName } from '../model/mechanism/mechanism-name';
-import { MechanismFact } from '../model/mechanism/readiness';
+import { inputSetFor, MechanismFact } from '../model/mechanism/readiness';
 import { SetupIssue } from '../model/mechanism/setup-issue';
 import { READINESS } from '../ui-text';
 import { DragStateService } from './drag-state.service';
@@ -98,11 +98,10 @@ export class MechanismOverviewService {
     return this.mechanism.solvingIsDeferred;
   }
 
-  /** The joint that drives this machine, whose speed and direction it runs at. */
+  /** The joint that drives this machine: the one its Input joint fact names. */
   drivenJoint(index: number): RealJoint | undefined {
-    return this.mechanism.partitions[index]?.ownJoints.find(
-      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
-    );
+    const partition = this.mechanism.partitions[index];
+    return partition ? inputSetFor(partition) : undefined;
   }
 
   /** How many things stop it running. */
@@ -226,7 +225,7 @@ export class MechanismOverviewService {
 
 /**
  * The facts Edit shows: the count, what it is built from, and what drives it
- * and how fast -- the speed is a setting, so it is offered here to change.
+ * and how fast. The speed is read here and changed in the input joint's panel.
  */
 const BUILDING_FACTS = new Set([
   'Degrees of freedom',
