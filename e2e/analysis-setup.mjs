@@ -139,6 +139,23 @@ record(
   (await massNames.count()) > 0 &&
     (await page.locator('app-analysis-setup .massRow button:not(.partLink)').count()) === 0
 );
+// "Mass moment of inertia", as Alex asked: moment of inertia alone is also the
+// beam's area moment. Wider than its column, it wraps rather than spills.
+const inertiaHead = await page.evaluate(() => {
+  const cell = document.querySelectorAll('app-analysis-setup .massRow.head > span')[2];
+  const table = document.querySelector('app-analysis-setup .massTable').getBoundingClientRect();
+  return {
+    text: cell.textContent.trim(),
+    fits:
+      cell.scrollWidth <= cell.clientWidth + 1 &&
+      cell.getBoundingClientRect().right <= table.right + 1,
+  };
+});
+record(
+  'the inertia column says mass moment of inertia, inside its column',
+  inertiaHead.text === 'Mass moment of inertia' && inertiaHead.fits,
+  inertiaHead
+);
 await massNames.nth(1).hover();
 await page.waitForTimeout(200);
 const lit = await page.evaluate(
