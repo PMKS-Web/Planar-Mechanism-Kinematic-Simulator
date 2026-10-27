@@ -68,6 +68,7 @@ import { TutorialService } from '../../services/tutorial.service';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { TOOLTIPS_ARE_LABELS } from '../BLOCKS/tooltips-are-labels';
+import { PanelFoldStateService } from '../../services/panel-fold-state.service';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
@@ -177,23 +178,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   listOfOtherJoints: RealJoint[] = [];
   private currentlyOpenJointID: string = '';
 
-  //A dictionary for whether each collapsible section is expanded or not
-  sectionExpanded: { [key: string]: boolean } = {
-    JBasic: true, //This is the default (starting) state
-    JInput: true, //Expanded on arrival, so a new input's settings are visible
-    // Open on arrival, like the link's own mass section: it is only there at
-    // all for a slider, so a reader who has one has come to a joint that
-    // weighs something.
-    JMass: true,
-    JVisual: false,
-    JDistToJ: true,
-    LBasic: true,
-    LVisual: false,
-    LMass: true,
-    FBasic: true,
-    FVisual: false,
-    BGPlace: true,
-  };
+  /** Whether each collapsible section is open, kept for the session rather
+   *  than on this component, which every switch into Edit mounts afresh. */
+  readonly sectionExpanded = inject(PanelFoldStateService).editSections;
 
   /**
    * A massless link has no inertia and no center of mass to speak of.

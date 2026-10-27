@@ -219,6 +219,17 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.destroy();
   });
 
+  it('keeps a folded graph folded in the next mode’s panel', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
+    fixture.componentInstance.setExpanded('JPos', false);
+    fixture.destroy();
+    // A mode switch mounts a new panel; the fold lives in the root service.
+    const next = TestBed.createComponent(AnalysisPanelComponent);
+    next.detectChanges();
+    expect(next.componentInstance.isExpanded('JPos', true)).toBe(false);
+    next.destroy();
+  });
+
   it('separates rotation from CoM, retaining expansion and session tab choices', async () => {
     const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
     fixture.detectChanges();

@@ -37,6 +37,7 @@ import {
   DrawingSwitch,
 } from '../../services/context-menu-builder.service';
 import { ViewButtonComponent } from '../BLOCKS/view-button/view-button.component';
+import { PanelFoldStateService } from '../../services/panel-fold-state.service';
 
 /** One expandable force graph: the reaction between `linkId` and `jointId`. */
 export interface ForceAnalysisRow {
@@ -397,8 +398,9 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     return key.includes('Force') ? `${this.forceAnalysisMode()}:${key}` : key;
   }
 
-  // Only explicit choices are remembered; the first graph starts open.
-  graphExpanded: { [key: string]: boolean } = {};
+  // Kept for the session, not on this component, which every switch into an
+  // analysis mode mounts afresh. Only explicit choices are remembered.
+  readonly graphExpanded = inject(PanelFoldStateService).analysisGraphs;
 
   mechStateSub?: Subscription;
   private subscriptions = new Subscription();
