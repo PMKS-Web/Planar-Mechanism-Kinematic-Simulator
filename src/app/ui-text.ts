@@ -68,7 +68,7 @@ export const NOT_A = {
   angle: 'That is not an angle. Type a number, with or without a unit — 90, 90 deg, 1.5 rad.',
   mass: 'That is not a mass. Type a number, with or without a unit — 5, 5 g, 0.2 lb.',
   momentOfInertia:
-    'That is not a moment of inertia. Type a number, with or without a unit — 4, 4 kg·cm².',
+    'That is not a mass moment of inertia. Type a number, with or without a unit — 4, 4 kg·cm².',
   force: 'That is not a force. Type a number, with or without a unit — 10, 10 N, 2.5 lb.',
   name: 'A name has to be letters or numbers, and cannot be one already in use.',
   /**

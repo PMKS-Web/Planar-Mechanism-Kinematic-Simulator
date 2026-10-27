@@ -190,7 +190,8 @@ Under Mass, the Edit panel's Mass Settings reads `CoM measured from`, then the c
 - **Its help mark sits right after "from"** and names both of the choice's jobs: what X and Y are
   measured from, and what the center of mass keeps its place against while you edit.
 - **`Inertia`** in the panel, so the label fits on one line beside its field. The help mark and the
-  Masses table, which has the width, say `Moment of inertia`.
+  Masses table say `Mass moment of inertia`, because `moment of inertia` alone is also a beam's
+  area moment. Every message says it in full.
 
 ### The Masses table
 

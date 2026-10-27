@@ -659,7 +659,7 @@
                 [formGroup]="linkForm"
                 _formControl="massMoI"
                 class="moiBlock"
-                tooltip="Moment of inertia about the link's center of mass. Derived from its shape until you type a value."
+                tooltip="Mass moment of inertia about the link's center of mass. Derived from its shape until you type a value."
                 [class.derived]="!activeSrv.selectedLink.moiIsCustom"
                 >Inertia
                 <span fieldSuffix class="stateSuffix">
@@ -683,7 +683,7 @@
               @if (drawnAsDisc()) {
                 <p class="shapeNote">
                   Drawn as a disc. These two still follow the link's joints, not the circle — set
-                  Moment of inertia by hand for a real flywheel.
+                  Inertia by hand for a real flywheel.
                 </p>
               }
             }
