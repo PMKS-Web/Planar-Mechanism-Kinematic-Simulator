@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { Joint, PrisJoint, RealJoint } from '../../model/joint';
+import { PrisJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
 import { chipOf, MachineChip } from '../../services/mechanism-overview.service';
-import { mechanismName } from '../../model/mechanism/mechanism-name';
+import { mechanismLabel, mechanismName } from '../../model/mechanism/mechanism-name';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
@@ -18,9 +18,10 @@ import { NotificationService } from '../../services/notification.service';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { InputComponent } from '../BLOCKS/input/input.component';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
+import { PartLinkComponent } from '../BLOCKS/part-link/part-link.component';
+import { MassPartLinksDirective } from './mass-part-links.directive';
 import { Subscription } from 'rxjs';
 import { NOT_A } from '../../ui-text';
-import { editPanelHandle } from '../../services/edit-panel-handle';
 
 /** One editable row of the mass table: a body, and what to call it. */
 export interface MassRow {
@@ -36,6 +37,17 @@ export interface MassRow {
   /** A point mass: no inertia of its own, and no shape to derive one from. */
   isBlock: boolean;
 }
+
+/** The mass table's rows for one machine, under its name when there are several. */
+export interface MassGroup {
+  /** The machine's name, or nothing when the drawing has only one. */
+  label?: string;
+  rows: MassRow[];
+}
+
+/** Why a slider's inertia cell is empty, said where the reader points at it. */
+export const POINT_MASS_NOTE =
+  'A slider is treated as a point mass, so it has no moment of inertia.';
 
 /**
  * What stands between this drawing and its animation, mechanism by mechanism.
@@ -64,6 +76,8 @@ export interface MassRow {
     InputComponent,
     ChipComponent,
     IssueComponent,
+    PartLinkComponent,
+    MassPartLinksDirective,
   ],
 })
 export class AnalysisSetupComponent {
@@ -87,6 +101,7 @@ export class AnalysisSetupComponent {
   unassignedOpen = false;
   forceOpen = true;
   massesOpen = true;
+  protected readonly pointMassNote = POINT_MASS_NOTE;
 
   get readiness(): MechanismReadiness[] {
     return this.mechanism.readinessOfEachMechanism();
@@ -266,10 +281,10 @@ export class AnalysisSetupComponent {
   private ensureRowControls(rows: MassRow[]): void {
     const wanted = new Set<string>();
     for (const row of rows) {
-      for (const [name, kind] of [
-        [this.massControlName(row), 'mass'],
-        [this.moiControlName(row), 'moi'],
-      ] as const) {
+      // A point mass has no inertia to type or show, so its cell holds no field.
+      const cells: [string, 'mass' | 'moi'][] = [[this.massControlName(row), 'mass']];
+      if (!row.isBlock) cells.push([this.moiControlName(row), 'moi']);
+      for (const [name, kind] of cells) {
         wanted.add(name);
         if (!this.tableForm.contains(name)) {
           const control = new FormControl(kind === 'mass' ? this.massText(row) : this.moiText(row));
@@ -332,6 +347,29 @@ export class AnalysisSetupComponent {
     return rows;
   }
 
+  /**
+   * The rows by machine, when the drawing holds more than one: nine bodies
+   * from three machines in one list made the reader work out which was whose.
+   * Bodies that belong to no machine -- a bar pinned down at both ends, a chain
+   * that never reaches ground -- come last, under their own heading.
+   */
+  massGroups(): MassGroup[] {
+    const rows = this.massRows();
+    const partitions = this.mechanism.partitions;
+    if (partitions.length < 2) return [{ rows }];
+    const groups: MassGroup[] = partitions.map((partition, index) => ({
+      label: mechanismLabel(partition, index),
+      rows: [],
+    }));
+    const loose: MassRow[] = [];
+    for (const row of rows) {
+      const index = this.mechanism.indexOfMechanismContaining(row.body);
+      (index === -1 ? loose : groups[index].rows).push(row);
+    }
+    if (loose.length > 0) groups.push({ label: 'Not in a mechanism', rows: loose });
+    return groups.filter((group) => group.rows.length > 0);
+  }
+
   private buildRows(): MassRow[] {
     // A body's label lives with the mechanism, shared with the massless warning
     // — the table and the warning must call a body the same thing. A *slider's*
@@ -371,11 +409,9 @@ export class AnalysisSetupComponent {
   moiText(row: MassRow): string {
     const length = this.settings.lengthUnit.value;
     const display = this.nup.displayInertiaUnit(length);
-    if (row.isBlock || !(row.body instanceof RealLink)) {
-      // A block is a point mass: its inertia is zero and stays a disabled
-      // fact rather than a dash pretending the column does not apply.
-      return this.nup.formatValueAndUnit(0, display);
-    }
+    // A point mass has no inertia, and its cell says so by being empty rather
+    // than by a grayed zero that reads like a value someone forgot to set.
+    if (row.isBlock || !(row.body instanceof RealLink)) return '';
     return this.nup.formatValueAndUnit(
       this.nup.convertInertia(row.body.massMoI, this.nup.storedInertiaUnit(length), display),
       display
@@ -480,26 +516,5 @@ export class AnalysisSetupComponent {
     row.body.moiIsCustom = true;
     this.mechanism.updateMechanism(true);
     this.mechanism.onMechUpdateState.next(2);
-  }
-
-  /**
-   * Go to the body a mass row is about: select it, and switch to the mode where
-   * its center of mass can be placed. A part named in an issue's text is a
-   * `part-link`, which goes there on its own.
-   *
-   * Deliberately not an undo step. Being shown where a problem is has not
-   * changed the mechanism, and pressing Undo afterwards should take back the
-   * last edit rather than the last time the reader looked at something.
-   */
-
-  goTo(part: Joint | Link | undefined): void {
-    if (!part) return;
-    this.tabs.setTab(TabID.EDIT);
-    if (part instanceof RealJoint || part instanceof RealLink) {
-      this.activeObj.updateSelectedObj(part);
-    }
-    // The arrow next to a mass cell points at the mass fields, so land on
-    // them even when the reader last left that section folded shut.
-    if (part instanceof RealLink) editPanelHandle()?.expandSection('LMass');
   }
 }

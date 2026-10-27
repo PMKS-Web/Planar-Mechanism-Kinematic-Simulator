@@ -132,6 +132,34 @@ record(
   entered
 );
 
+// --- the Masses table: a body's name is its row's one way to it -------------
+const massNames = page.locator('app-analysis-setup .massRow part-link button');
+record(
+  'every mass row names its body as a part link, with no arrow beside it',
+  (await massNames.count()) > 0 &&
+    (await page.locator('app-analysis-setup .massRow button:not(.partLink)').count()) === 0
+);
+await massNames.nth(1).hover();
+await page.waitForTimeout(200);
+const lit = await page.evaluate(
+  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.linkedPart?.id
+);
+record('pointing at a name lights that body on the grid', !!lit, lit);
+await massNames.nth(1).click();
+await page.waitForTimeout(600);
+const massLanding = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  return {
+    tab: grid.tabService.getCurrentTab(),
+    selected: grid.activeObjService.selectedLink?.id,
+  };
+});
+record(
+  'and pressing it selects that body in Edit',
+  massLanding.tab === 1 && massLanding.selected === lit,
+  massLanding
+);
+
 // --- a mechanism with nothing driving it ------------------------------------
 await open(payloads['4-Bar']);
 await inAngular(page, () => {

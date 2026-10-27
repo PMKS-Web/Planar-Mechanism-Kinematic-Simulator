@@ -61,11 +61,6 @@ point at a part their own way:
   row, which defers to a selection where a part link's `linkedPart` does not. The rows are rows
   rather than words in a sentence, so the entry is to decide which of the two it wants, and to
   route the pointing through `PART_LINK_TARGET` if it is the part link's, not to draw chips.
-- **`analysis-setup.component.html`** `.rowJump`, the arrow beside each row of the Masses table.
-  It goes to the Edit panel *and opens its mass section*, which `PartNavigationService.open` does
-  not, so the block would need a way to say which section to land on first.
-- **`mechanism-panel`**'s "Input joint" fact is the joint's letter as plain text, where a
-  `part-link` would take the reader to it.
 - **Sentences that name parts as plain strings**: `describeActuator`'s refusals (the Driven Input
   row's hover), the cylinder edits' `asCloseAs` news in `NotificationService`, and the force
   solver's `invalidProperty` messages. Each would first have to return a `Prose` rather than a
