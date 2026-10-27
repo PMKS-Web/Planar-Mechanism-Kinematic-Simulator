@@ -1,7 +1,9 @@
+import { jansenPattern } from './jansen-pattern';
 import { Joint, PrisJoint } from '../joint';
 import { Link } from '../link';
 import { distAt, fitLine, fmt, isGroundPin } from './fact-math';
 import {
+  drivenCylinderLevers,
   FourBar,
   findFourBars,
   isDisc,
@@ -184,41 +186,6 @@ function straightLine(ctx: RelationContext, loop: FourBar): FamilyMatch | undefi
   return undefined;
 }
 
-/** Theo Jansen's published link lengths, for a crank of 15. */
-const JANSEN = [38, 7.8, 41.5, 39.3, 40.1, 55.8, 39.4, 36.7, 65.7, 49, 50, 61.9];
-
-function jansen(ctx: RelationContext): FamilyMatch | undefined {
-  const cranks = ctx.bodies.filter(
-    (b) => turnsFully(ctx, b) && jointsOf(ctx, b).some(isGroundPin) && jointsOf(ctx, b).length === 2
-  );
-  if (cranks.length !== 1 || ctx.bodies.length < 7) return undefined;
-  const [g, pin] = jointsOf(ctx, cranks[0]).sort(
-    (x, y) => Number(isGroundPin(y)) - Number(isGroundPin(x))
-  );
-  const scale = 15 / distAt(ctx.samples, g, pin);
-  const lengths: number[] = [];
-  for (const body of ctx.bodies) {
-    const joints = jointsOf(ctx, body);
-    for (let i = 0; i < joints.length; i++)
-      for (let k = i + 1; k < joints.length; k++)
-        lengths.push(distAt(ctx.samples, joints[i], joints[k]) * scale);
-  }
-  const grounds = ctx.visible.filter(isGroundPin);
-  for (let i = 0; i < grounds.length; i++)
-    for (let k = i + 1; k < grounds.length; k++) {
-      const p = ctx.samples.paths.get(grounds[i].id)![0];
-      const q = ctx.samples.paths.get(grounds[k].id)![0];
-      lengths.push(Math.abs(p[0] - q[0]) * scale, Math.abs(p[1] - q[1]) * scale);
-    }
-  const found = JANSEN.filter((n) => lengths.some((l) => near(l, n, 0.015)));
-  return found.length >= 10
-    ? {
-        family: 'Jansen linkage (Strandbeest leg)',
-        basis: `${found.length} of Jansen's 12 published lengths appear, scaled to a crank of 15 (${JANSEN.join(', ')})`,
-      }
-    : undefined;
-}
-
 /** A crank driving a pin in another link's slot, or a block on a fixed guide through a rod. */
 function sliders(ctx: RelationContext): FamilyMatch[] {
   const out: FamilyMatch[] = [];
@@ -399,21 +366,13 @@ function exactStraightLine(ctx: RelationContext): FamilyMatch | undefined {
 }
 
 function cylinderLever(ctx: RelationContext): FamilyMatch | undefined {
-  for (const cylinder of ctx.cylinders) {
-    for (const mount of [cylinder.mountA, cylinder.mountB]) {
-      if (isGroundPin(mount)) continue;
-      const lever = ctx.bodies.find(
-        (b) => jointsOf(ctx, b).includes(mount) && jointsOf(ctx, b).some(isGroundPin)
-      );
-      if (!lever) continue;
-      const other = mount === cylinder.mountA ? cylinder.mountB : cylinder.mountA;
-      return {
-        family: 'cylinder-driven lever',
-        basis: `cylinder ${cylinder.mountA.id}-${cylinder.mountB.id}, anchored at ${other.id}, pushes ${ctx.bodyLabel(lever)} at ${mount.id} and swings it about its fixed pivot`,
-      };
-    }
-  }
-  return undefined;
+  const relation = drivenCylinderLevers(ctx)[0];
+  if (!relation) return undefined;
+  const { cylinder, mount, other, lever } = relation;
+  return {
+    family: 'cylinder-driven lever',
+    basis: `cylinder ${cylinder.mountA.id}-${cylinder.mountB.id}, anchored at ${other.id}, pushes ${ctx.bodyLabel(lever)} at ${mount.id} and swings it about its fixed pivot`,
+  };
 }
 
 export function familyCheck(ctx: RelationContext): FamilyCheck {
@@ -445,7 +404,7 @@ export function familyCheck(ctx: RelationContext): FamilyCheck {
   const add = (m: FamilyMatch | undefined) => {
     if (m && !matches.some((x) => x.family === m.family)) matches.push(m);
   };
-  add(jansen(ctx));
+  add(jansenPattern(ctx));
   add(sideRods(ctx));
   add(exactStraightLine(ctx));
   loops.forEach((loop) => add(straightLine(ctx, loop)));

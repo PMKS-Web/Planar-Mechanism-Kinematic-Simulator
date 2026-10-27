@@ -2686,3 +2686,11 @@ pins. `parallel-guide-headings.ts` supplies that consequence to position and dif
 constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### Unwelding force ownership cannot be resolved against the compound being replaced
+
+`splitCompoundAtRemainingWelds` builds its replacement links before removing the old root from the
+service's link list. Calling the ordinary root lookup there found the old compound and put the
+force back on it. Pass the replacement owner directly to `attachForceToLink`; keep member identity
+in `anchoredTo` and the URL link field. The audit attachment test checks immediate loading, physical
+load-point power, following the member, fresh reopening and finally unwelding.
