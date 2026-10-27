@@ -120,29 +120,14 @@
             </div>
           }
           @for (fact of overview.facts(index, editable()); track fact.label) {
-            @if (fact.label === 'Input speed' && drivenJoint; as joint) {
-              <!-- A setting, so it is offered to change: the same speed and
-                   direction the input joint's own panel edits. -->
-              <div class="fact speedFact">
+            @if (fact.label === 'Input joint' && drivenJoint; as joint) {
+              <!-- Click to edit, as everywhere: the speed and direction are
+                   the joint's, and its panel is where they change. -->
+              <div class="fact">
                 <span class="factLabel">{{ fact.label }}</span>
-                <div class="speedControls" [attr.inert]="frozen() || null">
-                  <input-block
-                    cell
-                    class="speedField"
-                    [formGroup]="speedForm"
-                    _formControl="speed"
-                    [unit]="drive.speedUnitLabel(joint)"
-                    tooltip="How fast the input drives the mechanism. Negative reverses it."
-                  />
-                  <button-block
-                    inline
-                    [icon]="drive.directionIcon(joint)"
-                    [disabled]="drive.directionLocked(joint)"
-                    [click]="flipDirection"
-                    tooltip="Reverse the input's direction"
-                    >{{ drive.directionLabel(joint) }}</button-block
-                  >
-                </div>
+                <span class="factValue"
+                  ><part-link [part]="joint">{{ fact.value }}</part-link></span
+                >
               </div>
             } @else {
               <div class="fact">
