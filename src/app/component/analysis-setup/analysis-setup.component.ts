@@ -47,7 +47,7 @@ export interface MassGroup {
 
 /** Why a slider's inertia cell is empty, said where the reader points at it. */
 export const POINT_MASS_NOTE =
-  'A slider is treated as a point mass, so it has no moment of inertia.';
+  'A slider is treated as a point mass, so it has no mass moment of inertia.';
 
 /**
  * What stands between this drawing and its animation, mechanism by mechanism.

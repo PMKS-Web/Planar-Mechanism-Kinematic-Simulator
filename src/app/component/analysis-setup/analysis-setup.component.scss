@@ -204,7 +204,10 @@
         font-weight: 600;
         padding-bottom: 5px;
         margin-bottom: 3px;
-        white-space: nowrap;
+        /* "Mass moment of inertia" is wider than its column: it wraps onto a
+           second line, sitting on the rule like the one-line headings. */
+        align-items: end;
+        line-height: 1.3;
         /* The rule belongs under the header, where the mock draws it — not
            under the legend, where a line reads as underlining the caption. */
         border-bottom: 1px solid rgba(0, 0, 0, 0.12);

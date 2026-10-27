@@ -182,12 +182,12 @@ words are fixed where a control or a label repeats:
 
 ### The Masses table
 
-The Force Analysis setup drawer lists every body that weighs: `Body`, `Mass`, `Moment of inertia`.
+The Force Analysis setup drawer lists every body that weighs: `Body`, `Mass`, `Mass moment of inertia`.
 
 - **A body's name is a part link**, and the row's only way out. Pointing at it lights the body on
   the grid, and pressing it selects the body in Edit with a link's mass fields open.
 - **A slider's inertia cell is empty**, not a grayed `0.00`. Pointing at it says `A slider is
-  treated as a point mass, so it has no moment of inertia.`
+  treated as a point mass, so it has no mass moment of inertia.`
 - **Several machines, one heading each**, by the machine's name (`Mechanism 2`, `Pump jack`).
   Bodies no machine owns come last, under `Not in a mechanism`. One machine gets no heading.
 
