@@ -180,6 +180,18 @@ words are fixed where a control or a label repeats:
   part still opens with a capital (`Link AB is also grounded at joint B`); `prose-block` does it,
   through `opening`, so the model writes every part the same way.
 
+### A link's mass fields
+
+Under Mass, the Edit panel's Mass Settings reads `CoM measured from`, then the choice, then X and Y.
+
+- **The label says "measured from"**, because `Center of mass: Centroid` read as where the point
+  is rather than what X and Y count from. The choices name a point: `Shape's centroid`, `Joint A`
+  for each joint a reader can see, `Grid origin (0, 0)`.
+- **Its help mark sits right after "from"** and names both of the choice's jobs: what X and Y are
+  measured from, and what the center of mass keeps its place against while you edit.
+- **`Inertia`** in the panel, so the label fits on one line beside its field. The help mark and the
+  Masses table, which has the width, say `Moment of inertia`.
+
 ### The Masses table
 
 The Force Analysis setup drawer lists every body that weighs: `Body`, `Mass`, `Moment of inertia`.

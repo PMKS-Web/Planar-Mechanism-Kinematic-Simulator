@@ -67,6 +67,7 @@ import { MatIcon } from '@angular/material/icon';
 import { TutorialService } from '../../services/tutorial.service';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TOOLTIPS_ARE_LABELS } from '../BLOCKS/tooltips-are-labels';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
@@ -107,6 +108,9 @@ const INPUT_SPEED_UNITS = [
   templateUrl: './edit-panel.component.html',
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
+  // The CoM frame's help opens beside a select it cannot clear in a 250px
+  // panel; a tooltip the pointer passes through cannot hold a press on it.
+  providers: [TOOLTIPS_ARE_LABELS],
   imports: [
     NumberDragDirective,
     EditBannerComponent,
@@ -161,6 +165,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /** What the Joint Type choice says under a block with nowhere to slide. */
   protected readonly nowhereToSlide = NOWHERE_TO_SLIDE;
   protected readonly orphanedJoint = ORPHANED_JOINT;
+  /** The CoM frame choice does two jobs, and its help mark names both. */
+  protected readonly comFrameHelp =
+    'X and Y are measured from this point. While you edit, the center of mass also keeps ' +
+    'its place against it: the centroid carries it with the link, a joint keeps it the same ' +
+    'offset from that joint, and the grid origin leaves it where it is on the drawing. ' +
+    'When the mechanism runs, it moves with the link whichever you pick.';
   protected jointIsOrphaned(): boolean {
     return isOrphanedJoint(this.activeSrv.selectedJoint);
   }

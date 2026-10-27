@@ -122,6 +122,7 @@ export const SUITES = [
   { name: 'link-holds', seconds: 21, lanes: BOTH },
   { name: 'link-holds-angles', seconds: 6, lanes: BOTH },
   { name: 'link-labels', seconds: 35, lanes: BOTH },
+  { name: 'link-mass-fields', seconds: 5, lanes: NIGHTLY },
   { name: 'locking', seconds: 21, lanes: BOTH },
   { name: 'mechanism-panel', seconds: 97, lanes: NIGHTLY },
   { name: 'mechanism-audit', seconds: 15, lanes: NIGHTLY },

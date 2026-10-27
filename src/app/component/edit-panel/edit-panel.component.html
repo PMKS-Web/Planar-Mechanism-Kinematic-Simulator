@@ -577,8 +577,24 @@
                   Reset All
                 </button>
               </div>
+              <!-- "Measured from", because "Center of mass: Centroid" read as
+               where the point is rather than what X and Y count from. The
+               label takes its own line so the choices can be named in full. -->
+              <div class="dotRow comFrameRow">
+                <span class="dotRowLabel" id="comFrameLabel">CoM measured from</span>
+                <!-- To the right, toward the canvas: below, it covered the whole
+                     select it explains. Where it still overlaps, the pointer
+                     goes through it (TOOLTIPS_ARE_LABELS). -->
+                <mat-icon
+                  class="label-help"
+                  [matTooltip]="comFrameHelp"
+                  matTooltipPosition="right"
+                  matTooltipShowDelay="400"
+                >
+                  help_outline
+                </mat-icon>
+              </div>
               <div class="dotRow">
-                <span class="dotRowLabel">Center of mass</span>
                 <!-- Marked on the options, not with [value] on the select. Setting
                  the select's value only takes if its options already exist,
                  and these are rebuilt whenever the panel re-renders this block
@@ -595,10 +611,11 @@
                   class="comFrameSelect"
                   [disabled]="!permission.may('properties')"
                   (change)="setComFrame($any($event.target).value)"
-                  title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
+                  aria-labelledby="comFrameLabel"
                 >
-                  <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
-                  <option value="grid" [selected]="comFrame === 'grid'">Grid</option>
+                  <option value="centroid" [selected]="comFrame === 'centroid'">
+                    Shape's centroid
+                  </option>
                   <!-- The joints a reader can point at. A cylinder's buried
                        inner end is not one of them (D14, S11), and a body
                        welded to a barrel mount holds it: it offered "Joint A1"
@@ -612,6 +629,7 @@
                       Joint {{ joint.name || joint.id }}
                     </option>
                   }
+                  <option value="grid" [selected]="comFrame === 'grid'">Grid origin (0, 0)</option>
                 </select>
               </div>
               <!-- Each field wears the pair's state, as the mock draws it. -->
@@ -643,7 +661,7 @@
                 class="moiBlock"
                 tooltip="Moment of inertia about the link's center of mass. Derived from its shape until you type a value."
                 [class.derived]="!activeSrv.selectedLink.moiIsCustom"
-                >Moment of inertia
+                >Inertia
                 <span fieldSuffix class="stateSuffix">
                   <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
                   @if (activeSrv.selectedLink.moiIsCustom) {
