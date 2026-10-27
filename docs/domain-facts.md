@@ -365,11 +365,18 @@ angular velocities and accelerations use radians. Display angle conversion must 
 `slide-gripper.spec.ts` and `mechanism-audit.spec.ts` cover these contracts; `e2e/template-graphs.mjs`
 checks plotted rates against their positions.
 
-### Solved precision, saved precision and physical force units have separate boundaries
+### Solved poses keep full precision
 
-The position solver keeps floating-point poses. Geometric mobility weights angular constraints
-by characteristic length so scaling a drawing does not change a second-order tangency test.
-Parallel grounded guides on one rigid body imply a fixed body heading even when their pins may turn.
+The position solver keeps floating-point poses. Rounding belongs to labels and file formats, not to
+a solved position: rounded poses biased every rate and force derived from them.
+
+### Mobility weighs angles by the drawing's size, and parallel guides fix a heading
+
+Geometric mobility weights angular constraints by characteristic length so scaling a drawing does
+not change a second-order tangency test. Parallel grounded guides on one rigid body imply a fixed
+body heading even when their pins may turn.
+
+### A saved link carries exact values in an optional `P` tail
 
 The URL's optional `P` tail restores exact finite values that differ from the legacy thousandth-unit
 body. It covers geometry, guide angles, speed, mass, inertia, CoM, force data and numeric settings.
@@ -377,22 +384,26 @@ Old payloads retain their old meaning. Old readers reject unknown precision tags
 silently substitute default speed for a tiny nonzero value. Data already rounded away in an old
 URL requires an original source drawing to restore.
 
-The force solver converts model coordinates and accelerations to SI at equation assembly,
-using `distanceToM / coordinateScale`; production `Mechanism` supplies `MODEL_SCALE`, while
-physical-unit verification harnesses supply 1. Mass and inertia are already SI. Returned force is
-newtons and torque is newton-meters. Display conversion must not divide physical torque by model
-scale. Floating motor torques act oppositely on both connected bodies.
-
-### Reversed elapsed time and welded attachments follow physical ownership
-
-Cached reversal reuses poses but reverses their elapsed-time ordering. `elapsedTimeAtSample`,
-`samplesInPlaybackOrder` and `playbackRowOfSample` keep plotted rows, CSV and graph markers on the
-playback clock. Velocities negate; accelerations at the same pose do not.
+### A welded leaf's force belongs to its root, and remembers the leaf
 
 A welded leaf is selected and saved by member identity, but its force belongs to the physical root
 body. `anchoredTo` retains the member so unwelding can restore the load to it. During compound
 replacement, pass the new owner explicitly: the service's old graph still contains the compound.
 Paused tracer attachment uses `indexOfMechanismSolving`, including leaves and shared frame parts.
+
+### Forces are assembled in SI, and a floating motor pushes back
+
+The force solver converts model coordinates and accelerations to SI at equation assembly. Its
+length factor is the reader's `distanceToM` divided by `MODEL_SCALE`, applied once where the solver
+reads its units. Mass and inertia are already SI. Returned force is newtons and torque is
+newton-meters; display conversion must not divide a physical torque by model scale. A floating
+motor's torque acts equally and oppositely on the body it drives and the body it is mounted on.
+
+### Reversed playback keeps the poses and turns the clock round
+
+Cached reversal reuses poses but reverses their elapsed-time ordering. `elapsedTimeAtSample`,
+`samplesInPlaybackOrder` and `playbackRowOfSample` keep plotted rows, CSV and graph markers on the
+playback clock. Velocities negate; accelerations at the same pose do not.
 
 ### A link pinned to ground twice is frame, and the force solver treats it so
 
