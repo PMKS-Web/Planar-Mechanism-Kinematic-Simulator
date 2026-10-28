@@ -363,6 +363,17 @@ to a first difference and a spike of several units to a second. Only blanks are 
 analytic answer exists it stands. `slide-gripper.spec.ts` pins it, and `e2e/template-graphs.mjs`
 checks every plotted rate against a difference quotient of its source.
 
+### Solved poses keep full precision
+
+The position solver keeps floating-point poses. Rounding belongs to labels and file formats, not to
+a solved position: rounded poses biased every rate and force derived from them.
+
+### Mobility weighs angles by the drawing's size, and parallel guides fix a heading
+
+Geometric mobility weights angular constraints by characteristic length so scaling a drawing does
+not change a second-order tangency test. Parallel grounded guides on one rigid body imply a fixed
+body heading even when their pins may turn.
+
 ### A link pinned to ground twice is frame, and the force solver treats it so
 
 A bar with two distinct ground pins cannot move. The position solver never minded one (it holds
