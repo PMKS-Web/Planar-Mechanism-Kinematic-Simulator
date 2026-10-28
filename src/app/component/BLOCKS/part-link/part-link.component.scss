@@ -27,5 +27,21 @@
         outline-offset: 1px;
       }
     }
+
+    // In a table cell: as wide as its name allows and no wider, cut to an
+    // ellipsis at the column's edge.
+    &.cell {
+      display: block;
+      min-width: 0;
+
+      .partLink {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        text-align: left;
+      }
+    }
   }
 }

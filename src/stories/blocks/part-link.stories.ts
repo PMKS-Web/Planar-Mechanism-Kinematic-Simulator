@@ -75,3 +75,19 @@ export const FromProse: Story = {
     };
   },
 };
+
+/**
+ * `cell`: a name in a table column, as the Masses table writes them. It takes
+ * the cell and ends in an ellipsis where the column is narrower than the name,
+ * where a part link in a sentence never shortens.
+ */
+export const InATableCell: Story = {
+  render: () => ({
+    props: fourBarParts(),
+    template: `
+      <div style="width: 96px; font-size: 13px">
+        <part-link cell [part]="bc">Link Drag coupler</part-link>
+        <part-link cell [part]="cd">Link CD</part-link>
+      </div>`,
+  }),
+};
