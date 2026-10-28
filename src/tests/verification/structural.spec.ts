@@ -284,7 +284,7 @@ describe('focused solver regressions', () => {
 
 describe('URL transcoder round-trip', () => {
   const expectCodecDecimal = (actual: number, original: number, label: string) => {
-    expect(actual, label).toBe(Math.round(original * 1000) / 1000);
+    expect(actual, label).toBe(original);
   };
   function encode(built: BuiltMechanism): string {
     const encoder = new StringTranscoder();

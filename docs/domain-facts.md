@@ -374,6 +374,14 @@ Geometric mobility weights angular constraints by characteristic length so scali
 not change a second-order tangency test. Parallel grounded guides on one rigid body imply a fixed
 body heading even when their pins may turn.
 
+### A saved link carries exact values in an optional `P` tail
+
+The URL's optional `P` tail restores exact finite values that differ from the legacy thousandth-unit
+body. It covers geometry, guide angles, speed, mass, inertia, CoM, force data and numeric settings.
+Old payloads retain their old meaning. Old readers reject unknown precision tags; they cannot
+silently substitute default speed for a tiny nonzero value. Data already rounded away in an old
+URL requires an original source drawing to restore.
+
 ### A link pinned to ground twice is frame, and the force solver treats it so
 
 A bar with two distinct ground pins cannot move. The position solver never minded one (it holds
