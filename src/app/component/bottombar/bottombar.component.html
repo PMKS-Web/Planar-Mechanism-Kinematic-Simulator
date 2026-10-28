@@ -22,5 +22,15 @@
   @if (cursor) {
     <span class="cursor">Cursor: {{ cursor }}</span>
   }
-  <span class="units">Units: {{ unitSet }}</span>
+  <!-- A way in as well as a readout: the units are changed in Settings, and
+       this is where a reader looks when they are the wrong ones. -->
+  <button
+    type="button"
+    class="units"
+    title="Change units in Settings"
+    [attr.aria-label]="'Units: ' + unitSet + '. Change them in Settings.'"
+    (click)="openUnitSettings()"
+  >
+    Units: {{ unitSet }}
+  </button>
 </div>
