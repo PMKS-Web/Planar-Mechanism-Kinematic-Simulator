@@ -339,6 +339,19 @@
   white-space: nowrap;
 }
 
+/* The help mark sits right after "from", not out at the field's edge: it
+   explains the label, and the select on the next line spans the width. */
+.massArea .comFrameRow {
+  gap: 0;
+  padding-bottom: 0;
+
+  .dotRowLabel {
+    flex: 0 1 auto;
+  }
+}
+
+/* Full width, like the X and Y pair it heads, so "Shape's centroid" and
+   "Grid origin (0, 0)" are read in full. */
 .massArea .comFrameSelect {
   font: inherit;
   font-size: 14px;
@@ -347,10 +360,9 @@
   background: var(--surface-field);
   height: 30px;
   padding: 0 8px;
-  width: 112px;
+  width: 100%;
   min-width: 0;
-  flex: 0 0 112px;
-  margin-left: auto;
+  flex: 1 1 auto;
 
   &:disabled {
     color: var(--text-muted);
@@ -425,17 +437,13 @@
 }
 
 /* The spacer stays hidden — the field pushes itself right with margin auto,
-   so no phantom flex gaps stack up against the fixed field column. The help
-   icons are back where they fit; Rotational Inertia's wide field leaves its
-   wrapped label no room for one, so its tooltip rides the label alone. */
+   so no phantom flex gaps stack up against the fixed field column. Every
+   help mark fits now that the inertia's label is one word. */
 .massArea #input-block:not(.state-input-host) .spacer {
   display: none;
 }
-.massArea input-block.moiBlock .label-help {
-  display: none;
-}
 
-/* Rotational Inertia breaks the center line: its value carries a unit and
+/* Inertia breaks the center line: its value carries a unit and
    needs the room, so its field expands leftward while still ending on the
    panel's shared right edge. */
 .massArea input-block.moiBlock #input-block:not(.state-input-host) .customInputForm {
@@ -451,9 +459,8 @@
   color: var(--text-tertiary);
 }
 
-/* The mock's one field column: Mass, the frame select and Rotational
-   Inertia share one width, one left edge and one right edge — the center
-   line of the panel. The id out-ranks the base #input-block width. */
+/* The mock's one field column: Mass and Inertia share one width, one left
+   edge and one right edge — the center line of the panel. The id out-ranks the base #input-block width. */
 .massArea #input-block .customInputForm .mat-mdc-text-field-wrapper {
   width: 112px;
   max-width: 100%;
@@ -482,7 +489,7 @@
 }
 
 /* A long label wraps; the field does not shrink below its own value. The
-   base rule pins labels to one line, which squeezed Rotational Inertia's
+   base rule pins labels to one line, which squeezed the inertia's
    field to a third of its number. Scoped off the X/Y pair, which splits its
    row by design. */
 .massArea #input-block:not(.state-input-host) .label {
@@ -490,8 +497,8 @@
   /* Natural width, shrink allowed: the label wraps only when it must, and
      the help icon sits against its text instead of drifting to the field. */
   flex: 0 1 auto;
-  /* One label size for the whole section — Mass, Center of Mass and
-     Rotational Inertia read as siblings, not as different ranks. */
+  /* One label size for the whole section — Mass, CoM measured from and
+     Inertia read as siblings, not as different ranks. */
   font-size: 13px;
   color: var(--text-secondary);
 }

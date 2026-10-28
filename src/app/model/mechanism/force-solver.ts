@@ -739,7 +739,7 @@ export class ForceSolver {
       case 'missing-kinematics':
         return 'Some links are missing the motion data in-motion analysis needs.';
       case 'invalid-properties':
-        return "A mass, moment of inertia or force value isn't a usable number.";
+        return "A mass, mass moment of inertia or force value isn't a usable number.";
       default:
         return '';
     }
@@ -992,7 +992,7 @@ export class ForceSolver {
       }
       if (body instanceof RealLink) {
         if (!Number.isFinite(body.massMoI) || body.massMoI < 0) {
-          return `Link ${nameOf(body)} has a moment of inertia that isn't a usable number. Type it again in the Masses table.`;
+          return `Link ${nameOf(body)} has a mass moment of inertia that isn't a usable number. Type it again in the Masses table.`;
         }
         for (const force of body.forces) {
           if (
