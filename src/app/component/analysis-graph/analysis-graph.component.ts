@@ -1204,7 +1204,7 @@ export class AnalysisGraphComponent
   /**
    * Put an angular series into the unit the axis beside it is lettered in.
    *
-   * In place, and to the four decimals this has always shown: the conversion
+   * Keep the solved precision; formatting belongs to the labels. The conversion
    * itself now lives with the model, so the file the export writes and the
    * curve drawn here cannot end up in different units.
    */
@@ -1212,7 +1212,7 @@ export class AnalysisGraphComponent
     const scale = angularScale(mechProp, this.settingsService.angleUnit.getValue());
     if (scale === 1) return;
     for (let i = 0; i < series.length; i++) {
-      series[i] = Number((series[i] * scale).toFixed(4));
+      series[i] = series[i] * scale;
     }
   }
 

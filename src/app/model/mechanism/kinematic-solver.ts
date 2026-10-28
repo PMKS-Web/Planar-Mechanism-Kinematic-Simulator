@@ -1,3 +1,4 @@
+import { regularRateMatrix } from './rate-conditioning';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { matLeastSquares } from '../utils';
@@ -52,6 +53,7 @@ export class KinematicsSolver {
   /** Travel rate along each floating slot, relative to its carrier. */
   static slideRateMap = new Map<string, number>();
   static slideAccelMap = new Map<string, number>();
+  private static pinnedGrounds = new Set<string>();
   private static inputJointIndex: number | undefined;
   static inputLinkIndex: number;
   /**
@@ -102,10 +104,20 @@ export class KinematicsSolver {
   }
 
   static determineKinematics(simJoints: Joint[], simLinks: Link[], initialAngularVelocity: number) {
+    this.pinnedGrounds = new Set(
+      simJoints
+        .filter(
+          (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+        )
+        .map((joint) => joint.id)
+    );
     this.kinematicsInitializer(simJoints, simLinks, initialAngularVelocity);
     if (!this.solveRates(simJoints, simLinks, initialAngularVelocity)) {
       this.forgetRates(simJoints, simLinks);
-      return;
+    }
+    for (const id of this.pinnedGrounds) {
+      this.jointVelMap.set(id, [0, 0]);
+      this.jointAccMap.set(id, [0, 0]);
     }
     this.settleFixedLinks(simLinks);
   }
@@ -215,8 +227,8 @@ export class KinematicsSolver {
       return true;
     }
 
-    this.determineAng(simJoints, simLinks, 'Velocity');
-    this.determineAng(simJoints, simLinks, 'Acceleration');
+    if (!this.determineAng(simJoints, simLinks, 'Velocity')) return false;
+    if (!this.determineAng(simJoints, simLinks, 'Acceleration')) return false;
     this.determineLin(simJoints, simLinks);
     return true;
   }
@@ -657,6 +669,8 @@ export class KinematicsSolver {
   private static determineAng(simJoints: Joint[], simLinks: Link[], analysisType: string) {
     // 1st, determine arrays from loops and put that within their respective arrays
     const unknownLinks = this.determineArrays(simJoints, simLinks, analysisType);
+    const matrix = analysisType === 'Velocity' ? this.A_matrix_AngVel : this.A_matrix_AngAcc;
+    if (!regularRateMatrix(matrix)) return false;
     // 2nd, store determine unknown Angular Velocities
     let X: Array<Array<number>> = [];
     switch (analysisType) {
@@ -711,6 +725,7 @@ export class KinematicsSolver {
         }
       }
     }
+    return true;
   }
 
   private static determineLin(simJoints: Joint[], simLinks: Link[]) {
@@ -1173,6 +1188,7 @@ export class KinematicsSolver {
     desiredID: string,
     linkOrJoint: string
   ) {
+    if (linkOrJoint === 'joint' && this.pinnedGrounds.has(desiredID)) return;
     // Velocity calculation
     // w x r
     const arr = this.crossProduct(this.linkAngVelMap.get(desiredLinkID)!, [xDist, yDist, 0]);

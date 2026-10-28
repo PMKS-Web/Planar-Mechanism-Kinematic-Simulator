@@ -1,8 +1,10 @@
 // Enter the model import cycle through joint.ts.
 import '../../app/model/joint';
+import { bodiesUnder } from '../../app/model/link';
 import { LengthUnit } from '../../app/model/unit-enums';
 import { siUnitFactorsForLength } from '../../app/model/unit-conversions';
 import { SettingsService } from '../../app/services/settings.service';
+import { PrisJoint, RealJoint } from '../../app/model/joint';
 import { machineFacts } from '../../app/model/machine-facts/machine-facts';
 import { TestBed } from '@angular/core/testing';
 import { openAuditFinding } from './mechanism-audit-support';
@@ -10,6 +12,10 @@ import { AUDIT_FIXTURES } from '../../test-utils/verification/audit-fixtures';
 
 // Numerical checks do not need the comparison drawer's live graph subscriptions.
 const openFinding = openAuditFinding;
+
+function expectVector(actual: number[], expected: number[], tolerance = 0.0001) {
+  expected.forEach((value, axis) => expect(Math.abs(actual[axis] - value)).toBeLessThan(tolerance));
+}
 
 /** Independent polynomial derivative on the actual nonuniform sampling clock. */
 function difference(times: number[], values: number[], index: number, radius: number): number {
@@ -64,6 +70,102 @@ describe('the mechanism audit regressions', () => {
     });
   }
 
+  for (const id of [...Array.from({ length: 14 }, (_, i) => i + 8), 27, 30]) {
+    it(`finding #${id}: every welded member angle uses degrees`, () => {
+      const { mechanism, samples } = openFinding(id);
+      expect(mechanism.isMechanismValid()).toBe(true);
+      for (const index of [0, Math.floor(mechanism.joints.length / 3)]) {
+        for (const body of bodiesUnder(mechanism.links[index])) {
+          if (body.joints.length < 2) continue;
+          const [a, b] = body.joints;
+          const expected = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+          const actual = samples.sampleAt(
+            mechanism,
+            index,
+            'kinematic',
+            '',
+            'Angular Link Pos',
+            body.id
+          )[0];
+          const gap = Math.atan2(
+            Math.sin(((actual - expected) * Math.PI) / 180),
+            Math.cos(((actual - expected) * Math.PI) / 180)
+          );
+          expect(Math.abs(gap), body.id).toBeLessThan(1e-7);
+        }
+      }
+    });
+  }
+
+  for (const id of [3, 4, 22, 29]) {
+    it(
+      `finding #${id}: every fixed ground pin keeps exactly zero rates`,
+      () => {
+        const { mechanism, samples } = openFinding(id);
+        for (let index = 0; index < mechanism.joints.length; index++) {
+          for (const joint of mechanism.joints[index]) {
+            if (!(joint instanceof RealJoint) || joint instanceof PrisJoint || !joint.ground)
+              continue;
+            for (const property of ['Linear Joint Vel', 'Linear Joint Acc']) {
+              expect(
+                samples.sampleAt(mechanism, index, 'kinematic', '', property, joint.id).slice(0, 2),
+                `${joint.id} at ${index}`
+              ).toEqual([0, 0]);
+            }
+          }
+        }
+        // All frames of eleven parallel cranks are deliberately retained; allow
+        // the shared CI runner time for those large differentiated systems.
+      },
+      id === 29 ? 120_000 : 60_000
+    );
+  }
+
+  for (const test of [
+    { id: 2, target: 'G', time: 9 },
+    { id: 3, target: 'E', time: 3 },
+    { id: 29, target: 'V', time: 4.5 },
+  ]) {
+    it(`finding #${test.id}: follows the finite branch derivative through a parallelogram change point`, () => {
+      const { mechanism, samples } = openFinding(test.id);
+      const index = mechanism.timeNum.reduce(
+        (best, t, i) =>
+          Math.abs(t - test.time) < Math.abs(mechanism.timeNum[best] - test.time) ? i : best,
+        0
+      );
+      const frame = mechanism.joints[index];
+      const a = frame.find((joint) => joint.id === 'A')!,
+        b = frame.find((joint) => joint.id === 'B')!;
+      const w = mechanism.inputAngularVelocities[index];
+      const velocity = [(-w * (b.y - a.y)) / 200, (w * (b.x - a.x)) / 200];
+      const acceleration = [(-w * w * (b.x - a.x)) / 200, (-w * w * (b.y - a.y)) / 200];
+      expectVector(
+        samples.sampleAt(mechanism, index, 'kinematic', '', 'Linear Joint Vel', test.target),
+        velocity,
+        0.0005
+      );
+      expectVector(
+        samples.sampleAt(mechanism, index, 'kinematic', '', 'Linear Joint Acc', test.target),
+        acceleration,
+        0.0005
+      );
+    });
+  }
+
+  it('finding #25: cylinder rod endpoint velocities preserve its rigid length at the reversal', () => {
+    const { mechanism, samples } = openFinding(25);
+    const index = 289;
+    const c = mechanism.joints[index].find((j) => j.id === 'C')!,
+      d = mechanism.joints[index].find((j) => j.id === 'D')!;
+    const vc = samples.sampleAt(mechanism, index, 'kinematic', '', 'Linear Joint Vel', 'C');
+    const vd = samples.sampleAt(mechanism, index, 'kinematic', '', 'Linear Joint Vel', 'D');
+    const length = Math.hypot(d.x - c.x, d.y - c.y);
+    expect(
+      Math.abs(((vd[0] - vc[0]) * (d.x - c.x) + (vd[1] - vc[1]) * (d.y - c.y)) / length)
+    ).toBeLessThan(1e-6);
+    expect(Math.hypot(...vc.slice(0, 2))).toBeGreaterThan(0.1);
+  });
+
   it('finding #24: another machine cannot change a fresh dynamic force answer', () => {
     const first = openFinding(24);
     const expected =
@@ -75,6 +177,26 @@ describe('the mechanism audit regressions', () => {
       reopened.service.mechanisms[0].getForceAnalysis('dynamic').frames[0].inputEffort!.valueSI;
     expect(actual).toBeCloseTo(expected, 8);
     expect(actual).toBeCloseTo(0, 8);
+  });
+
+  it('finding #49: reversing welded members reverses velocity and keeps acceleration', () => {
+    const { mechanism, samples } = openFinding(49);
+    const index = 133;
+    const before = ['Angular Link Vel', "Linear Link's CoM Vel", "Linear Link's CoM Acc"].map(
+      (property) => samples.sampleAt(mechanism, index, 'kinematic', '', property, 'AN')
+    );
+    const reversed = mechanism.withReversedDrive()!;
+    expect(reversed).toBeDefined();
+    const after = ['Angular Link Vel', "Linear Link's CoM Vel", "Linear Link's CoM Acc"].map(
+      (property) => samples.sampleAt(reversed, index, 'kinematic', '', property, 'AN')
+    );
+    for (let property = 0; property < before.length; property++) {
+      expectVector(
+        after[property],
+        before[property].map((value, axis) => (property === 2 || axis === 2 ? value : -value)),
+        1e-8
+      );
+    }
   });
 
   for (const id of [66, 68]) {
@@ -143,6 +265,48 @@ describe('the mechanism audit regressions', () => {
         checked++;
       }
       expect(checked).toBeGreaterThan(3);
+    });
+  }
+
+  for (const test of [
+    { id: 51, index: 127, joint: 'CE', acceleration: [-0.94622, -7.016234] },
+    { id: 47, index: 127, joint: 'D', acceleration: [0, 5.483099] },
+    { id: 48, index: 217, joint: 'W', acceleration: [5.483099, -0.087134] },
+    { id: 63, index: 101, joint: 'Q', acceleration: [0, -0.537242] },
+    { id: 65, index: 203, joint: 'E', acceleration: [0.0373121, -0.0454806] },
+  ]) {
+    it(`finding #${test.id}: matches independent acceleration at the reported pose`, () => {
+      const { mechanism, samples } = openFinding(test.id);
+      expect(mechanism.isMechanismValid()).toBe(true);
+      expectVector(
+        samples.sampleAt(
+          mechanism,
+          test.index,
+          'kinematic',
+          '',
+          test.id === 51 ? "Linear Link's CoM Acc" : 'Linear Joint Acc',
+          test.joint
+        ),
+        test.acceleration
+      );
+    });
+  }
+
+  for (const test of [
+    { id: 67, index: 164, link: 'CD', alphaDegrees: -0.434928 },
+    { id: 69, index: 64, link: 'BIJ', alphaDegrees: 0 },
+  ]) {
+    it(`finding #${test.id}: matches independent angular acceleration`, () => {
+      const { mechanism, samples } = openFinding(test.id);
+      const alpha = samples.sampleAt(
+        mechanism,
+        test.index,
+        'kinematic',
+        '',
+        'Angular Link Acc',
+        test.link
+      )[0];
+      expect(Math.abs((alpha * 180) / Math.PI - test.alphaDegrees)).toBeLessThan(0.00002);
     });
   }
 

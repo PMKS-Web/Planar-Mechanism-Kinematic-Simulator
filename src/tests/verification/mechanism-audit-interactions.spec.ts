@@ -6,6 +6,7 @@ import { UrlGenerationService } from '../../app/services/url-generation.service'
 import { ExportFlowService } from '../../app/services/export/export-flow.service';
 import { ExportTableService } from '../../app/services/export/export-table.service';
 import { toCsv } from '../../app/services/export/csv-writer';
+import { AngleUnit } from '../../app/model/unit-enums';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { bodiesUnder } from '../../app/model/link';
 import { machineFacts } from '../../app/model/machine-facts/machine-facts';
@@ -25,6 +26,22 @@ function graph(property: string, part: string) {
 }
 
 describe('the audit through editing, graph and export commands', () => {
+  it('finding #58: graph data preserve small acceleration in both angle units', () => {
+    const opened = openAuditFinding(58);
+    const component = graph('Angular Link Acc', 'BC');
+    const values = () =>
+      (component.chartOptions.series![0].data as Point[]).map((point) => point.y!);
+    const degrees = values();
+    expect(Math.max(...degrees.map(Math.abs))).toBeCloseTo(0.0000162187913, 11);
+    expect(degrees.some((value) => Math.abs(value) > 1e-6)).toBe(true);
+    opened.settings.angleUnit.next(AngleUnit.RADIAN);
+    const radians = values();
+    degrees.forEach((value, index) =>
+      expect(radians[index]).toBeCloseTo((value * Math.PI) / 180, 14)
+    );
+    component.ngOnDestroy();
+  });
+
   it('finding #61: reversed elapsed time agrees in playback, graph marker and actual CSV', () => {
     const opened = openAuditFinding(61);
     opened.service.seekMechanism(0, 1.8);
