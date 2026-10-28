@@ -98,7 +98,7 @@ describe('library dialog', () => {
 
   function chip(fixture: { nativeElement: HTMLElement }, name: string): HTMLButtonElement {
     const found = Array.from(
-      fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.chip')
+      fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.rail .category')
     ).find((button) => (button.textContent ?? '').includes(name));
     expect(found).toBeTruthy();
     return found!;
@@ -178,6 +178,81 @@ describe('library dialog', () => {
     (fixture.nativeElement.querySelector('.emptyState button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(cards(fixture).length).toBeGreaterThan(0);
+  });
+
+  it('says where the list ends, and offers the one that is missing from there', () => {
+    const fixture = open();
+    chip(fixture, 'Paths and Curves').click();
+    fixture.detectChanges();
+    const end = fixture.nativeElement.querySelector('.endLine') as HTMLElement;
+    expect(end.textContent).toContain('That is everything in Paths and Curves.');
+
+    (end.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    expect(component.view).toBe('suggest');
+    // Filed where the reader was looking.
+    expect(component.draft.controls.section.value).toBe('paths');
+  });
+
+  it('carries a search that found nothing into the title of a suggestion', () => {
+    const fixture = open();
+    search(fixture, 'hoeken');
+    fixture.detectChanges();
+    const offer = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+        '.emptyState button'
+      )
+    ).find((button) => (button.textContent ?? '').includes('Suggest a Mechanism'));
+    offer!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.draft.controls.title.value).toBe('hoeken');
+  });
+
+  it('keeps the library as it was behind the form, and the draft across a trip back', () => {
+    const fixture = open();
+    const component = fixture.componentInstance;
+    chip(fixture, 'Cylinders').click();
+    fixture.detectChanges();
+    component.suggest();
+    component.draft.controls.title.setValue('Half typed');
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('.browseView') as HTMLElement).hidden).toBe(true);
+
+    component.backToLibrary();
+    fixture.detectChanges();
+    expect(component.category).toBe('cylinders');
+    expect(cards(fixture)).toContain('Cylinder_Boom');
+    component.suggest();
+    expect(component.draft.controls.title.value).toBe('Half typed');
+  });
+
+  it('keeps a draft when the library closes, for the next time it opens', () => {
+    const first = open();
+    first.componentInstance.suggest();
+    first.componentInstance.draft.controls.title.setValue('Kept');
+    first.destroy();
+    const again = open();
+    again.componentInstance.suggest();
+    expect(again.componentInstance.draft.controls.title.value).toBe('Kept');
+  });
+
+  it('starts a new suggestion blank once one has gone', () => {
+    const fixture = open();
+    const component = fixture.componentInstance;
+    component.suggest();
+    component.draft.controls.title.setValue('Sent already');
+    component.onSent({
+      title: 'Sent already',
+      description: 'It went.',
+      credit: '',
+      email: '',
+      still: '',
+    });
+    expect(component.view).toBe('sent');
+    component.backToLibrary();
+    component.suggest();
+    expect(component.draft.controls.title.value).toBe('');
   });
 
   it('counts what each chip would show, including under a search', () => {

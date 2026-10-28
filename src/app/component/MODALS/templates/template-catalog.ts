@@ -87,6 +87,12 @@ export interface TemplateCard {
   readonly animation?: string;
   /** Optional picture the mechanism opens on top of. */
   readonly backdrop?: TemplateBackdrop;
+  /**
+   * Who suggested it, for a mechanism added through Suggest a Mechanism: the
+   * Credit As they gave, shown on the card as "Suggested by". Absent for the
+   * library's own, and for a suggestion sent anonymously.
+   */
+  readonly credit?: string;
 }
 
 /**

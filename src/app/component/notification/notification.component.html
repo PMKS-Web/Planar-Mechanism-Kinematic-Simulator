@@ -1,4 +1,6 @@
-<div class="notificationStack">
+<!-- A manual popover, so it can be raised into the browser's top layer, which
+     is where Angular's dialogs now open. See `raise`. -->
+<div class="notificationStack" popover="manual" #stack>
   @for (one of notifications.live; track one.key) {
     <div
       class="notification notification--{{ one.kind }}"

@@ -1,96 +1,242 @@
-<div class="dialog_root" id="templates">
-  <!-- Title and filters are outside the scroller on purpose: at thirty-odd
-       mechanisms the way back to another family has to stay on screen. -->
-  <div class="libraryHeader">
+<div class="dialog_root" id="templates" [class.phone]="viewport.isPhone()">
+  <!-- Hidden rather than taken down while the form is up, so the way back
+       finds the section, the search and the scroll exactly as they were, and
+       the button that opened the form is still there to take the focus. -->
+  <div class="browseView" [hidden]="view !== 'browse'">
+    <!-- Title, search and categories stay put while the cards scroll: at
+         forty-odd mechanisms the way to another section has to stay on screen. -->
     <div class="titleRow">
       <h1>Mechanism Library</h1>
+      <span class="titleSpacer"></span>
+      @if (!viewport.isPhone()) {
+        <ng-container *ngTemplateOutlet="searchBox"></ng-container>
+      }
       <close-button label="Close the library" (pressed)="close()"></close-button>
     </div>
 
-    <div class="filterBar">
-      <div class="chipRow" role="group" aria-label="Filter by category">
-        @for (chip of chips; track chip.id) {
-          <button
-            class="chip"
-            [class.on]="category === chip.id"
-            [attr.aria-pressed]="category === chip.id"
-            (click)="selectCategory(chip.id)"
-          >
-            {{ chip.name }}
-            <!-- The count answers the search too, so a chip never offers cards
-                 the list below would not show. -->
-            <span class="chipCount">{{ chip.count }}</span>
-          </button>
-        }
+    @if (viewport.isPhone()) {
+      <div class="phoneTools">
+        <ng-container *ngTemplateOutlet="searchBox"></ng-container>
+        <button
+          class="categoryButton"
+          type="button"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="categorySheetOpen"
+          (click)="openCategorySheet()"
+        >
+          <mat-icon class="lead" aria-hidden="true">filter_list</mat-icon>
+          <span class="categoryLabel">Category</span>
+          <span class="categoryValue">{{ categoryName }}</span>
+          <span class="chipCount">{{ categoryCount }}</span>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </button>
       </div>
+    }
 
-      <div class="searchBox">
-        <mat-icon>search</mat-icon>
-        <input
-          type="text"
-          placeholder="Search"
-          aria-label="Search the library"
-          [value]="query"
-          (input)="setQuery($event)"
-          (keydown.escape)="escapeSearch($event)"
-        />
-        @if (query !== '') {
-          <button class="clearSearch" (click)="clearQuery()" aria-label="Clear the search">
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-      </div>
-    </div>
-  </div>
-
-  <div mat-dialog-content class="libraryBody">
-    @for (group of groups; track group.id) {
-      <h2 class="sectionHeading">{{ group.name }}</h2>
-
-      <div class="templateGrid">
-        @for (card of group.cards; track card.id) {
-          <!-- The card is the hit area and the Open button is the control: a
-               button inside a button is invalid, so the press is taken here and
-               the button below is what a keyboard reaches. -->
-          <div class="templateCard" [attr.data-template]="card.id" (click)="openLinkage(card.id)">
-            <div class="thumb">
-              <!-- Decorative: the name is right underneath in text, so a screen
-                   reader announcing the filename twice is noise. -->
-              <img class="still" [src]="card.thumbnail" alt="" />
-              @if (card.animation) {
-                <img class="animated" [src]="card.animation" alt="" />
-              }
-
-              <!-- Over the thumbnail, on a band solid enough that the drawing
-                   behind it cannot decide whether the words are readable. -->
-              <div class="caption">
-                <span class="cardName">{{ card.name }}</span>
-                <span class="cardDescription">{{ card.description }}</span>
+    <div class="split">
+      @if (!viewport.isPhone()) {
+        <!-- A rail rather than a row of chips: ten sections wrapped onto a
+             second line, and the next one would have made a third. -->
+        <nav class="rail" aria-label="Filter by category">
+          <div class="railLabel">Categories</div>
+          <div class="railList">
+            @for (chip of chips; track chip.id) {
+              <ng-container
+                *ngTemplateOutlet="categoryRow; context: { $implicit: chip, sheet: false }"
+              ></ng-container>
+            }
+          </div>
+          <!-- Pinned to the foot of the rail, so it is on screen whatever is
+               chosen or scrolled. -->
+          <div class="suggestCard">
+            <div class="suggestTop">
+              <span class="suggestIcon" aria-hidden="true"><mat-icon>lightbulb</mat-icon></span>
+              <div>
+                <div class="suggestTitle">Missing one?</div>
+                <div class="suggestSub">If we add yours, your name goes on its card.</div>
               </div>
             </div>
+            <button class="btnOutlined wide" type="button" (click)="suggest()">
+              <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest a Mechanism
+            </button>
+          </div>
+        </nav>
+      }
 
-            <div class="cardActions">
-              <button mat-flat-button color="primary" [attr.aria-label]="'Open ' + card.name">
-                Open
+      <div class="libraryBody">
+        @for (group of groups; track group.id) {
+          <h2 class="sectionHeading">{{ group.name }}</h2>
+
+          <div class="templateGrid">
+            @for (card of group.cards; track card.id) {
+              <!-- The card is the hit area and the Open button is the control: a
+                   button inside a button is invalid, so the press is taken here
+                   and the button below is what a keyboard reaches. -->
+              <app-template-card
+                [card]="card"
+                [attr.data-template]="card.id"
+                (click)="openLinkage(card.id)"
+              >
+                <div class="cardActions">
+                  <button mat-flat-button color="primary" [attr.aria-label]="'Open ' + card.name">
+                    Open
+                  </button>
+                </div>
+              </app-template-card>
+            }
+          </div>
+        }
+
+        @if (shown > 0) {
+          <!-- After the last card in every filter: this is all there is, and
+               where to send the one that is missing. -->
+          <div class="endLine">
+            <span>{{ endLine }}</span>
+            <button class="btnText" type="button" (click)="suggest(category)">
+              <mat-icon aria-hidden="true">add_circle</mat-icon>
+              {{ category === 'all' ? 'Suggest a Mechanism' : 'Suggest one that belongs here' }}
+            </button>
+          </div>
+        } @else {
+          <div class="emptyState">
+            @if (category === 'all') {
+              <p>Nothing in the library matches “{{ query }}”.</p>
+            } @else {
+              <p>Nothing in {{ categoryName }} matches “{{ query }}”.</p>
+            }
+            <div class="emptyActions">
+              <button mat-flat-button color="primary" (click)="showEverything()">Show All</button>
+              <button class="btnOutlined" type="button" (click)="suggest(category, query)">
+                <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest a Mechanism
               </button>
             </div>
+            <span class="emptyNote"
+              >Know the one you are looking for? Suggest it, and we will look at adding it.</span
+            >
           </div>
         }
       </div>
-    }
+    </div>
 
-    @if (shown === 0) {
-      <div class="emptyState">
-        @if (category === 'all') {
-          <p>Nothing in the library matches “{{ query }}”.</p>
-        } @else {
-          <p>Nothing in {{ categoryName }} matches “{{ query }}”.</p>
-        }
-        <button mat-flat-button color="primary" (click)="showEverything()">Show All</button>
+    @if (viewport.isPhone() && categorySheetOpen) {
+      <div class="sheetScrim" (click)="closeCategorySheet()"></div>
+      <!-- Holds the focus while it is up, starting on the chosen section, and
+           hands it back to the Category button when it goes: left alone, Tab
+           walked into the cards behind it and Enter opened one. -->
+      <div
+        class="categorySheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="categorySheetTitle"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+      >
+        <div class="handle" aria-hidden="true"></div>
+        <div class="sheetHead">
+          <h2 id="categorySheetTitle">Categories</h2>
+          <close-button label="Close categories" (pressed)="closeCategorySheet()"></close-button>
+        </div>
+        <div class="sheetList" role="group" aria-label="Filter by category">
+          @for (chip of chips; track chip.id) {
+            <ng-container
+              *ngTemplateOutlet="categoryRow; context: { $implicit: chip, sheet: true }"
+            ></ng-container>
+          }
+        </div>
+        <div class="suggestCard row">
+          <span class="suggestIcon" aria-hidden="true"><mat-icon>lightbulb</mat-icon></span>
+          <div class="suggestText">
+            <div class="suggestTitle">Missing one?</div>
+            <div class="suggestSub">Your name goes on its card.</div>
+          </div>
+          <button
+            class="btnOutlined"
+            type="button"
+            aria-label="Suggest a Mechanism"
+            (click)="suggest()"
+          >
+            Suggest
+          </button>
+        </div>
       </div>
     }
   </div>
+
+  @if (view !== 'browse') {
+    <div class="suggestHead">
+      <button
+        class="iconButton"
+        type="button"
+        aria-label="Back to the library"
+        [disabled]="drafts.sending"
+        (click)="backToLibrary()"
+      >
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      </button>
+      <h1 id="suggestTitle" tabindex="-1">Suggest a Mechanism</h1>
+      <close-button
+        label="Close the library"
+        [disabled]="drafts.sending"
+        (pressed)="close()"
+      ></close-button>
+    </div>
+    @if (view === 'suggest') {
+      <app-suggest-mechanism
+        class="suggestView"
+        [form]="draft"
+        (back)="backToLibrary()"
+        (sent)="onSent($event)"
+      ></app-suggest-mechanism>
+    } @else if (lastSent; as sent) {
+      <app-suggestion-sent
+        class="sentPage"
+        [sent]="sent"
+        (another)="suggestAnother()"
+        (library)="backToLibrary()"
+      ></app-suggestion-sent>
+    }
+  }
 </div>
+
+<ng-template #searchBox>
+  <div class="searchBox">
+    <mat-icon aria-hidden="true">search</mat-icon>
+    <input
+      id="librarySearch"
+      type="text"
+      [placeholder]="searchPlaceholder"
+      aria-label="Search the library"
+      [value]="query"
+      (input)="setQuery($event)"
+      (keydown.escape)="escapeSearch($event)"
+    />
+    @if (query !== '') {
+      <button class="clearSearch" (click)="clearQuery()" aria-label="Clear the search">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </div>
+</ng-template>
+
+<!-- One row per section, in the rail and in the phone's sheet alike. The
+     count answers the search too, so a row never offers cards the list would
+     not show. -->
+<ng-template #categoryRow let-chip let-sheet="sheet">
+  <button
+    class="category"
+    type="button"
+    [attr.cdkFocusInitial]="sheet && category === chip.id ? '' : null"
+    [class.on]="category === chip.id"
+    [attr.aria-pressed]="category === chip.id"
+    (click)="sheet ? chooseFromSheet(chip.id) : selectCategory(chip.id)"
+  >
+    @if (sheet) {
+      <mat-icon class="tick" aria-hidden="true">{{ category === chip.id ? 'check' : '' }}</mat-icon>
+    }
+    <span class="name">{{ chip.name }}</span>
+    <span class="chipCount">{{ chip.count }}</span>
+  </button>
+</ng-template>
 
 <!-- Shown when the grid already holds work: opening a template must not
      silently discard it. Replacing goes through the undo history, so it is
