@@ -159,6 +159,7 @@ export const SUITES = [
   { name: 'phase4-stack-and-menu', seconds: 19, lanes: BOTH },
   { name: 'phase4-sticky-and-snap', seconds: 13, lanes: BOTH },
   { name: 'phase5-driven-cylinder', seconds: 8, lanes: BOTH },
+  { name: 'panel-folds', seconds: 10, lanes: NIGHTLY },
   { name: 'playback-bar', seconds: 8, lanes: BOTH },
   { name: 'playback-direction', seconds: 18, lanes: BOTH },
   {

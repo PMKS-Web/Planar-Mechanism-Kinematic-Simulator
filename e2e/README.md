@@ -374,6 +374,8 @@ Not suites — import them from one.
 - `template-graphs.mjs` — every template's kinematic graphs read as numbers and cross-checked:
   position against solved joints, velocity and acceleration against difference quotients. Slow;
   `PMKS_ONLY=4-Bar,Slider_Crank` narrows it.
+- `panel-folds.mjs` — a joint's Edit sections and its kinematics graphs keep what the reader folded
+  across mode switches and selections.
 - `mechanism-panel.mjs` — the machines with nothing selected: the All mechanisms list, picking one
   (from a row, the setup drawer's name), the others fading, the drawer folding to it and opening
   on arrival when a machine cannot run, a part link keeping the drawer open in Edit, and a

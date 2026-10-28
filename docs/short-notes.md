@@ -2733,3 +2733,12 @@ service's link list. Calling the ordinary root lookup there found the old compou
 force back on it. Pass the replacement owner directly to `attachForceToLink`; keep member identity
 in `anchoredTo` and the URL link field. The audit attachment test checks immediate loading, physical
 load-point power, following the member, fresh reopening and finally unwelding.
+
+### A panel's fold kept on the component reopens at every mode switch
+
+The left card mounts a new panel each time its mode is entered -- the Edit panel in Edit, the
+analysis panel in either analysis -- so anything a panel remembers in a field of its own is gone
+on the way back. Folds were kept that way, and a reader who closed a joint's Basic Settings or its
+Position graph found it open again after one trip to the other mode. Keep a session choice in a
+root service instead: `MechanismPanelStateService` holds the machine panel's folds, and
+`PanelFoldStateService` holds the part panels' (`e2e/panel-folds.mjs` guards both trips).
