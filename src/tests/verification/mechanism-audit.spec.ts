@@ -3,6 +3,7 @@ import '../../app/model/joint';
 import { LengthUnit } from '../../app/model/unit-enums';
 import { siUnitFactorsForLength } from '../../app/model/unit-conversions';
 import { SettingsService } from '../../app/services/settings.service';
+import { machineFacts } from '../../app/model/machine-facts/machine-facts';
 import { TestBed } from '@angular/core/testing';
 import { openAuditFinding } from './mechanism-audit-support';
 import { AUDIT_FIXTURES } from '../../test-utils/verification/audit-fixtures';
@@ -40,6 +41,18 @@ describe('the mechanism audit regressions', () => {
       expect(mechanism.isMechanismValid()).toBe(true);
       expect(mechanism.joints.length).toBeGreaterThan(20);
       expect(mechanism.timeNum.at(-1)).toBeGreaterThan(0);
+    });
+  }
+
+  for (const id of [66, 68]) {
+    it(`finding #${id}: refuses a family unsupported by the connected bodies and actual input`, () => {
+      const { service, mechanism } = openFinding(id);
+      const facts = machineFacts(service.partitions[0], mechanism)!;
+      expect(
+        facts.family.some((match) =>
+          id === 66 ? match.family === 'cylinder-driven lever' : match.family.includes('Jansen')
+        )
+      ).toBe(false);
     });
   }
 
