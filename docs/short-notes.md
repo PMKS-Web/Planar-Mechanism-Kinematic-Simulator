@@ -814,6 +814,17 @@ matrix is sized by the unknowns: `B_matrix[rowIndex]` was undefined and the Kine
 panel threw on the three-crank parallelogram. The extra rows repeat what the others said, so the
 least-squares answer is the exact one. `redundant-parallel-crank.spec.ts` asserts the rates.
 
+### The loop walk prunes a reused link as it walks, not at the far ground
+
+`LoopSolver.findGround` enumerates every simple path between two grounds, and `edgesAlong`
+rejects a path that crosses one link or slot twice. It used to reject them only once the walk
+reached a ground, so a plate carrying many joints -- eleven cranks on one coupler, audit
+finding #29 -- was entered and left in every ordering of its joints first: factorial, thirty
+seconds to open the drawing, and a unit test sitting on CI's two-minute timeout. The walk now
+carries the links it has crossed and refuses the step that would reuse one. A rejected prefix
+rejects every path extending it, so the loops found are the same ones in the same order. If a
+drawing opens slowly, profile before guessing: it was all `findGround`.
+
 ### A slotted carrier's joints are carried from a grounded pin first
 
 `KinematicsSolver.knownCarrierSeed` prefers a grounded member of the carrier, then the slot's

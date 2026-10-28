@@ -136,10 +136,13 @@ export class LoopSolver {
             loops.push({ id: loopId(edges), edges });
           }
         }
+        const first = this.connectionFor(desiredGround.id, next.joint.id, next.viaSliderId, links);
+        if (first === undefined) return;
         this.findGround(
           next.joint,
           groundJoints,
           new Set([next.joint.id]),
+          new Set([first]),
           path,
           loops,
           links,
@@ -423,11 +426,19 @@ export class LoopSolver {
    * per branch. On a linkage the size of a running horse this recursion visits
    * hundreds of thousands of nodes, and copying two growing arrays at every one
    * of them was most of the cost of opening the drawing at all.
+   *
+   * `traveled` holds the links and slots the path has already crossed, and a
+   * step that would cross one again is not taken. `edgesAlong` refuses such a
+   * path anyway, and every path extending it, so nothing is lost -- but it
+   * refused them only at the far ground, after the walk had descended through
+   * every ordering of a shared body's joints. Eleven cranks on one coupler
+   * plate made that factorial, and opening the drawing took thirty seconds.
    */
   private static findGround(
     joint: Joint,
     groundJoints: Joint[],
     visited: Set<string>,
+    traveled: Set<string>,
     path: PathStep[],
     loops: Loop[],
     links: Link[],
@@ -440,6 +451,10 @@ export class LoopSolver {
     for (const next of this.neighborsOf(joint, slotNeighbors, neighborCache)) {
       const j = next.joint;
       if (visited.has(j.id)) {
+        continue;
+      }
+      const connection = this.connectionFor(joint.id, j.id, next.viaSliderId, links);
+      if (connection === undefined || traveled.has(connection)) {
         continue;
       }
       const step: PathStep = { jointId: j.id, viaSliderId: next.viaSliderId };
@@ -455,9 +470,21 @@ export class LoopSolver {
         }
       } else {
         visited.add(j.id);
+        traveled.add(connection);
         path.push(step);
-        this.findGround(j, groundJoints, visited, path, loops, links, slotNeighbors, neighborCache);
+        this.findGround(
+          j,
+          groundJoints,
+          visited,
+          traveled,
+          path,
+          loops,
+          links,
+          slotNeighbors,
+          neighborCache
+        );
         path.pop();
+        traveled.delete(connection);
         visited.delete(j.id);
       }
     }
@@ -477,7 +504,7 @@ export class LoopSolver {
       const step = path[index];
       const fromId = path[index - 1].jointId;
       // A slot counts in the traveled bookkeeping exactly as a link does.
-      const connectionId = step.viaSliderId ?? this.linkBetween(fromId, step.jointId, links)?.id;
+      const connectionId = this.connectionFor(fromId, step.jointId, step.viaSliderId, links);
       if (connectionId === undefined || traveled.includes(connectionId)) {
         return undefined;
       }
@@ -489,6 +516,16 @@ export class LoopSolver {
       );
     }
     return edges;
+  }
+
+  /** The slot or link one step crosses, or undefined when nothing joins its two joints. */
+  private static connectionFor(
+    fromId: string,
+    toId: string,
+    viaSliderId: string | undefined,
+    links: Link[]
+  ): string | undefined {
+    return viaSliderId ?? this.linkBetween(fromId, toId, links)?.id;
   }
 
   private static linkBetween(fromId: string, toId: string, links: Link[]): Link | undefined {
