@@ -67,8 +67,12 @@ const exclusionsFor = (id: string): Exclusion[] =>
 
 /** What became of each machine, for the coverage report. */
 const outcome = new Map<string, string>();
+/** What failed, per machine, for the artifact: a spec's own message truncates a long list. */
+const failed = new Map<string, string[]>();
 const tally: Record<Verdict, number> = { pass: 0, fail: 0, 'ill-conditioned': 0, undefined: 0 };
 const forceTally = { pass: 0, fail: 0, 'ill-conditioned': 0 };
+/** Machine-modes compared on their forces, split by whether the oracle finds any force at all. */
+const forceCoverage = { loaded: 0, unloaded: 0 };
 let excludedSamples = 0;
 /** The largest error that passed, per method and order: the measurement the budgets rest on. */
 const worstPassing = new Map<string, { error: number; problem: string; part: string; k: number }>();
@@ -200,13 +204,14 @@ describe('numerical oracle', () => {
             );
           }
         }
+        if (failures.length) failed.set(problem.id, failures);
         expect(failures, 'outside budget').toEqual([]);
 
         // Forces, in both modes: static (loads and gravity) and dynamic.
         const forceFailures: string[] = [];
         for (const mode of ['static', 'dynamic'] as const) {
           const forces = compareForces(problem, reference, mechanism, samples, mode);
-          if (forces.forceScale === 0) continue;
+          forceCoverage[forces.forceScale === 0 ? 'unloaded' : 'loaded']++;
           const leftOut = (quantity: string, part?: string): boolean =>
             exclusions.some(
               (e) =>
@@ -224,8 +229,10 @@ describe('numerical oracle', () => {
             if (frame.condition > CONDITIONING_LIMIT) continue;
             forceFailures.push(`${mode}: PMKS+ did not solve k=${frame.k}: ${frame.status}`);
           }
-          for (const what of forces.missing)
-            forceFailures.push(`${mode}: PMKS+ reports no ${what}`);
+          for (const what of forces.missing) {
+            if (!leftOut(what.quantity, what.part))
+              forceFailures.push(`${mode}: PMKS+ reports no ${what.quantity} ${what.part}`);
+          }
           for (const d of forces.deviations) {
             if (leftOut(d.quantity, d.part)) {
               excludedSamples++;
@@ -248,6 +255,7 @@ describe('numerical oracle', () => {
             }
           }
         }
+        if (forceFailures.length) failed.set(problem.id, forceFailures);
         expect(forceFailures, 'forces').toEqual([]);
         outcome.set(problem.id, exclusions.length ? 'verified, in part' : 'verified');
       });
@@ -266,8 +274,10 @@ describe('numerical oracle', () => {
           machines: counts,
           samples: { ...tally, excluded: excludedSamples },
           forceSamples: forceTally,
+          forceCoverage,
           worstPassing: Object.fromEntries(worstPassing),
           outcome: Object.fromEntries(outcome),
+          failed: Object.fromEntries(failed),
         },
         null,
         1

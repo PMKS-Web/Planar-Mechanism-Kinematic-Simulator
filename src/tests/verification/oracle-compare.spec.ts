@@ -1,36 +1,15 @@
 // joint.ts first: see the import-cycle note in test-utils/verification/fixture.ts.
 import '../../app/model/joint';
-import { publishedCases } from '../../test-utils/oracle/published-cases';
-import { solvedDrawing } from '../../test-utils/machine-facts/drawing';
-import { exportPartition, inputOf, solverUnit } from '../../test-utils/oracle/export-problem';
-import { siFactors } from '../../test-utils/oracle/si-units';
-import { PmksSample, pmksSamples } from '../../test-utils/oracle/pmks-samples';
+import { PmksSample } from '../../test-utils/oracle/pmks-samples';
 import { compareMachine } from '../../test-utils/oracle/compare-oracle';
-import { readReference, REPOSITORY_ROOT } from '../../test-utils/oracle/reference';
-import { REFERENCES_DIR } from '../../test-utils/oracle/published-problems';
+import { publishedMachine } from '../../test-utils/oracle/published-machine';
 
 // The comparison reports what it could not compare, so that a machine cannot
 // pass oracle.spec.ts by PMKS+ reporting less. Each case removes something
 // from PMKS+'s samples of a machine that is verified in full.
 
-const ID = 'template.slider-crank.m1';
-
-function slider() {
-  const published = publishedCases().find((c) => `${c.id}.m1` === ID)!;
-  const { partitions, mechanisms, settings } = solvedDrawing(published.payload, 'degree');
-  const problem = exportPartition(published.id, published.title, partitions[0], settings);
-  const reference = readReference(`${REPOSITORY_ROOT}/${REFERENCES_DIR}/${ID}.reference.json`);
-  const samples = pmksSamples(
-    mechanisms[0],
-    inputOf(partitions[0])!.id,
-    reference.sweep!.step,
-    siFactors(solverUnit(settings)).meters
-  );
-  return { problem, reference, samples };
-}
-
 describe('the oracle comparison', () => {
-  const { problem, reference, samples } = slider();
+  const { problem, reference, samples } = publishedMachine('template.slider-crank.m1');
 
   it('finds nothing missing in a machine PMKS+ reports in full', () => {
     const comparison = compareMachine(problem, reference, samples);

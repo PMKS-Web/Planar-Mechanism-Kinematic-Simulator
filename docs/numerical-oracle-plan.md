@@ -2,8 +2,8 @@
 
 > **Status:** Phases 0, 1 and 2 built, 2026-11-04. **Exudyn is chosen**, with Simbody as the
 > cross-engine check (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **97
-> are verified** against the oracle in their motion and forces (two of them in part) and **33 agree
-> they do not run**; **72 are excluded**: 68 wait for the Phase 3 exporter and 4 are excluded by
+> are verified** against the oracle in their motion and forces (three of them in part; most carry
+> no force, and are checked to come out zero) and **33 agree they do not run**; **72 are excluded**: 68 wait for the Phase 3 exporter and 4 are excluded by
 > the manifest. There are **2 disagreements**, each with an issue (see [Phase 1
 > results](#phase-1-results) and [Phase 2 results](#phase-2-results)). The plan was revised on
 > 2026-11-03 after an external review (see [Review history](#review-history)).
@@ -284,12 +284,18 @@ force modes: `static`, the loads and gravity alone, and `dynamic`, with the iner
 - **Body totals**, the sum of a body's reactions, are always fixed, and are what a redundant
   support is compared by: the resultant, not its split.
 - **A Slide's guide couple** is compared on its one rider, and **the input effort** (a torque for a
-  pin, a force for a slider) at every frame.
+  pin, a force for a slider) at every frame. A Pin-in-slot's rider turns freely on its block, so the
+  couple on it is zero by construction and PMKS+ reports none.
+- **Nothing passes by being left out.** A reaction, couple or effort the oracle fixes and PMKS+
+  does not report fails the machine, as a blank rate does (`oracle-compare-forces.spec.ts` strips
+  each and sees it reported).
 - **The frame.** A bar pinned to the ground at two or more joints cannot move, and PMKS+ folds it
   into the frame and reports nothing on it; the oracle's numbers for it are the ground's, and are
   not compared.
 - **Scale.** A force error is divided by the largest force anywhere in the machine's cycle, a
-  moment's by that times L. Above the conditioning limit of 10³ forces are not compared, for the
+  moment's by that times L. A machine nothing loads, which is most of the gallery, is solved and
+  compared all the same, on a scale of 1 N: its forces must come out zero to 10⁻⁸ N, and its
+  solve must succeed. Above the conditioning limit of 10³ forces are not compared, for the
   reason rates are not.
 - **A frame PMKS+ cannot solve** fails the machine unless the oracle's condition there is above the
   limit: a toggle is a reason to have no answer, a regular pose is not.
@@ -301,7 +307,9 @@ force modes: `static`, the loads and gravity alone, and `dynamic`, with the iner
 | Static | 1.9×10⁻⁹ (a reaction on the elliptical crank) | 1×10⁻⁸ |
 | Dynamic | 4.6×10⁻¹⁰ (a reaction on the slider-crank with a tracer) | 1×10⁻⁸ |
 
-38,026 force samples pass and none fails; 4,720 are past the conditioning limit.
+100,434 force samples pass and none fails; 10,910 are past the conditioning limit. Of the 194
+machine-modes compared, 88 carry a force and 106 carry none, so the worst errors above all come
+from the 88.
 
 ### Inside the oracle, and against MATLAB
 
@@ -318,12 +326,13 @@ force modes: `static`, the loads and gravity alone, and `dynamic`, with the iner
 
 ### Disagreements and exclusions
 
-No new disagreement. Two manifest entries changed:
+No new disagreement. Three manifest entries changed:
 
 | Machine | Kind | What | Issue |
 | --- | --- | --- | --- |
 | Four-bar with two inputs | disagreement | Its reactions, body totals and effort are left out in the dynamic mode, which needs the wrong rates; its static forces agree | [#78][i78] |
 | Parallelogram with a third parallel crank | by design | PMKS+ refuses its forces (`unsupported-topology`): three parallel cranks leave the reactions indeterminate. Its motion is verified | — |
+| Locomotive drive wheels | by design | The same refusal: one side rod couples three wheels. It carries no force, and was not solved until unloaded machines were compared | — |
 
 Whether PMKS+ should report the resultants of a redundant support instead of refusing is an open
 question, not a disagreement: the oracle can only say what equilibrium fixes.
@@ -338,8 +347,8 @@ and the comparison about 10.
 
 - **Published cases.** Every `FIXTURE_GALLERY` entry, as `npm run fixture-urls` links it, and
   every template as the library dialog stores it: 167 drawings (122 gallery entries and 45
-  templates), 202 machines. Each machine is exported from its decoded URL by `src/test-utils/oracle/export-problem.ts`, which reads the start
-  pose only. Units come from its own table (`si-units.ts`), not the app's.
+  templates), 202 machines. Each machine is exported from its decoded URL by
+  `src/test-utils/oracle/export-problem.ts`, which reads the start pose only. Units come from its own table (`si-units.ts`), not the app's.
 - **PMKS+ is sampled at whole degrees** (`'degree'`), and each frame is placed on the oracle's grid
   by its driver coordinate. Adaptive sampling adds frames between grid points and agrees with
   `'degree'` on which machines run, for all 202.
@@ -472,7 +481,9 @@ every call; and `InitializeSolver` writes a solution file unless told not to.
 
 A one-freedom mechanism's configuration curve is traced by pseudo-arclength continuation from the
 drawn pose, which fixes the assembly branch. A travel limit is where the driver coordinate turns
-round, refined by golden-section search over the last two steps. A singular Jacobian and a solver
+round, refined by golden-section search over the last two steps, walked again first in sixteen
+short steps from their own tangents: a chord across the whole bracket left Newton wandering where
+the excavator's curve bends, and it converged in time on Linux and not on macOS. A singular Jacobian and a solver
 failure are reported as such and never as a toggle. Grid samples sit at d₀ + k·step, keyed by k.
 A rotary cycle closes when the drawing returns to its start after at most three turns. A rocking
 pin input reverses at its last solvable sample and PMKS+ retraces the same branch, so for it one

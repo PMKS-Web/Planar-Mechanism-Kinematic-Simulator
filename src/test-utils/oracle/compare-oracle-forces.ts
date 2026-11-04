@@ -34,11 +34,22 @@ export interface ForceComparison {
   deviations: ForceDeviation[];
   /** Frames where PMKS+'s force solve did not succeed, with the oracle's condition there. */
   unsolved: { status: string; k: number; condition: number }[];
-  /** Reactions the oracle fixes and PMKS+ does not report. */
-  missing: string[];
+  /** Reactions, couples and efforts the oracle fixes and PMKS+ does not report. */
+  missing: { quantity: ForceQuantity; part: string }[];
   /** The largest force the oracle finds anywhere in this machine; 0 when it carries none. */
   forceScale: number;
+  /** What errors are divided by: `forceScale`, or UNLOADED_SCALE when that is zero. */
+  scale: number;
 }
+
+/**
+ * The scale a machine that carries no force is compared on, in newtons. Its
+ * forces are zero in the oracle, so PMKS+'s must be zero to the budget times
+ * this: a meganewton machine is held to the same fraction of its load, and an
+ * unloaded one to 1e-8 N, which is still far above the rounding of a solve
+ * whose right-hand side is zero.
+ */
+export const UNLOADED_SCALE = 1;
 
 const add = (a: Vec, b: Vec): Vec => [a[0] + b[0], a[1] + b[1]];
 
@@ -70,16 +81,21 @@ export function compareForces(
   const sweep = reference.sweep!;
   const oracle = sweep.samples.forces[mode];
   const forceScale = largestForce(oracle);
-  const result: ForceComparison = { deviations: [], unsolved: [], missing: [], forceScale };
-  if (forceScale === 0) return result;
+  // A machine nothing loads is still solved and compared: its forces must
+  // come out zero, and its solve must succeed like any other's.
+  const scale = forceScale || UNLOADED_SCALE;
+  const result: ForceComparison = { deviations: [], unsolved: [], missing: [], forceScale, scale };
   const { length } = machineScale(problem);
-  const momentScale = forceScale * length;
+  const momentScale = scale * length;
   const perTurn = Math.round((2 * Math.PI) / sweep.step);
   const period = sweep.closesAfterTurns ? perTurn * sweep.closesAfterTurns : undefined;
   const indexOf = new Map(sweep.samples.k.map((k, i) => [k, i]));
   mechanism.prepareSolvers();
   const series = mechanism.getForceAnalysis(mode);
-  const missing = new Set<string>();
+  const missing = new Map<string, { quantity: ForceQuantity; part: string }>();
+  const lack = (quantity: ForceQuantity, part: string): void => {
+    missing.set(`${quantity} ${part}`, { quantity, part });
+  };
   const frameParts = frameBodies(problem);
 
   for (const sample of samples) {
@@ -110,10 +126,10 @@ export function compareForces(
       const actual = totals.get(body);
       const e = expected[i];
       if (!actual) {
-        if (!frameParts.has(body) && Math.hypot(e[0], e[1]) > 0) missing.add(`total on ${body}`);
+        if (!frameParts.has(body) && Math.hypot(e[0], e[1]) > 0) lack('bodyTotal', body);
         continue;
       }
-      note('bodyTotal', body, Math.hypot(actual[0] - e[0], actual[1] - e[1]) / forceScale);
+      note('bodyTotal', body, Math.hypot(actual[0] - e[0], actual[1] - e[1]) / scale);
     }
     for (const [joint, byBody] of Object.entries(oracle.reactions)) {
       for (const [body, expectedSeries] of Object.entries(byBody)) {
@@ -121,35 +137,42 @@ export function compareForces(
         const actual = frame.jointReactionsByLink.get(joint)?.get(body);
         const e = expectedSeries[i];
         if (!actual) {
-          missing.add(`${joint}/${body}`);
+          lack('reaction', `${joint}/${body}`);
           continue;
         }
         note(
           'reaction',
           `${joint}/${body}`,
-          Math.hypot(actual[0] - e[0], actual[1] - e[1]) / forceScale
+          Math.hypot(actual[0] - e[0], actual[1] - e[1]) / scale
         );
       }
     }
     for (const [joint, byBody] of Object.entries(oracle.couples)) {
-      const actual = frame.guideCouples.get(joint);
-      if (actual === undefined) continue;
       for (const [body, expectedSeries] of Object.entries(byBody)) {
-        if (body !== riderOf(problem, joint)) continue;
+        if (body !== riderOf(problem, joint) || !oracle.identifiable[joint]?.[body]) continue;
+        const actual = frame.guideCouples.get(joint);
+        if (actual === undefined) {
+          lack('couple', `${joint}/${body}`);
+          continue;
+        }
         note('couple', `${joint}/${body}`, Math.abs(actual - expectedSeries[i]) / momentScale);
       }
     }
     const effort = oracle.effort[i];
-    if (effort !== null && frame.inputEffort) {
-      const scale = frame.inputEffort.kind === 'torque' ? momentScale : forceScale;
-      note(
-        'effort',
-        frame.inputEffort.jointId,
-        Math.abs(frame.inputEffort.valueSI - effort) / scale
-      );
+    if (effort !== null) {
+      if (!frame.inputEffort) {
+        lack('effort', problem.driver?.joint ?? '');
+      } else {
+        const per = frame.inputEffort.kind === 'torque' ? momentScale : scale;
+        note(
+          'effort',
+          frame.inputEffort.jointId,
+          Math.abs(frame.inputEffort.valueSI - effort) / per
+        );
+      }
     }
   }
-  result.missing = [...missing];
+  result.missing = [...missing.values()];
   return result;
 }
 
@@ -168,10 +191,16 @@ export function frameBodies(problem: OracleProblem): Set<string> {
   return new Set([...groundedPins].filter(([, count]) => count >= 2).map(([body]) => body));
 }
 
-/** The rider a Slide's guide couple acts on: the slider's one rider. */
+/**
+ * The rider a Slide's guide couple acts on: the slider's one rider. A
+ * Pin-in-slot's rider turns freely on its block, so the couple on it is zero
+ * by construction and PMKS+ reports none; only a Slide has one to compare.
+ */
 function riderOf(problem: OracleProblem, joint: string): string | undefined {
   const slider = problem.joints.find((j) => j.id === joint);
-  return slider?.kind === 'slider' && slider.riders.length === 1 ? slider.riders[0] : undefined;
+  return slider?.kind === 'slider' && !slider.rotates && slider.riders.length === 1
+    ? slider.riders[0]
+    : undefined;
 }
 
 /**

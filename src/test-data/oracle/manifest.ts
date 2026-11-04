@@ -109,4 +109,12 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
       "PMKS+ refuses the force analysis of a redundant support and tells the reader to remove one (unsupported-topology). Equilibrium fixes each body's total and the input torque, which the oracle reports; the split between the cranks it does not fix.",
     review: 'If PMKS+ starts reporting resultants for a redundant support.',
   },
+  {
+    problem: 'gallery.locomotive-drive-wheels.m1',
+    kind: 'by-design',
+    what: { quantities: ['reaction', 'bodyTotal', 'couple', 'effort'] },
+    reason:
+      "One side rod couples three wheels, where two would fix the motion: a redundant support, and PMKS+ refuses the force analysis and says so (unsupported-topology). Nothing on it has mass or a load, so the oracle's forces are all zero; its motion is verified.",
+    review: 'If PMKS+ starts reporting resultants for a redundant support.',
+  },
 ];
