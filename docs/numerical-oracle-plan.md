@@ -264,12 +264,38 @@ mass, local versus global loads, and every unit and speed conversion.
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
 
+## Textbook and course benchmark cases
+
+Gathered on 2026-11-03 from openly accessible pages; pirated book scans were avoided. Each case's
+published answers were re-derived from its givens by
+`oracle/benchmarks/derivations/closed_form_kinematics.py` and `ttu_fourbar_dynamics.py`, so a
+transcription error cannot become a reference. "Confirmed" means a published number and the
+re-derivation agree. "Derived" means only the re-derivation exists, and the case is labelled that
+way.
+
+| Case | Source of givens | Confirmed | Derived only | Can PMKS+ run it directly? |
+| --- | --- | --- | --- | --- |
+| **Norton four-bar.** a=40, b=120, c=80, d=100 mm, θ₂=40°, ω₂=25 rad/s, α₂=15 rad/s² | Norton, *Design of Machinery*, Ex. 4-1 givens; reproduced in the MIET2510 [Week 2 tutorial][miet] and a MENG450 slide set | θ₃=20.30° and θ₄=57.32° (open circuit); crossed θ₄=−98.01°; ω₃=−4.121 and ω₄=7.00 rad/s | α₃=296.089, α₄=470.134 rad/s² | Position and velocity, yes. Acceleration no: PMKS+ drives at constant speed, so α₂=15 reaches PMKS+ only through the oracle. |
+| **Norton offset slider-crank.** a=35, b=110 mm, offset c=−15 mm, θ₂=50°, ω₂=20 rad/s, α₂=12 rad/s² | MIET2510 [Week 2 tutorial][miet] (Norton's convention) | θ₃=157.66°, d=124.24 mm, ω₃=−4.42 rad/s | ḋ=−721.138 mm/s, α₃=94.718 rad/s², d̈=−7350.341 mm/s² | Position and velocity, yes. Acceleration only through the oracle. |
+| **TTU four-bar dynamics.** r₁=0.50, r₂=0.15, r₃=0.5, r₄=0.1778 m; masses, inertias and CG offsets on the page; θ₂=150°, ω₂=5, α₂=−5; load torque 5 N·m on link 4 | [TTU Dynamics of Machinery II wiki][ttu] | All pin forces and the driving torque on **both** circuits, to 3 decimals: T₁₂=−5.183 N·m (circuit 1) and 0.195 N·m (circuit 2) | — | Only through the oracle (α₂≠0). **The page uses gravity at 9.81 m/s² without saying so**; without it nothing matches. |
+| **METU double slider.** Rod AB=500 mm, 5 kg, uniform; A driven along x at a constant 2 m/s; B on a perpendicular guide; x=200 mm; no gravity | [METU OCW ME 301, §6.4][metu] | θ=113.578°, y=458.258 mm, ẏ=−872.872 mm/s, ω=4.364, α=8.312 rad/s², \|F₂₃\|=27.04 N at −73.78°, F₄₃=7.555 N | — | Yes, as a slider driven at constant speed. The page rounds intermediate values, so its forces agree to about 0.05%. Compare at printed precision. |
+
+Rules for these cases:
+
+- A textbook case is compared **at the precision it was printed to**, with an allowance for
+  intermediate rounding. It never sets the oracle's own tolerance.
+- The sign conventions are the source's. Fᵢⱼ is the force of link i on link j, and the derivation
+  scripts state the conversion. The exporter's equivalence specs prove that conversion.
+- The Phase 1 raw benchmark set is these four cases, plus SymPy and closed-form cases for the
+  features no textbook covers (floating slots, Slides, cylinders).
+
 ## Decisions
 
 Settled with the team on 2026-11-03:
 
 1. **Textbook worked examples become fixtures,** each citing its source (book, edition, example
-   number). We enter the numbers ourselves and copy no text or figures.
+   number). We enter the numbers ourselves and copy no text or figures. The first four are in
+   [Textbook and course benchmark cases](#textbook-and-course-benchmark-cases).
 2. **The MATLAB v1 data stays** as a second witness after the oracle covers its five cases. Those
    five then agree three ways.
 3. **Tolerances**: the team accepted a starting point of about 1e-9 relative for positions and 1e-6
@@ -295,6 +321,9 @@ Settled with the team on 2026-11-03:
   One claim was corrected: the 4-decimal rounding it cited applies only to exported CSV, not to
   the solver output under test.
 
+[miet]: https://bamason2.github.io/miet2510-module/tutorials/Week+2+Tutorial.html "MIET2510 Week 2 tutorial"
+[ttu]: http://ttu-dom.wikidot.com/example-item-1 "TTU Dynamics of Machinery II: Force Analysis - 4 Bar"
+[metu]: https://ocw.metu.edu.tr/pluginfile.php/6467/mod_resource/content/6/ch6/6-5.htm "METU OCW ME 301, 6.4 Dynamic force analysis of machinery"
 [exudyn]: https://exudyn.readthedocs.io/ "Exudyn documentation"
 [simbody]: https://simbody.github.io/ "Simbody"
 [chrono]: https://api.projectchrono.org/ "Project Chrono API documentation"
