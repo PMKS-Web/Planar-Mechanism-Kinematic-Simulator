@@ -1,0 +1,90 @@
+{
+  "schema": "pmks-oracle-problem/1",
+  "id": "metu-double-slider",
+  "title": "METU double slider: rod AB on perpendicular guides, A driven at 2 m/s",
+  "source": {
+    "givens": "METU OCW ME 301, 6.4 Dynamic force analysis of machinery",
+    "url": "https://ocw.metu.edu.tr/pluginfile.php/6467/mod_resource/content/6/ch6/6-5.htm",
+    "note": "Links 2 and 4 (the blocks) are massless; link 3 is a 5 kg uniform 500 mm rod; no gravity; the page rounds intermediate values."
+  },
+  "gravity": 0,
+  "bodies": [
+    {
+      "id": "3",
+      "mass": 5.0,
+      "inertia": 0.10416666666666667,
+      "com": [
+        0.1,
+        0.229128784747792
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "id": "A",
+      "kind": "slider",
+      "at": [
+        0.2,
+        0
+      ],
+      "guide": "ground",
+      "linePoint": [
+        0,
+        0
+      ],
+      "axis": [
+        1,
+        0
+      ],
+      "riders": [
+        "3"
+      ]
+    },
+    {
+      "id": "B",
+      "kind": "slider",
+      "at": [
+        0,
+        0.458257569495584
+      ],
+      "guide": "ground",
+      "linePoint": [
+        0,
+        0
+      ],
+      "axis": [
+        0,
+        1
+      ],
+      "riders": [
+        "3"
+      ]
+    }
+  ],
+  "driver": {
+    "joint": "A",
+    "kind": "translation",
+    "speed": 2.0
+  },
+  "points": [
+    {
+      "id": "A",
+      "body": "3",
+      "at": [
+        0.2,
+        0
+      ]
+    },
+    {
+      "id": "B",
+      "body": "3",
+      "at": [
+        0,
+        0.458257569495584
+      ]
+    }
+  ],
+  "sweep": {
+    "step": 0.001
+  }
+}

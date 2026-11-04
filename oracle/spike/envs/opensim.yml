@@ -1,0 +1,10 @@
+# Phase 0 trial environment for Simbody, through OpenSim's conda package.
+# Create: micromamba create -f spike/envs/opensim.yml
+name: pmks-oracle-opensim
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12.16
+  - opensim=4.5.2
+  - simbody=3.8
+  - numpy=2.5.4

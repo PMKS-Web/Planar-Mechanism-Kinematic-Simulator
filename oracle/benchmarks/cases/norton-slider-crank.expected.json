@@ -1,0 +1,56 @@
+{
+  "sources": {
+    "published": "https://bamason2.github.io/miet2510-module/tutorials/Week+2+Tutorial.html",
+    "derived": "benchmarks/derivations/closed_form_kinematics.py"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "lineAngle",
+      "value": "157.66",
+      "kind": "published",
+      "from": "B",
+      "to": "A",
+      "unit": "deg"
+    },
+    {
+      "quantity": "point",
+      "value": "124.24",
+      "kind": "published",
+      "point": "B",
+      "component": "x",
+      "of": "pos",
+      "unit": "mm"
+    },
+    {
+      "quantity": "omega",
+      "value": "-4.42",
+      "kind": "published",
+      "body": "3"
+    },
+    {
+      "quantity": "point",
+      "value": -0.721138409186618,
+      "kind": "derived",
+      "point": "B",
+      "component": "x",
+      "of": "vel"
+    },
+    {
+      "quantity": "alpha",
+      "value": 94.71752756776192,
+      "kind": "derived",
+      "body": "3"
+    },
+    {
+      "quantity": "point",
+      "value": -7.350341452405156,
+      "kind": "derived",
+      "point": "B",
+      "component": "x",
+      "of": "acc"
+    }
+  ]
+}

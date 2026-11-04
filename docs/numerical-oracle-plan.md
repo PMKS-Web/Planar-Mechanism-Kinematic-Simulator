@@ -1,8 +1,9 @@
 # An independent numerical oracle for every verification mechanism
 
-> **Status:** Proposed, 2026-11-03, and revised the same day after an external review (see
-> [Review history](#review-history)). Nothing here is built. Phase 0 defines the comparison
-> contract and picks the library before any other phase starts.
+> **Status:** Phase 0 built, 2026-11-03: the contract, the non-solving builder, nine raw benchmark
+> cases and the trial of three libraries. **Exudyn is chosen**, with Simbody as the cross-engine
+> check (see [Phase 0 results](#phase-0-results)). The plan was revised the same day after an
+> external review (see [Review history](#review-history)). Phases 1 to 4 follow.
 
 ## The problem
 
@@ -62,7 +63,7 @@ written down.
 - **Semantic independence of the translation.** Converting a PMKS+ mechanism into the oracle's
   input is new code that reads PMKS+'s own data structures. Reading only start-pose data keeps the
   *computation* separate. It does not stop a shared *interpretation*, such as where a default
-  centre of mass sits or what a weld means, from leaking into both sides. Phase 1 tests the
+  center of mass sits or what a weld means, from leaking into both sides. Phase 1 tests the
   translation against independently specified cases for exactly that reason.
 
 ## The comparison contract (Phase 0, before any engine is chosen)
@@ -137,9 +138,9 @@ granted to a single case.
 
 ## Which solver
 
-**Recommendation: [Exudyn][exudyn] first. [Simbody][simbody] is assessed before any in-house
-fallback, and [PyChrono][chrono] is the third candidate.** Phase 0 decides on measured agreement,
-not on citation counts or how easy the install is.
+**Chosen in Phase 0: [Exudyn][exudyn].** [Simbody][simbody] passed too and becomes the
+cross-engine check in the nightly. [PyChrono][chrono] was ruled out. The measurements are in
+[Phase 0 results](#phase-0-results). The table below is the brief the trial was run against.
 
 | Candidate | Strength | What Phase 0 must prove |
 | --- | --- | --- |
@@ -170,7 +171,7 @@ raw benchmark cases (hand-written)      FIXTURE_GALLERY / library templates
               src/tests/verification/oracle.spec.ts (Vitest)
 ```
 
-- **The problem schema is the contract.** It describes bodies with mass, centre of mass and
+- **The problem schema is the contract.** It describes bodies with mass, center of mass and
   inertia; attachment points; joints with their constraint count; drivers; loads (global or
   local); gravity; travel limits; and the sweep plan. It is versioned like the URL codec.
 - **Each reference file embeds** the schema version, the oracle and library versions, the class
@@ -190,7 +191,7 @@ Each rule is one documented exporter function. Each states its equations, its co
 how mass is treated, which forces it exposes and its travel bounds, and each has its own spec.
 
 - **Bodies and welds.** A `RealLink` is one body. A welded compound (`subset`) is one body whose
-  mass, centre of mass and inertia are aggregated with the parallel-axis rule. A weld merges the
+  mass, center of mass and inertia are aggregated with the parallel-axis rule. A weld merges the
   bodies that meet at that joint. A *grounded* welded pivot does **not** weld the turning body to
   ground: welding fixes the bars to each other, not to the frame.
 - **Pin-in-slot versus prismatic.** A pin-in-slot (`PrisJoint` with `rotates`) is **one**
@@ -209,7 +210,7 @@ how mass is treated, which forces it exposes and its travel bounds, and each has
 - **Conventions.** Y points up. Angles are counter-clockwise positive. Negative `driveSpeed` is
   clockwise (`drive-direction.ts`). The oracle works in SI, converted once at the edge.
 
-Tested on their own: a slot axis reversed (b→a), an oblique moving carrier, a custom centre of
+Tested on their own: a slot axis reversed (b→a), an oblique moving carrier, a custom center of
 mass, local versus global loads, and every unit and speed conversion.
 
 ## CI integration
@@ -264,13 +265,110 @@ mass, local versus global loads, and every unit and speed conversion.
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
 
+## Phase 0 results
+
+Measured on 2026-11-03 on macOS (Apple silicon). Everything the trial used is pinned:
+`oracle/uv.lock` for the oracle itself, and `oracle/spike/envs/*.yml` with explicit
+`*.osx-arm64.lock` exports for the two conda candidates.
+
+### The trial
+
+Each library solved the Norton four-bar at θ₂ = 40°, ω₂ = 25 rad/s, without integrating in time,
+and was compared with the closed form in `closed_form_kinematics.py`.
+
+| | Exudyn 1.13.6 | Simbody 3.8 (OpenSim 4.5.2) | PyChrono 10.0.0 |
+| --- | --- | --- | --- |
+| Install | `uv`, pip wheel, 1.5 s, 52 MB | conda only, 378 MB environment | conda only, 1.7 GB environment |
+| Planar model | Native 2D bodies and joints | Pin joints plus a point constraint to close the loop | 3D bodies with Z-axis revolutes, redundant out of plane |
+| Velocities | Exact (machine precision) | Exact, after a projection written by hand: OpenSim's `assemble` leaves the speeds inconsistent and does not bind Simbody's `project` | About 1% off after a full assembly |
+| Accelerations | 1×10⁻¹⁴ relative (see below) | 5×10⁻¹³ absolute | Meaningless (errors of 10⁶ rad/s²) |
+| By stepping in time instead | Not needed | Not needed | First order in the step: ω₃ off by 0.29, 0.030, 0.0045 at 1, 0.1, 0.01 ms |
+| Driving torque | 0.884416355449 N·m | 0.8844163554488235 N·m | Not reached |
+| Its own mobility count | `ComputeSystemDegreeOfFreedom`, agrees with the rank | Not exposed through OpenSim | Not tried |
+| Reruns | Byte-identical | — | — |
+
+**Why Exudyn.** It is the only candidate that installs from PyPI into the lock CI already uses, it
+models planar joints directly, so there is no out-of-plane redundancy to explain, and it exposes
+exactly the pieces the textbook method needs. Simbody is as exact, but only through OpenSim's
+packaging, with its coordinate ordering and missing bindings to work around. That makes it a good
+second witness and a poor first one. PyChrono's assembly is a tolerance-driven step, not a solve,
+so its rates would need step-convergence studies on every case.
+
+### How the oracle computes, and what it relies on in Exudyn
+
+The oracle uses Exudyn as the **model and its constraint equations**, and does the kinematic
+analysis itself, in the textbook form (Haug 1989, ch. 3 and 6), in `oracle/pmks_oracle/`:
+
+- positions: Newton on Φ(q) = 0 with the driver row d(q) = d\*;
+- velocities: J q̇ = [0; ḋ];
+- accelerations: J q̈ = −γ + [0; d̈], where γ is a central difference of Exudyn's own velocity-level
+  constraints Φ_q q̇ along q̇, extrapolated twice. A first difference of the velocity level keeps
+  about 1×10⁻¹⁴ relative accuracy where a second difference of positions keeps only 1×10⁻⁸
+  (`oracle/spike/gamma_step.md` has the measurements);
+- forces: inverse dynamics, J^T λ = M q̈ − f for the dynamic case and −f for the static one, with
+  M and f from Exudyn. Exudyn solves M q̈ = f + Φ_q^T λ, so Φ_q^T λ is the constraint force on
+  each body. Whether a reaction is fixed by equilibrium is read off the null space of J^T.
+
+Two Exudyn behaviors that the oracle works around: `ComputeJacobianAE` and
+`ComputeMassMatrix` add into the stored matrix rather than overwrite it, so both are zeroed before
+every call; and `InitializeSolver` writes a solution file unless told not to.
+
+### The sweep
+
+A one-freedom mechanism's configuration curve is traced by pseudo-arclength continuation from the
+drawn pose, which fixes the assembly branch. A travel limit is where the driver coordinate turns
+round, refined by golden-section search over the last two steps. A singular Jacobian and a solver
+failure are reported as such and never as a toggle. Grid samples sit at d₀ + k·step, keyed by k.
+A rotary cycle closes when the drawing returns to its start after at most three turns. Because
+PMKS+ reverses a rocking input at its last solvable sample and retraces the same branch, one
+stored state per k serves both directions: velocities change sign on the return and accelerations
+and forces do not.
+
+A reference stores at most 72 states per cycle, plus the two grid points at each end of travel,
+rounded to 12 significant figures, in schema `pmks-oracle-reference/1`.
+
+### The raw benchmark set
+
+Nine cases in `oracle/benchmarks/cases/`, each a problem in schema `pmks-oracle-problem/1` (SI
+units) and the values it must reproduce. `cd oracle && uv run pytest` checks all 70 values.
+
+| Case | Source | Covers |
+| --- | --- | --- |
+| `norton-fourbar` | Norton Ex. 4-1 givens, published answers | Pins; α₂ ≠ 0 |
+| `norton-slider-crank` | Norton offset slider-crank, published answers | Grounded slot |
+| `ttu-fourbar-circuit-1`, `-2` | TTU worked example, published to 3 decimals | Inverse dynamics with gravity; both assembly circuits |
+| `metu-double-slider` | METU ME 301 §6.4, published | A slider as the driver; travel limits |
+| `scotch-yoke` | SymPy, `sympy_cases.py` | A Slide (rotation locked) on a moving rider |
+| `inverted-slider-crank` | SymPy | A floating slot on a turning carrier |
+| `redundant-parallelogram` | SymPy | Redundant supports: only the resultants are fixed |
+| `non-grashof-rocker` | SymPy | Toggles at both ends, refined |
+
+A published value is compared to half a unit in its last printed place plus 0.2%. A derived value
+is compared to 1×10⁻⁹. The TTU and METU cases matched every printed digit.
+
+### The non-solving builder
+
+`buildDrawing` in `src/test-utils/verification/fixture.ts` builds a fixture's joints, links and
+forces without constructing a `Mechanism`, and `fixturePayload` now encodes from it. The payloads
+are byte-identical to before. `oracle-export-boundary.spec.ts` counts calls into the position,
+kinematic and force solvers during a build and an encode of every gallery entry, expects none,
+and proves the guard can fail by expecting some from `buildMechanism`.
+
+### Left to later phases
+
+- **Tolerance budgets.** PMKS+ samples at whole degrees and cannot easily be run at ½° or ¼°, so
+  the step-refinement experiment moves to Phase 1, where PMKS+ is measured against the oracle per
+  method. The oracle's own error is already far below any budget that will come out of it.
+- **Determinism on pinned Linux and the cold CI install time** are measured by the `oracle` CI job
+  that Phase 1 adds. There is no Linux machine in this trial.
+
 ## Textbook and course benchmark cases
 
 Gathered on 2026-11-03 from openly accessible pages; pirated book scans were avoided. Each case's
 published answers were re-derived from its givens by
 `oracle/benchmarks/derivations/closed_form_kinematics.py` and `ttu_fourbar_dynamics.py`, so a
 transcription error cannot become a reference. "Confirmed" means a published number and the
-re-derivation agree. "Derived" means only the re-derivation exists, and the case is labelled that
+re-derivation agree. "Derived" means only the re-derivation exists, and the case is labeled that
 way.
 
 | Case | Source of givens | Confirmed | Derived only | Can PMKS+ run it directly? |

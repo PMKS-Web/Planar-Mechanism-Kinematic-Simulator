@@ -13,6 +13,14 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### A throwing spy inside `Mechanism` is swallowed, so a "no solver" guard counts calls
+
+`new Mechanism(...)` catches what its solvers throw and carries on with an empty cycle. A spec
+that tries to prove a code path never solves, by making `PositionSolver` or `ForceSolver` throw,
+therefore passes whether or not the path solves. `oracle-export-boundary.spec.ts` counts the calls
+instead, and proves its own guard can fail by expecting calls from `buildMechanism`. Build a
+fixture with `buildDrawing` when you need its parts without a solve.
+
 ### An e2e suite that launches the machine's own Chrome is not portable
 
 Eight suites read `PMKS_CHROME` and hand Playwright an `executablePath` rather than using the

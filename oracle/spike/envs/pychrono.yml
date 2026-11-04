@@ -1,0 +1,11 @@
+# Phase 0 trial environment for PyChrono. Conda only: the PyPI package named
+# "pychrono" is unrelated to Project Chrono.
+# Create: micromamba create -f spike/envs/pychrono.yml
+name: pmks-oracle-pychrono
+channels:
+  - projectchrono
+  - conda-forge
+dependencies:
+  - python=3.12.16
+  - pychrono=10.0.0
+  - numpy=2.5.4

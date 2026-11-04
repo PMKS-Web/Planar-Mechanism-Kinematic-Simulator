@@ -1,0 +1,66 @@
+{
+  "sources": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "redundant",
+      "value": 1.0,
+      "kind": "derived"
+    },
+    {
+      "quantity": "freedoms",
+      "value": 1.0,
+      "kind": "derived"
+    },
+    {
+      "quantity": "point",
+      "value": -0.36938175479172236,
+      "kind": "derived",
+      "point": "C",
+      "component": "x",
+      "of": "acc"
+    },
+    {
+      "quantity": "bodyTotal",
+      "value": -0.33244357931255014,
+      "kind": "derived",
+      "mode": "dynamic",
+      "body": "3",
+      "component": "x"
+    },
+    {
+      "quantity": "bodyTotal",
+      "value": 7.915618772596098,
+      "kind": "derived",
+      "mode": "dynamic",
+      "body": "3",
+      "component": "y"
+    },
+    {
+      "quantity": "effort",
+      "value": 0.0905908753626699,
+      "kind": "derived",
+      "mode": "dynamic"
+    },
+    {
+      "quantity": "identifiable",
+      "value": 0.0,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "B",
+      "body": "3"
+    },
+    {
+      "quantity": "identifiable",
+      "value": 0.0,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "C",
+      "body": "3"
+    }
+  ]
+}

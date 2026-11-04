@@ -1,0 +1,64 @@
+{
+  "sources": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "omega",
+      "value": -0.421052631578948,
+      "kind": "derived",
+      "body": "4"
+    },
+    {
+      "quantity": "alpha",
+      "value": 32.24205381402453,
+      "kind": "derived",
+      "body": "4"
+    },
+    {
+      "quantity": "point",
+      "value": -0.27712812921102037,
+      "kind": "derived",
+      "point": "A",
+      "component": "x",
+      "of": "vel"
+    },
+    {
+      "quantity": "reaction",
+      "value": -0.4408805948388978,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "4",
+      "component": "x"
+    },
+    {
+      "quantity": "reaction",
+      "value": -1.0181701204428801,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "4",
+      "component": "y"
+    },
+    {
+      "quantity": "effort",
+      "value": -0.005090850602214406,
+      "kind": "derived",
+      "mode": "dynamic"
+    },
+    {
+      "quantity": "slideRate",
+      "value": 0.31788776569561056,
+      "kind": "derived"
+    },
+    {
+      "quantity": "slideAcceleration",
+      "value": 0.3091075151098104,
+      "kind": "derived"
+    }
+  ]
+}

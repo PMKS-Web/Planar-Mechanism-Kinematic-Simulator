@@ -1,4 +1,4 @@
-import { MechanismFixture, BuiltMechanism, buildMechanism } from './fixture';
+import { MechanismFixture, BuiltDrawing, buildDrawing } from './fixture';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ColorService } from '../../app/services/color.service';
@@ -45,7 +45,7 @@ export const DEFAULT_OBJECT_SCALE = 0.7 * MODEL_SCALE;
  * way out — so the copy built for a URL scales up first, and the published
  * payload carries exactly the numbers it always has.
  */
-function scaleBuiltToModelUnits(built: BuiltMechanism): void {
+function scaleBuiltToModelUnits(built: BuiltDrawing): void {
   built.joints.forEach((joint) => {
     joint.x *= MODEL_SCALE;
     joint.y *= MODEL_SCALE;
@@ -76,10 +76,10 @@ function scaleBuiltToModelUnits(built: BuiltMechanism): void {
  * link, which is why walking `links` alone was once enough.
  */
 /** The parts that carry a weight of their own but are not links: the sliders. */
-const weighingJoints = (built: BuiltMechanism): PrisJoint[] =>
+const weighingJoints = (built: BuiltDrawing): PrisJoint[] =>
   built.joints.filter((joint): joint is PrisJoint => joint instanceof PrisJoint);
 
-function stripMass(built: BuiltMechanism): void {
+function stripMass(built: BuiltDrawing): void {
   const strip = (link: Link): void => {
     link.mass = 0;
     if (link instanceof RealLink) {
@@ -103,7 +103,7 @@ function stripMass(built: BuiltMechanism): void {
  * keeps it in proportion; a link on the default gets it recomputed from the
  * skeleton at the next rebuild anyway, to the same number.
  */
-function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
+function scaleLoading(built: BuiltDrawing, by: PublishedLoading): void {
   const heavier = (link: Link): void => {
     link.mass *= by.mass;
     if (link instanceof RealLink) {
@@ -270,7 +270,9 @@ export function fixturePayload(
   new ColorService();
   SettingsService._objectScale.next(objectScale);
   try {
-    const built = buildMechanism(fixture);
+    // Built and never solved: the payload is the drawing as authored, which is
+    // also what the numerical oracle is exported from.
+    const built = buildDrawing(fixture);
     scaleBuiltToModelUnits(built);
     if (masses === 'zeroed') stripMass(built);
     else if (masses !== 'as-built') scaleLoading(built, masses);

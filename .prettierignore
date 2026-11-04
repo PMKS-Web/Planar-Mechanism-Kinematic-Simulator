@@ -21,3 +21,12 @@
 
 # A rendering of a brief, kept beside its PDF. Not source.
 /docs/*.html
+
+# The numerical oracle's problem and reference files, written by its Python
+# generator (oracle/pmks_oracle/run.py, benchmarks/derivations/). Like the
+# MATLAB tables above, they are regenerated wholesale and must not be reflowed.
+/oracle/benchmarks/cases
+/src/test-data/oracle
+
+# The oracle's Python environment (uv sync); oracle/.gitignore keeps it out of git.
+/oracle/.venv

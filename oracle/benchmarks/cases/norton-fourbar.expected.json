@@ -1,0 +1,52 @@
+{
+  "sources": {
+    "published": "https://bamason2.github.io/miet2510-module/tutorials/Week+2+Tutorial.html",
+    "derived": "benchmarks/derivations/closed_form_kinematics.py"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "lineAngle",
+      "value": "20.30",
+      "kind": "published",
+      "from": "A",
+      "to": "B",
+      "unit": "deg"
+    },
+    {
+      "quantity": "lineAngle",
+      "value": "57.32",
+      "kind": "published",
+      "from": "O4",
+      "to": "B",
+      "unit": "deg"
+    },
+    {
+      "quantity": "omega",
+      "value": "-4.121",
+      "kind": "published",
+      "body": "3",
+      "note": "MENG450 chapter 6 slides reproducing Norton; the tutorial gives -4.12"
+    },
+    {
+      "quantity": "omega",
+      "value": "7.00",
+      "kind": "published",
+      "body": "4"
+    },
+    {
+      "quantity": "alpha",
+      "value": 296.08919317431,
+      "kind": "derived",
+      "body": "3"
+    },
+    {
+      "quantity": "alpha",
+      "value": 470.1335302610224,
+      "kind": "derived",
+      "body": "4"
+    }
+  ]
+}

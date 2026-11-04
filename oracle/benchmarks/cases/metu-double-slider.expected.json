@@ -1,0 +1,84 @@
+{
+  "sources": {
+    "published": "https://ocw.metu.edu.tr/pluginfile.php/6467/mod_resource/content/6/ch6/6-5.htm"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "lineAngle",
+      "value": "113.578",
+      "kind": "published",
+      "from": "A",
+      "to": "B",
+      "unit": "deg"
+    },
+    {
+      "quantity": "point",
+      "value": "458.258",
+      "kind": "published",
+      "point": "B",
+      "component": "y",
+      "of": "pos",
+      "unit": "mm"
+    },
+    {
+      "quantity": "point",
+      "value": "-872.872",
+      "kind": "published",
+      "point": "B",
+      "component": "y",
+      "of": "vel",
+      "unit": "mm"
+    },
+    {
+      "quantity": "omega",
+      "value": "4.364",
+      "kind": "published",
+      "body": "3"
+    },
+    {
+      "quantity": "alpha",
+      "value": "8.312",
+      "kind": "published",
+      "body": "3"
+    },
+    {
+      "quantity": "reaction",
+      "value": "7.555",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "3",
+      "component": "x",
+      "note": "F23 = 27.04 N at -73.780 deg"
+    },
+    {
+      "quantity": "reaction",
+      "value": "-25.97",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "3",
+      "component": "y"
+    },
+    {
+      "quantity": "reaction",
+      "value": "-7.555",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "B",
+      "body": "3",
+      "component": "x",
+      "note": "F43 = 7.555 N at 180 deg"
+    },
+    {
+      "quantity": "effort",
+      "value": "7.555",
+      "kind": "published",
+      "mode": "dynamic",
+      "note": "F12 = 7.555 N at 0 deg, the force driving block 2"
+    }
+  ]
+}

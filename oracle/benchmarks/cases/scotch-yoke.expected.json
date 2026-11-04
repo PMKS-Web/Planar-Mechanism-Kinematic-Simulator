@@ -1,0 +1,103 @@
+{
+  "sources": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "point",
+      "value": -5.897894718880742,
+      "kind": "derived",
+      "point": "S",
+      "component": "x",
+      "of": "acc"
+    },
+    {
+      "quantity": "reaction",
+      "value": -8.846842078321112,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "4",
+      "component": "x"
+    },
+    {
+      "quantity": "reaction",
+      "value": 0.0,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "4",
+      "component": "y"
+    },
+    {
+      "quantity": "reaction",
+      "value": 8.846842078321112,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "2",
+      "component": "x"
+    },
+    {
+      "quantity": "reaction",
+      "value": 14.715,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "S",
+      "body": "4",
+      "component": "y"
+    },
+    {
+      "quantity": "reaction",
+      "value": 0.0,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "S",
+      "body": "4",
+      "component": "x"
+    },
+    {
+      "quantity": "couple",
+      "value": -0.2537170076121953,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "S",
+      "body": "4"
+    },
+    {
+      "quantity": "reaction",
+      "value": -10.026421022097262,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "O2",
+      "body": "2",
+      "component": "x"
+    },
+    {
+      "quantity": "reaction",
+      "value": 3.0980499316544936,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "O2",
+      "body": "2",
+      "component": "y"
+    },
+    {
+      "quantity": "effort",
+      "value": 0.3340758231569454,
+      "kind": "derived",
+      "mode": "dynamic"
+    },
+    {
+      "quantity": "identifiable",
+      "value": 1.0,
+      "kind": "derived",
+      "mode": "dynamic",
+      "joint": "S",
+      "body": "4"
+    }
+  ]
+}

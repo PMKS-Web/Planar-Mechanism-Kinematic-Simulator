@@ -1,0 +1,147 @@
+{
+  "schema": "pmks-oracle-problem/1",
+  "id": "ttu-fourbar-circuit-2",
+  "title": "TTU four-bar force example, circuit 2",
+  "source": {
+    "givens": "TTU Dynamics of Machinery II wiki, Force Analysis - 4 Bar",
+    "url": "http://ttu-dom.wikidot.com/example-item-1",
+    "note": "The page includes gravity at 9.81 m/s^2 without saying so. Its 5 N*m load torque on link 4 is written here as a couple of two 50 N forces 0.1 m apart. CG offsets are along each link from its first pin (delta = 0)."
+  },
+  "gravity": 9.81,
+  "bodies": [
+    {
+      "id": "2",
+      "mass": 0.36,
+      "inertia": 0.00136,
+      "com": [
+        -0.04399409051224948,
+        0.025399999999999992
+      ]
+    },
+    {
+      "id": "3",
+      "mass": 1.0,
+      "inertia": 0.01345,
+      "com": [
+        0.014486004903978056,
+        0.026242014109844114
+      ]
+    },
+    {
+      "id": "4",
+      "mass": 0.64,
+      "inertia": 0.00429,
+      "com": [
+        0.4219080282326433,
+        -0.04248357265445513
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "id": "O2",
+      "kind": "pin",
+      "at": [
+        0,
+        0
+      ],
+      "bodies": [
+        "2"
+      ],
+      "grounded": true
+    },
+    {
+      "id": "A",
+      "kind": "pin",
+      "at": [
+        -0.1299038105676658,
+        0.07499999999999998
+      ],
+      "bodies": [
+        "2",
+        "3"
+      ]
+    },
+    {
+      "id": "B",
+      "kind": "pin",
+      "at": [
+        0.3438160564652865,
+        -0.08496714530891034
+      ],
+      "bodies": [
+        "3",
+        "4"
+      ]
+    },
+    {
+      "id": "O4",
+      "kind": "pin",
+      "at": [
+        0.5,
+        0
+      ],
+      "bodies": [
+        "4"
+      ],
+      "grounded": true
+    }
+  ],
+  "driver": {
+    "joint": "O2",
+    "kind": "rotation",
+    "bodies": [
+      "ground",
+      "2"
+    ],
+    "speed": 5,
+    "acceleration": -5
+  },
+  "loads": [
+    {
+      "id": "TL+",
+      "body": "4",
+      "at": [
+        0.6,
+        0
+      ],
+      "vector": [
+        0,
+        50.0
+      ]
+    },
+    {
+      "id": "TL-",
+      "body": "4",
+      "at": [
+        0.5,
+        0
+      ],
+      "vector": [
+        0,
+        -50.0
+      ]
+    }
+  ],
+  "points": [
+    {
+      "id": "A",
+      "body": "2",
+      "at": [
+        -0.1299038105676658,
+        0.07499999999999998
+      ]
+    },
+    {
+      "id": "B",
+      "body": "3",
+      "at": [
+        0.3438160564652865,
+        -0.08496714530891034
+      ]
+    }
+  ],
+  "sweep": {
+    "step": 0.017453292519943295
+  }
+}

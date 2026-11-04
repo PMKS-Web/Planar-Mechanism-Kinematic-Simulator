@@ -1,0 +1,30 @@
+# Learn Exudyn's residual/Jacobian layout and the sign of lambda on a pendulum.
+import numpy as np, exudyn as exu
+from exudyn.itemInterface import *
+sc = exu.SystemContainer(); mbs = sc.AddSystem()
+g = mbs.AddObject(ObjectGround())
+L = 1.0; m = 2.0
+n = mbs.AddNode(NodeRigidBody2D(referenceCoordinates=[L, 0, 0]))
+b = mbs.AddObject(ObjectRigidBody2D(mass=m, inertia=0.5, nodeNumber=n))
+mg = mbs.AddMarker(MarkerBodyRigid(bodyNumber=g, localPosition=[0, 0, 0]))
+mb = mbs.AddMarker(MarkerBodyRigid(bodyNumber=b, localPosition=[-L, 0, 0]))
+j = mbs.AddObject(RevoluteJoint2D(markerNumbers=[mg, mb]))
+mm = mbs.AddMarker(MarkerBodyMass(bodyNumber=b))
+mbs.AddLoad(LoadMassProportional(markerNumber=mm, loadVector=[0, -9.81, 0]))
+mbs.Assemble()
+s = exu.MainSolverStatic(); ss = exu.SimulationSettings()
+s.InitializeSolver(mbs, ss)
+print("ODE2", s.GetODE2size(), "AE", s.GetAEsize(), "LTG AE of joint", mbs.systemData.GetObjectLTGAE(j))
+s.ComputeAlgebraicEquations(mbs); print("res", s.GetSystemResidual())
+s.ComputeJacobianAE(mbs); print("jac\n", s.GetSystemJacobian())
+s.ComputeMassMatrix(mbs); print("M\n", s.GetSystemMassMatrix())
+s.ComputeODE2RHS(mbs); print("rhs", s.GetSystemResidual())
+q = mbs.systemData.GetODE2Coordinates(); print("q", q)
+mbs.systemData.SetODE2Coordinates([0.1, 0, 0], configuration=exu.ConfigurationType.Current)
+s.ComputeAlgebraicEquations(mbs); print("res after dx=0.1", s.GetSystemResidual())
+# static solve to read lambda sign
+s.FinalizeSolver(mbs, ss)
+mbs.systemData.SetODE2Coordinates([0, 0, 0], configuration=exu.ConfigurationType.Initial)
+mbs.Assemble()
+exu.SolveStatic(mbs, ss)
+print("static lambda", mbs.systemData.GetAECoordinates(), "output force", mbs.GetObjectOutput(j, exu.OutputVariableType.Force))

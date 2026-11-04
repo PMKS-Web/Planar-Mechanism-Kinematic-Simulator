@@ -166,12 +166,16 @@ export interface FixtureLink {
   circle?: boolean;
 }
 
-export interface BuiltMechanism {
-  mechanism: Mechanism;
+/** The drawing a fixture describes, constructed and not solved. */
+export interface BuiltDrawing {
   joints: Joint[];
   links: Link[];
   forces: Force[];
   fixture: MechanismFixture;
+}
+
+export interface BuiltMechanism extends BuiltDrawing {
+  mechanism: Mechanism;
 }
 
 /**
@@ -202,10 +206,50 @@ export function buildMechanism(
   }
 }
 
+/**
+ * The drawing alone: every joint, link and force the fixture names, in the pose
+ * it is drawn in, without a `Mechanism` and so without running any solver.
+ *
+ * This is what the numerical oracle is exported from, because an export that
+ * solved first could carry the solver's own answer into the problem it is
+ * supposed to check (docs/numerical-oracle-plan.md, "Identical physical
+ * inputs"). The object scale is pinned exactly as for `buildMechanism`.
+ */
+export function buildDrawing(fixture: MechanismFixture): BuiltDrawing {
+  const previousScale = SettingsService.objectScale;
+  const previousCylinderScale = SettingsService.preservedCylinderScale;
+  SettingsService.preservedCylinderScale = 0;
+  SettingsService._objectScale.next(SOLVING_OBJECT_SCALE);
+  try {
+    return buildDrawingNow(fixture);
+  } finally {
+    SettingsService._objectScale.next(previousScale);
+    SettingsService.preservedCylinderScale = previousCylinderScale;
+  }
+}
+
 function buildMechanismNow(
   fixture: MechanismFixture,
   sampling: 'adaptive' | 'degree' = 'degree'
 ): BuiltMechanism {
+  const { joints, links, forces } = buildDrawingNow(fixture);
+  const mechanism = new Mechanism(
+    joints,
+    links,
+    forces,
+    [],
+    fixture.gravity ?? false,
+    'm',
+    fixture.inputAngVel,
+    // The MATLAB tables are stated one row per degree of crank and compared
+    // one to one, so this harness defaults to the grid they are stated on;
+    // the specs that exercise adaptive sampling ask for it by name.
+    sampling
+  );
+  return { mechanism, joints, links, forces, fixture };
+}
+
+function buildDrawingNow(fixture: MechanismFixture): BuiltDrawing {
   // ColorService registers itself as a static singleton that RealLink depends
   // on; SettingsService.objectScale is used when forces render their SVG.
   if (!ColorService.instance) {
@@ -383,20 +427,7 @@ function buildMechanismNow(
     forces.push(force);
   });
 
-  const mechanism = new Mechanism(
-    joints,
-    links,
-    forces,
-    [],
-    fixture.gravity ?? false,
-    'm',
-    fixture.inputAngVel,
-    // The MATLAB tables are stated one row per degree of crank and compared
-    // one to one, so this harness defaults to the grid they are stated on;
-    // the specs that exercise adaptive sampling ask for it by name.
-    sampling
-  );
-  return { mechanism, joints, links, forces, fixture };
+  return { joints, links, forces, fixture };
 }
 
 /**

@@ -1,0 +1,114 @@
+{
+  "schema": "pmks-oracle-problem/1",
+  "id": "scotch-yoke",
+  "title": "Scotch yoke: crank pin in a vertical slot on a yoke that slides without turning",
+  "source": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "gravity": 9.81,
+  "bodies": [
+    {
+      "id": "2",
+      "mass": 0.4,
+      "inertia": 0.0002,
+      "com": [
+        0.020478801107224796,
+        0.014339410908776152
+      ]
+    },
+    {
+      "id": "4",
+      "mass": 1.5,
+      "inertia": 0.01,
+      "com": [
+        0.14095760221444958,
+        0.0
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "id": "O2",
+      "kind": "pin",
+      "at": [
+        0,
+        0
+      ],
+      "bodies": [
+        "2"
+      ],
+      "grounded": true
+    },
+    {
+      "id": "A",
+      "kind": "slider",
+      "at": [
+        0.04095760221444959,
+        0.028678821817552304
+      ],
+      "guide": "4",
+      "linePoint": [
+        0.04095760221444959,
+        0.0
+      ],
+      "axis": [
+        0,
+        1
+      ],
+      "riders": [
+        "2"
+      ]
+    },
+    {
+      "id": "S",
+      "kind": "slider",
+      "at": [
+        0.14095760221444958,
+        0.0
+      ],
+      "guide": "ground",
+      "linePoint": [
+        0,
+        0
+      ],
+      "axis": [
+        1,
+        0
+      ],
+      "riders": [
+        "4"
+      ],
+      "rotates": false
+    }
+  ],
+  "driver": {
+    "joint": "O2",
+    "kind": "rotation",
+    "bodies": [
+      "ground",
+      "2"
+    ],
+    "speed": 12.0
+  },
+  "points": [
+    {
+      "id": "A",
+      "body": "2",
+      "at": [
+        0.04095760221444959,
+        0.028678821817552304
+      ]
+    },
+    {
+      "id": "S",
+      "body": "4",
+      "at": [
+        0.14095760221444958,
+        0.0
+      ]
+    }
+  ],
+  "sweep": {
+    "step": 0.017453292519943295
+  }
+}

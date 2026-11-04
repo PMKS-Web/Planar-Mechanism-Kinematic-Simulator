@@ -1,0 +1,97 @@
+{
+  "sources": {
+    "published": "http://ttu-dom.wikidot.com/example-item-1"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "reaction",
+      "value": "49.296",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "O2",
+      "body": "2",
+      "component": "x",
+      "note": "F12: force of link 1 on link 2"
+    },
+    {
+      "quantity": "reaction",
+      "value": "13.794",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "O2",
+      "body": "2",
+      "component": "y",
+      "note": "F12: force of link 1 on link 2"
+    },
+    {
+      "quantity": "reaction",
+      "value": "48.855",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "3",
+      "component": "x",
+      "note": "F23: force of link 2 on link 3"
+    },
+    {
+      "quantity": "reaction",
+      "value": "10.412",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "A",
+      "body": "3",
+      "component": "y",
+      "note": "F23: force of link 2 on link 3"
+    },
+    {
+      "quantity": "reaction",
+      "value": "45.315",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "B",
+      "body": "4",
+      "component": "x",
+      "note": "F34: force of link 3 on link 4"
+    },
+    {
+      "quantity": "reaction",
+      "value": "1.207",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "B",
+      "body": "4",
+      "component": "y",
+      "note": "F34: force of link 3 on link 4"
+    },
+    {
+      "quantity": "reaction",
+      "value": "-44.244",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "O4",
+      "body": "4",
+      "component": "x",
+      "note": "F14: force of link 1 on link 4"
+    },
+    {
+      "quantity": "reaction",
+      "value": "5.331",
+      "kind": "published",
+      "mode": "dynamic",
+      "joint": "O4",
+      "body": "4",
+      "component": "y",
+      "note": "F14: force of link 1 on link 4"
+    },
+    {
+      "quantity": "effort",
+      "value": "-5.183",
+      "kind": "published",
+      "mode": "dynamic",
+      "note": "Ts, the driving torque on link 2"
+    }
+  ]
+}

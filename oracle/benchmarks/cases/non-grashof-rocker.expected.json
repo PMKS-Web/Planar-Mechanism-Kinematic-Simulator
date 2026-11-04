@@ -1,0 +1,34 @@
+{
+  "sources": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "at": {
+    "k": 0
+  },
+  "checks": [
+    {
+      "quantity": "limit",
+      "value": 0.8641593727505201,
+      "kind": "derived",
+      "end": "high"
+    },
+    {
+      "quantity": "limit",
+      "value": -1.562291073548252,
+      "kind": "derived",
+      "end": "low"
+    },
+    {
+      "quantity": "lastSample",
+      "value": 49.0,
+      "kind": "derived",
+      "end": "high"
+    },
+    {
+      "quantity": "lastSample",
+      "value": -89.0,
+      "kind": "derived",
+      "end": "low"
+    }
+  ]
+}

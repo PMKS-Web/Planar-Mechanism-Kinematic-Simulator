@@ -1,0 +1,118 @@
+{
+  "schema": "pmks-oracle-problem/1",
+  "id": "non-grashof-rocker",
+  "title": "Non-Grashof four-bar: the input rocks between two toggles",
+  "source": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "gravity": 0,
+  "bodies": [
+    {
+      "id": "2",
+      "mass": 0.2,
+      "inertia": 0.0001,
+      "com": [
+        0.0328892417275068,
+        0.011970705016398407
+      ]
+    },
+    {
+      "id": "3",
+      "mass": 0.2,
+      "inertia": 0.0001,
+      "com": [
+        0.07595559096061874,
+        0.041158450510746424
+      ]
+    },
+    {
+      "id": "4",
+      "mass": 0.2,
+      "inertia": 0.0001,
+      "com": [
+        0.09306634923311195,
+        0.029187745494348015
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "id": "O2",
+      "kind": "pin",
+      "at": [
+        0,
+        0
+      ],
+      "bodies": [
+        "2"
+      ],
+      "grounded": true
+    },
+    {
+      "id": "A",
+      "kind": "pin",
+      "at": [
+        0.0657784834550136,
+        0.023941410032796814
+      ],
+      "bodies": [
+        "2",
+        "3"
+      ]
+    },
+    {
+      "id": "B",
+      "kind": "pin",
+      "at": [
+        0.0861326984662239,
+        0.05837549098869603
+      ],
+      "bodies": [
+        "3",
+        "4"
+      ]
+    },
+    {
+      "id": "O4",
+      "kind": "pin",
+      "at": [
+        0.1,
+        0.0
+      ],
+      "bodies": [
+        "4"
+      ],
+      "grounded": true
+    }
+  ],
+  "driver": {
+    "joint": "O2",
+    "kind": "rotation",
+    "bodies": [
+      "ground",
+      "2"
+    ],
+    "speed": 3.0
+  },
+  "points": [
+    {
+      "id": "A",
+      "body": "2",
+      "at": [
+        0.0657784834550136,
+        0.023941410032796814
+      ]
+    },
+    {
+      "id": "B",
+      "body": "3",
+      "at": [
+        0.0861326984662239,
+        0.05837549098869603
+      ]
+    }
+  ],
+  "sweep": {
+    "step": 0.017453292519943295
+  }
+}

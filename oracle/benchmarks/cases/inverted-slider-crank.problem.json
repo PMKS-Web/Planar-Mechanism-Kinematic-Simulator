@@ -1,0 +1,105 @@
+{
+  "schema": "pmks-oracle-problem/1",
+  "id": "inverted-slider-crank",
+  "title": "Inverted slider-crank: crank pin riding a slot through a rotating link",
+  "source": {
+    "derived": "benchmarks/derivations/sympy_cases.py"
+  },
+  "gravity": 0,
+  "bodies": [
+    {
+      "id": "2",
+      "mass": 0.3,
+      "inertia": 0.0001,
+      "com": [
+        0.010000000000000002,
+        0.017320508075688773
+      ]
+    },
+    {
+      "id": "4",
+      "mass": 0.8,
+      "inertia": 0.003,
+      "com": [
+        0.1,
+        0.0
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "id": "O2",
+      "kind": "pin",
+      "at": [
+        0,
+        0
+      ],
+      "bodies": [
+        "2"
+      ],
+      "grounded": true
+    },
+    {
+      "id": "O4",
+      "kind": "pin",
+      "at": [
+        0.1,
+        0
+      ],
+      "bodies": [
+        "4"
+      ],
+      "grounded": true
+    },
+    {
+      "id": "A",
+      "kind": "slider",
+      "at": [
+        0.020000000000000004,
+        0.034641016151377546
+      ],
+      "guide": "4",
+      "linePoint": [
+        0.1,
+        0.0
+      ],
+      "axis": [
+        -0.08,
+        0.034641016151377546
+      ],
+      "riders": [
+        "2"
+      ]
+    }
+  ],
+  "driver": {
+    "joint": "O2",
+    "kind": "rotation",
+    "bodies": [
+      "ground",
+      "2"
+    ],
+    "speed": 8.0
+  },
+  "points": [
+    {
+      "id": "A",
+      "body": "2",
+      "at": [
+        0.020000000000000004,
+        0.034641016151377546
+      ]
+    },
+    {
+      "id": "O4",
+      "body": "ground",
+      "at": [
+        0.1,
+        0.0
+      ]
+    }
+  ],
+  "sweep": {
+    "step": 0.017453292519943295
+  }
+}

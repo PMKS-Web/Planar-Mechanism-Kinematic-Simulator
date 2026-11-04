@@ -1,0 +1,136 @@
+{
+  "schema": "pmks-oracle-problem/1",
+  "id": "norton-fourbar",
+  "title": "Norton four-bar, open circuit, theta2 = 40 deg",
+  "source": {
+    "givens": "R. L. Norton, Design of Machinery, Ex. 4-1 givens, as reproduced in the MIET2510 Week 2 tutorial",
+    "url": "https://bamason2.github.io/miet2510-module/tutorials/Week+2+Tutorial.html"
+  },
+  "gravity": 0,
+  "bodies": [
+    {
+      "id": "2",
+      "mass": 1,
+      "inertia": 0.001,
+      "com": [
+        0.015320888862379561,
+        0.012855752193730785
+      ]
+    },
+    {
+      "id": "3",
+      "mass": 1,
+      "inertia": 0.001,
+      "com": [
+        0.08691588296762207,
+        0.046525564037495824
+      ]
+    },
+    {
+      "id": "4",
+      "mass": 1,
+      "inertia": 0.001,
+      "com": [
+        0.12159499410524251,
+        0.03366981184376504
+      ]
+    }
+  ],
+  "joints": [
+    {
+      "id": "O2",
+      "kind": "pin",
+      "at": [
+        0,
+        0
+      ],
+      "bodies": [
+        "2"
+      ],
+      "grounded": true
+    },
+    {
+      "id": "A",
+      "kind": "pin",
+      "at": [
+        0.030641777724759123,
+        0.02571150438746157
+      ],
+      "bodies": [
+        "2",
+        "3"
+      ]
+    },
+    {
+      "id": "B",
+      "kind": "pin",
+      "at": [
+        0.143189988210485,
+        0.06733962368753008
+      ],
+      "bodies": [
+        "3",
+        "4"
+      ]
+    },
+    {
+      "id": "O4",
+      "kind": "pin",
+      "at": [
+        0.1,
+        0
+      ],
+      "bodies": [
+        "4"
+      ],
+      "grounded": true
+    }
+  ],
+  "driver": {
+    "joint": "O2",
+    "kind": "rotation",
+    "bodies": [
+      "ground",
+      "2"
+    ],
+    "speed": 25,
+    "acceleration": 15
+  },
+  "points": [
+    {
+      "id": "O2",
+      "body": "ground",
+      "at": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "A",
+      "body": "2",
+      "at": [
+        0.030641777724759123,
+        0.02571150438746157
+      ]
+    },
+    {
+      "id": "B",
+      "body": "3",
+      "at": [
+        0.143189988210485,
+        0.06733962368753008
+      ]
+    },
+    {
+      "id": "O4",
+      "body": "ground",
+      "at": [
+        0.1,
+        0
+      ]
+    }
+  ],
+  "sweep": {
+    "step": 0.017453292519943295
+  }
+}
