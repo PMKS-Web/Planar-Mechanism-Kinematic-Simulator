@@ -46,8 +46,12 @@ export interface MachineComparison {
   outOfRange: { frame: number; k: number }[];
   /** PMKS+'s extent of travel in grid steps, and the oracle's. */
   range: { pmks: [number, number]; oracle: [number, number] };
-  /** Rates PMKS+ left blank where the oracle has one. */
-  missing: number;
+  /** Quantities PMKS+ left blank where the oracle has one, frame by frame. */
+  missing: { quantity: Quantity; part: string; k: number }[];
+  /** Joints and bodies the oracle reports and PMKS+ reported in no frame. */
+  unreported: string[];
+  /** Stored oracle samples no PMKS+ frame landed on, so nothing was compared there. */
+  unvisited: number[];
   compared: number;
 }
 
@@ -92,9 +96,13 @@ export function compareMachine(
     offGrid: [],
     outOfRange: [],
     range: { pmks: [Infinity, -Infinity], oracle: [sweep.kMin, sweep.kMax] },
-    missing: 0,
+    missing: [],
+    unreported: [],
+    unvisited: [],
     compared: 0,
   };
+  const reported = new Set<string>();
+  const visited = new Set<number>();
   const note = (d: Deviation): void => {
     result.compared++;
     result.deviations.push(d);
@@ -116,6 +124,7 @@ export function compareMachine(
     }
     const i = indexOf.get(k);
     if (i === undefined) continue;
+    visited.add(k);
     const s = sample.direction;
     const vec = (
       quantity: Quantity,
@@ -125,7 +134,7 @@ export function compareMachine(
       method?: Method
     ): void => {
       if (actual === undefined) {
-        result.missing++;
+        result.missing.push({ quantity, part, k });
         return;
       }
       const [value, how] = Array.isArray(actual)
@@ -148,7 +157,7 @@ export function compareMachine(
       expected: number
     ): void => {
       if (actual === undefined) {
-        result.missing++;
+        result.missing.push({ quantity, part, k });
         return;
       }
       note({
@@ -165,6 +174,7 @@ export function compareMachine(
     for (const [id, oracle] of Object.entries(sweep.samples.points)) {
       const pmks = sample.points.get(id);
       if (!pmks) continue;
+      reported.add(id);
       vec('position', id, pmks.pos, oracle.pos[i], 'pose');
       vec('velocity', id, pmks.vel, signed(oracle.vel[i], s));
       vec('acceleration', id, pmks.acc, oracle.acc[i]);
@@ -172,13 +182,19 @@ export function compareMachine(
     for (const [id, oracle] of Object.entries(sweep.samples.bodies)) {
       const pmks = sample.bodies.get(id);
       if (!pmks) continue;
-      if (pmks.com) vec('com', id, pmks.com, oracle.com[i], 'pose');
+      reported.add(id);
+      vec('com', id, pmks.com, oracle.com[i], 'pose');
       vec('comVelocity', id, pmks.comVel, signed(oracle.comVel[i], s));
       vec('comAcceleration', id, pmks.comAcc, oracle.comAcc[i]);
       num('omega', id, pmks.omega, oracle.omega[i] * s);
       num('alpha', id, pmks.alpha, oracle.alpha[i]);
     }
   }
+  result.unreported = [
+    ...Object.keys(sweep.samples.points),
+    ...Object.keys(sweep.samples.bodies),
+  ].filter((id) => !reported.has(id));
+  result.unvisited = sweep.samples.k.filter((k) => !visited.has(k));
   return result;
 }
 

@@ -277,8 +277,8 @@ and the comparison about 10.
 ### What is compared, and how
 
 - **Published cases.** Every `FIXTURE_GALLERY` entry, as `npm run fixture-urls` links it, and
-  every template as the library dialog stores it: 157 drawings, 202 machines. Each machine is
-  exported from its decoded URL by `src/test-utils/oracle/export-problem.ts`, which reads the start
+  every template as the library dialog stores it: 167 drawings (122 gallery entries and 45
+  templates), 202 machines. Each machine is exported from its decoded URL by `src/test-utils/oracle/export-problem.ts`, which reads the start
   pose only. Units come from its own table (`si-units.ts`), not the app's.
 - **PMKS+ is sampled at whole degrees** (`'degree'`), and each frame is placed on the oracle's grid
   by its driver coordinate. Adaptive sampling adds frames between grid points and agrees with
@@ -294,6 +294,10 @@ and the comparison about 10.
   δ².
 - **Differenced rates** (what PMKS+ fills by `fillRatesByDifference`) are `undefined` at the last
   sample before a reversal, where the difference reaches across the turn.
+- **Nothing passes by not being compared.** Every stored oracle sample must be reached by a PMKS+
+  frame, every joint and body the oracle reports must be reported back, and every quantity the
+  oracle has at a sample PMKS+ must have too, unless the manifest leaves it out
+  (`oracle-compare.spec.ts` removes each in turn and sees the comparison say so).
 
 ### The budgets, from the measurement
 
@@ -327,8 +331,11 @@ first Linux run rewrote every reference that way. Two changes followed:
   committed reference: the grid, the limits, the mobility counts and which reactions are
   identifiable must be equal, and every number must agree to one hundredth of the budget PMKS+ is
   held to for it, on the same scales, plus a unit in its last stored digit. Rates and forces past
-  the conditioning limit are not compared, as PMKS+'s are not. `run.py` rewrites a reference only
-  when that check fails or its problem or generator changed.
+  the conditioning limit are not compared, as PMKS+'s are not. Because a condition number decides
+  that, it must itself reproduce to a thousandth of its size and fall on the same side of the
+  limit, so a changed one cannot excuse the rates it would hide; two poses past 10¹⁰ are both
+  singular and agree. `run.py` rewrites a reference only when that check fails or its problem or
+  generator changed.
 - **A toggle on a grid point is not stored.** The two cylinder booms stop exactly at their stroke
   ends, which fall on grid points; whether the refined toggle landed a hair before the last one or
   after it differed between the platforms. A grid point within 10⁻⁹ of a step of a toggle is the

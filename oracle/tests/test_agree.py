@@ -53,3 +53,33 @@ def test_a_changed_grid_or_generator_is_a_change(case):
     other["generator"]["sourceSha256"] = "0" * 64
     with pytest.raises(agree.Disagreement, match="generator"):
         agree.check(problem, reference, other)
+
+
+def test_a_changed_condition_cannot_excuse_the_rates_it_hides(case):
+    # Raising a sample's condition past the comparison limit would stop its
+    # rates being compared, so a corrupted rate must not ride in on it.
+    problem, reference = case
+    other = copy.deepcopy(reference)
+    other["sweep"]["samples"]["condition"][0] = 1e15
+    other["sweep"]["samples"]["points"]["B"]["vel"][0] = [1e6, 1e6]
+    with pytest.raises(agree.Disagreement, match="condition"):
+        agree.check(problem, reference, other)
+
+
+def test_a_condition_may_not_cross_the_comparison_limit(case):
+    problem, reference = case
+    other = copy.deepcopy(reference)
+    condition = other["sweep"]["samples"]["condition"]
+    condition[0] = agree.CONDITIONING_LIMIT * (1 - 1e-12)
+    near = copy.deepcopy(other)
+    near["sweep"]["samples"]["condition"][0] = agree.CONDITIONING_LIMIT * (1 + 1e-12)
+    with pytest.raises(agree.Disagreement, match="either side"):
+        agree.check(problem, other, near)
+
+
+def test_two_singular_poses_agree_however_singular(case):
+    problem, reference = case
+    a, b = copy.deepcopy(reference), copy.deepcopy(reference)
+    a["sweep"]["samples"]["condition"][0] = 1e12
+    b["sweep"]["samples"]["condition"][0] = 1e16
+    agree.check(problem, a, b)
