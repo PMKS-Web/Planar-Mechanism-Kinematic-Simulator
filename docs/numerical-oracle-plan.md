@@ -1,11 +1,12 @@
 # An independent numerical oracle for every verification mechanism
 
-> **Status:** Phases 0 and 1 built, 2026-11-04. **Exudyn is chosen**, with Simbody as the
+> **Status:** Phases 0, 1 and 2 built, 2026-11-04. **Exudyn is chosen**, with Simbody as the
 > cross-engine check (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **97
-> are verified** against the oracle (one in its poses only) and **33 agree they do not run**; **72
-> are excluded**: 68 wait for the Phase 3 exporter and 4 are excluded by the manifest. There are
-> **2 disagreements**, each with an issue (see [Phase 1 results](#phase-1-results)). The plan was
-> revised on 2026-11-03 after an external review (see [Review history](#review-history)).
+> are verified** against the oracle in their motion and forces (two of them in part) and **33 agree
+> they do not run**; **72 are excluded**: 68 wait for the Phase 3 exporter and 4 are excluded by
+> the manifest. There are **2 disagreements**, each with an issue (see [Phase 1
+> results](#phase-1-results) and [Phase 2 results](#phase-2-results)). The plan was revised on
+> 2026-11-03 after an external review (see [Review history](#review-history)).
 
 ## The problem
 
@@ -266,6 +267,65 @@ mass, local versus global loads, and every unit and speed conversion.
 | **2. Inverse dynamics** | Reactions per `(joint, body)`, Slide couples, typed actuator effort, gravity on and off | The force fixtures and the two MATLAB dynamics cases agree. Redundant supports compare resultants. Power balance holds inside the oracle too. |
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
+
+## Phase 2 results
+
+Measured on 2026-11-04. The references already carried the oracle's inverse dynamics from Phase 0;
+Phase 2 compares them (`compare-oracle-forces.ts`, called from `oracle.spec.ts`) in both of PMKS+'s
+force modes: `static`, the loads and gravity alone, and `dynamic`, with the inertia of the motion.
+
+### What is compared, and how
+
+- **Reactions** are the force on one body at one joint, from everything else meeting there. One is
+  compared only where the oracle marks it **identifiable**: fixed by equilibrium at every stored
+  state. Of 1,518 reaction series on verified machines, 84 are not; they belong to a frame drawn
+  as a bar, a parallel pair of cranks or another redundant support.
+- **Body totals**, the sum of a body's reactions, are always fixed, and are what a redundant
+  support is compared by: the resultant, not its split.
+- **A Slide's guide couple** is compared on its one rider, and **the input effort** (a torque for a
+  pin, a force for a slider) at every frame.
+- **The frame.** A bar pinned to the ground at two or more joints cannot move, and PMKS+ folds it
+  into the frame and reports nothing on it; the oracle's numbers for it are the ground's, and are
+  not compared.
+- **Scale.** A force error is divided by the largest force anywhere in the machine's cycle, a
+  moment's by that times L. Above the conditioning limit of 10³ forces are not compared, for the
+  reason rates are not.
+- **A frame PMKS+ cannot solve** fails the machine unless the oracle's condition there is above the
+  limit: a toggle is a reason to have no answer, a regular pose is not.
+
+### The budgets, from the measurement
+
+| Mode | Worst measured | Budget |
+| --- | --- | --- |
+| Static | 1.9×10⁻⁹ (a reaction on the elliptical crank) | 1×10⁻⁸ |
+| Dynamic | 4.6×10⁻¹⁰ (a reaction on the slider-crank with a tracer) | 1×10⁻⁸ |
+
+38,026 force samples pass and none fails; 4,720 are past the conditioning limit.
+
+### Inside the oracle, and against MATLAB
+
+- **Power balance.** `oracle/tests/test_power_balance.py` reads every stored reference as plain
+  numbers, without the oracle's equations, and checks that the effort's power, the loads' and
+  gravity's add up to the rate of change of kinetic energy (and to zero in the static mode). It
+  holds to 10⁻⁷ of the largest power in the cycle on all 79 machines on which something does work.
+  An effort with the wrong sign, a local load not turned with its body or a missing block mass
+  would each break it.
+- **MATLAB dynamics.** `oracle-matlab.spec.ts` compares the oracle's joint forces and input torque
+  with gravity to the Watt I and Stephenson III dynamics tables, at the tolerance the MATLAB
+  dynamics specs give PMKS+. The worst error is 1.2×10⁻³ of it, and the residual is the gravity
+  constant: the oracle uses 9.80665 m/s², the tables 9.81.
+
+### Disagreements and exclusions
+
+No new disagreement. Two manifest entries changed:
+
+| Machine | Kind | What | Issue |
+| --- | --- | --- | --- |
+| Four-bar with two inputs | disagreement | Its reactions, body totals and effort are left out in the dynamic mode, which needs the wrong rates; its static forces agree | [#78][i78] |
+| Parallelogram with a third parallel crank | by design | PMKS+ refuses its forces (`unsupported-topology`): three parallel cranks leave the reactions indeterminate. Its motion is verified | — |
+
+Whether PMKS+ should report the resultants of a redundant support instead of refusing is an open
+question, not a disagreement: the oracle can only say what equilibrium fixes.
 
 ## Phase 1 results
 

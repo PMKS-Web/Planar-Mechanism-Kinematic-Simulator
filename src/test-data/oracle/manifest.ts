@@ -1,4 +1,5 @@
 import type { Quantity } from '../../test-utils/oracle/compare-oracle';
+import type { ForceQuantity } from '../../test-utils/oracle/compare-oracle-forces';
 
 /**
  * Every published machine, or part of one, that the oracle comparison leaves
@@ -26,10 +27,16 @@ export interface Exclusion {
   kind: ExclusionKind;
   /**
    * What is left out. `'runs'` is the question of whether the machine runs at
-   * all, and with it every comparison; otherwise only these quantities, and
-   * only for `parts` when it is given.
+   * all, and with it every comparison; otherwise only these quantities, only
+   * for `parts` when it is given, and for a force only in `modes` when given.
    */
-  what: 'runs' | { quantities: Quantity[]; parts?: string[] };
+  what:
+    | 'runs'
+    | {
+        quantities: (Quantity | ForceQuantity)[];
+        parts?: string[];
+        modes?: ('static' | 'dynamic')[];
+      };
   reason: string;
   /** Required for a disagreement. */
   issue?: string;
@@ -51,10 +58,22 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
     problem: 'gallery.four-bar-with-two-inputs.m1',
     kind: 'disagreement',
     what: {
-      quantities: ['velocity', 'acceleration', 'comVelocity', 'comAcceleration', 'omega', 'alpha'],
+      quantities: [
+        'velocity',
+        'acceleration',
+        'comVelocity',
+        'comAcceleration',
+        'omega',
+        'alpha',
+        'reaction',
+        'bodyTotal',
+        'effort',
+      ],
+      // The static forces depend on the poses alone, and agree.
+      modes: ['dynamic'],
     },
     reason:
-      "The poses agree, the rates do not. PMKS+'s analytic angular velocity of the coupler BC is wrong (0.1625 rad/s at the drawn pose, where its own joint velocities and the oracle both give 0.1745), and the joint rates it leaves blank are differenced, outside the differenced budget near the toggles.",
+      "The poses agree, the rates do not. PMKS+'s analytic angular velocity of the coupler BC is wrong (0.1625 rad/s at the drawn pose, where its own joint velocities and the oracle both give 0.1745), and the joint rates it leaves blank are differenced, outside the differenced budget near the toggles. The in-motion forces rest on those accelerations.",
     issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/78',
     review: 'When the issue is closed, delete this entry.',
   },
@@ -81,5 +100,13 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
     reason:
       'The drawn pose is a dead point of the driver: both ways along the configuration curve move the rocker the same way, so the oracle does not choose a branch to walk.',
     review: 'If the oracle learns to walk away from a dead point on the branch PMKS+ takes.',
+  },
+  {
+    problem: 'gallery.parallelogram-with-a-third-parallel-crank.m1',
+    kind: 'by-design',
+    what: { quantities: ['reaction', 'bodyTotal', 'couple', 'effort'] },
+    reason:
+      "PMKS+ refuses the force analysis of a redundant support and tells the reader to remove one (unsupported-topology). Equilibrium fixes each body's total and the input torque, which the oracle reports; the split between the cranks it does not fix.",
+    review: 'If PMKS+ starts reporting resultants for a redundant support.',
   },
 ];

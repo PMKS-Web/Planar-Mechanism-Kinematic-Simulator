@@ -15,6 +15,9 @@ import { KinematicsQuantity } from '../../test-data/verification/types';
 
 type Vec = [number, number];
 
+/** What `registerDynamicsSuite` holds PMKS+ to against the same tables. */
+const MATLAB_DYNAMICS_TOLERANCE = { abs: 1e-3, rel: 5e-3 };
+
 const worst: Record<string, { share: number; at: string }> = {};
 
 describe('the oracle against the MATLAB v1 tables', () => {
@@ -37,6 +40,11 @@ describe('the oracle against the MATLAB v1 tables', () => {
       const indexOf = new Map(sweep.samples.k.map((k, i) => [k, i]));
       const angle0 = dataset.samples[0].inputAngleRad;
       const s = sweep.samples;
+      const firstBodyAt = (joint: string): string | undefined => {
+        const found = problem.joints.find((j) => j.id === joint);
+        if (!found) return undefined;
+        return found.kind === 'pin' ? found.bodies[0] : found.riders[0];
+      };
       const failures: string[] = [];
       let compared = 0;
       let rows = 0;
@@ -77,6 +85,27 @@ describe('the oracle against the MATLAB v1 tables', () => {
             );
           }
         };
+        const dynamic = (
+          quantity: string,
+          part: string,
+          expected: number[],
+          actual: Vec,
+          peak: number
+        ): void => {
+          const error = Math.hypot(actual[0] - expected[0], actual[1] - expected[1]);
+          const allowed = MATLAB_DYNAMICS_TOLERANCE.abs + MATLAB_DYNAMICS_TOLERANCE.rel * peak;
+          compared++;
+          const share = error / allowed;
+          const key = `${dataset.name} dynamics`;
+          if (share > (worst[key]?.share ?? -1)) {
+            worst[key] = { share, at: `${quantity} ${part} row ${row}` };
+          }
+          if (error > allowed && failures.length < 10) {
+            failures.push(
+              `${quantity} ${part} row ${row} (k=${k}): off by ${error.toExponential(2)}`
+            );
+          }
+        };
         const peakOf = (series: number[][]): number =>
           Math.max(...series.map((v) => Math.hypot(v[0], v[1] ?? 0)));
         const signed = (v: Vec): Vec => [v[0] * direction, v[1] * direction];
@@ -111,6 +140,33 @@ describe('the oracle against the MATLAB v1 tables', () => {
               [acc[row], 0],
               [body.alpha[i], 0],
               Math.max(...acc.map(Math.abs))
+            );
+          }
+        }
+        // The MATLAB dynamics, with gravity: the force each joint exerts on the
+        // first link listed there, and the input torque. Compared to the
+        // tolerance the MATLAB dynamics specs use (suites.ts), because the
+        // tables carry none of their own for forces.
+        const dynamics = dataset.dynamics?.grav;
+        if (dynamics) {
+          const forces = s.forces.dynamic;
+          for (const [joint, series] of Object.entries(dynamics.jointForce)) {
+            const first = firstBodyAt(joint);
+            const oracle = first ? forces.reactions[joint]?.[first] : undefined;
+            if (!oracle) {
+              failures.push(`no oracle reaction at ${joint} on its first link`);
+              continue;
+            }
+            dynamic('jointForce', joint, series[row], oracle[i], peakOf(series));
+          }
+          const torque = forces.effort[i];
+          if (torque !== null) {
+            dynamic(
+              'torque',
+              'input',
+              [dynamics.torque[row], 0],
+              [torque, 0],
+              Math.max(...dynamics.torque.map(Math.abs))
             );
           }
         }
