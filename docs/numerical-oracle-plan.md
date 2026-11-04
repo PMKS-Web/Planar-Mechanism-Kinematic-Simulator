@@ -1,0 +1,300 @@
+# An independent numerical oracle for every verification mechanism
+
+> **Status:** Proposed, 2026-11-03, and revised the same day after an external review (see
+> [Review history](#review-history)). Nothing here is built. Phase 0 defines the comparison
+> contract and picks the library before any other phase starts.
+
+## The problem
+
+PMKS+ checks its solvers in three ways today, and only one of them is independent:
+
+| What | Where | Covers | Independent of PMKS+? |
+| --- | --- | --- | --- |
+| MATLAB reference traces | `src/test-data/verification/` | 5 cases: four-bar, slider-crank, tracer, Watt I, Stephenson III | Partly. The MATLAB comes from a fork of the original PMKS, written by the same research group. |
+| Self-snapshots | `template-baseline.ts` and similar | The templates | No. They catch *change*, not *error*. |
+| Internal invariants | `constraint-residuals.ts`, `force-power-balance.spec.ts`, finite differences | Many fixtures | Partly. They catch inconsistency, not a wrong model of the physics. |
+
+`FIXTURE_GALLERY` holds 74 mechanisms. They include floating slots, Slides, cylinders, frozen
+cylinders, welded compounds, several machines in one drawing, and multi-loop linkages. None of the
+mechanisms the reference data cannot express has ever been compared with a second solver. A bug
+in a shared assumption, such as a sign convention, which body a reaction acts on, or how a weld
+transmits moment, would pass every test we have.
+
+## The goal
+
+**Every library template and every gallery fixture is solved a second time by an established
+multibody solver that shares no code or formulation with PMKS+. Every quantity the physics
+determines uniquely is compared in CI.** A quantity the oracle cannot express, or that the physics
+does not determine, is listed with its reason, never left out silently.
+
+Agreement between the two solvers is evidence, not proof. A mismatch is a lead, not a verdict on
+which side is wrong.
+
+## Is this the right approach?
+
+Yes, as long as the comparison is defined before the engine is chosen, and the limits below are
+written down.
+
+**Why it is right**
+
+- PMKS+ solves by finding loops and walking dyads (`loop-solver`, `position-solver`), and by
+  Newton–Raphson only where that walk fails (`simultaneous-solver`). The textbook alternative
+  formulates the whole mechanism as one constraint set in body coordinates, Φ(q, t) = 0, and
+  solves that (E. J. Haug, *Computer Aided Kinematics and Dynamics of Mechanical Systems*, 1989;
+  P. E. Nikravesh, *Planar Multibody Dynamics*, 2nd ed., 2018). A loop-closure bug and a
+  body-coordinate bug are unlikely to produce the same wrong number.
+- Inverse dynamics (joint reactions and input effort under prescribed motion) is where a
+  formulation difference earns the most. The force solver is the least checked part of PMKS+:
+  only two of the five MATLAB cases carry dynamics.
+- Reference data generated once and committed keeps `npm test` free of Python and the network.
+  The existing MATLAB data already works this way.
+
+**What it cannot do (out of scope on purpose)**
+
+- **Edit semantics.** Holds, the cylinder `whatGives` ladder, re-anchoring and split joints decide
+  *which* mechanism exists. They are design rules, not physics.
+- **Readiness and wording.** Setup issues, refusals and family names stay with the existing specs.
+- **Which assembly branch a reader meant.** The oracle starts from the drawn pose and checks that
+  PMKS+ stays on that branch. It cannot say what the reader intended.
+- **Reactions the physics leaves undetermined.** Where supports are redundant (PMKS+ records this
+  as `sharedSupport` in `force-solver.ts` and splits the load evenly), any solver's split is a
+  choice, not a measurement. Only the resultant and the equilibrium are compared there.
+- **Semantic independence of the translation.** Converting a PMKS+ mechanism into the oracle's
+  input is new code that reads PMKS+'s own data structures. Reading only start-pose data keeps the
+  *computation* separate. It does not stop a shared *interpretation*, such as where a default
+  centre of mass sits or what a weld means, from leaking into both sides. Phase 1 tests the
+  translation against independently specified cases for exactly that reason.
+
+## The comparison contract (Phase 0, before any engine is chosen)
+
+The review's main point was that the contract matters more than the engine. It has four parts.
+
+### 1. Identical physical inputs
+
+Two problem sources, kept apart:
+
+- **Raw benchmark cases.** Textbook worked examples, the MATLAB v1 cases and closed-form
+  mechanisms. Each is written once in the neutral schema by hand from its source, never exported
+  from PMKS+. These test the translation layer and the oracle together.
+- **Published cases.** Every gallery fixture and library template, exported from what the URL
+  decoder produces. These test what a student actually opens.
+
+Today `fixturePayload` calls `buildMechanism`, which runs the solver, and the published path also
+rescales to model units and can change speeds, masses and loads. The exporter therefore needs a
+**non-solving builder** first: construct and serialize without solving, enforced by making the
+solver entry points throw during export.
+
+### 2. Classify every quantity before comparing it
+
+For each mechanism, the oracle records the rank of the constraint Jacobian, both before and after
+the driver is added, with scaled thresholds and the smallest singular values. Each output quantity
+is then classed as one of:
+
+| Class | Meaning | Compared how |
+| --- | --- | --- |
+| Unique | The physics fixes it | Against tolerance |
+| Resultant only | Redundant supports: only the total is fixed | Resultant, plus equilibrium residuals |
+| Convention | Depends on a sign or body choice | After an explicit, tested conversion |
+| Undefined | For example, the internal force of a frozen cylinder, or the acceleration at an instantaneous reversal | Not compared; listed |
+| Unsupported | The oracle cannot model it yet | Excluded with a reason |
+
+That is why mobility classification moves from the old Phase 4 into Phase 0.
+
+### 3. Motion as explicit segments
+
+- Samples are keyed by **driver coordinate** (angle for a pin, travel for a slider), sweep segment,
+  direction and branch. They are not keyed by rounded whole degrees: `alignRows` in `compare.ts`
+  rounds rotary travel to integer degrees modulo 360, which cannot align a linear driver or
+  adaptive sampling.
+- The oracle **brackets and refines** each geometric singularity and each travel limit (slot end,
+  cylinder stroke) independently. A Newton step that fails to converge is reported as a solver
+  failure, never as a toggle.
+- The oracle continues **past a reversal** onto the return segment, so PMKS+'s return sweep is
+  checked too. Smooth segments are compared on their own. Reversal samples are named and treated
+  as `undefined` for acceleration.
+- PMKS+'s reversal must fall within one sample of the oracle's refined toggle. That makes a
+  toggle disagreement a test failure instead of an exclusion.
+
+### 4. Tolerances justified by method
+
+PMKS+ produces some numbers analytically and some by differencing. `finite-difference-kinematics.ts`
+fills rates the analytic solver leaves blank, using a central difference over 1° samples, and
+differences again for acceleration. For a sinusoid that alone is about 5×10⁻⁵ relative error, so
+one global 1e-6 tolerance cannot hold. (The 4-decimal rounding in `mechanism.ts` affects only
+exported CSV, not the solver output the specs read.)
+
+So each comparison carries:
+
+- a dimensional **absolute floor**, scaled to the mechanism's characteristic length, speed and
+  force;
+- a **relative** term, set by the method that produced the number: analytic, singly differenced
+  or doubly differenced;
+- a **conditioning limit**: samples whose Jacobian condition exceeds it compare positions only.
+
+Phase 0 runs step-refinement experiments (½° and ¼°) to measure the real error of each method,
+and the budgets are set from those measurements. A wider budget is justified by method, never
+granted to a single case.
+
+## Which solver
+
+**Recommendation: [Exudyn][exudyn] first. [Simbody][simbody] is assessed before any in-house
+fallback, and [PyChrono][chrono] is the third candidate.** Phase 0 decides on measured agreement,
+not on citation counts or how easy the install is.
+
+| Candidate | Strength | What Phase 0 must prove |
+| --- | --- | --- |
+| **Exudyn** | Native planar bodies and joints (`RigidBody2D`, `RevoluteJoint2D`, `PrismaticJoint2D`). Installs with pip. Exposes the solver's constraint Jacobian. Published (Gerstmayr, *Multibody System Dynamics*, 2023). | A full integration-free route: the acceleration right-hand side, driver derivatives, mass and load terms, and what its Lagrange multipliers mean physically. |
+| **Simbody** | Planar mobilizers. Prescribed-motion realization yields accelerations, multipliers and driving forces directly. The engine underneath OpenSim; assess Simbody itself, not OpenSim. | Closed-loop assembly and velocity consistency on our cases. How it packages for CI. |
+| **PyChrono** | Strong publication record (Tasora et al., 2016). | Its assembly documentation uses small integration steps for velocity and acceleration assembly, so precision must be shown by step convergence. Planar motion needs correctly constrained 3D bodies, not only Z-aligned axes. |
+| MBDyn | Established research code. The manual describes kinematic and inverse-dynamics problems. | Its older manual labels inverse dynamics as under development. Only a candidate if current capability is shown. |
+| Drake | Official pip wheels exist. | Its inverse dynamics takes a given acceleration; recovering closed-loop reactions is our own adapter work. Likely more effort than Exudyn. |
+| SymPy mechanics, or a hand-written Haug/Nikravesh solver | Fully transparent. SymPy documents a closed-loop four-bar with constraint forces. | Used to **generate raw benchmark cases** in any event. Becomes the main oracle only if no library passes, and then carries no outside validation record. |
+
+MuJoCo is ruled out: it closes loops with soft constraints.
+
+## Architecture
+
+```
+raw benchmark cases (hand-written)      FIXTURE_GALLERY / library templates
+              │                                     │  non-solving builder → URL codec → decode
+              │                                     ▼
+              └──────────────►  oracle problem JSON (schema vN)
+                                     │
+                                     ▼
+                       oracle/ (Python, uv-locked) ── run.py → Exudyn
+                                     │
+                                     ▼
+              src/test-data/oracle/<case-id>.json   (committed, generated, Prettier-ignored)
+                                     │
+                                     ▼
+              src/tests/verification/oracle.spec.ts (Vitest)
+```
+
+- **The problem schema is the contract.** It describes bodies with mass, centre of mass and
+  inertia; attachment points; joints with their constraint count; drivers; loads (global or
+  local); gravity; travel limits; and the sweep plan. It is versioned like the URL codec.
+- **Each reference file embeds** the schema version, the oracle and library versions, the class
+  of every quantity, the tolerances and the exclusions, plus one **staleness hash**. That hash
+  covers the canonical problem JSON, the exporter and runner source, the dependency lock and the
+  settings, so a change to the generator makes the reference stale just as a changed fixture
+  does.
+- **The spec compares the current force API**: reactions per `(joint, body)` pair, Slide couples,
+  and the actuator effort typed by driver (torque for a pin, force for a slider). The legacy joint
+  force map that `solve.ts` reads today is not enough.
+- **The spec checks the exact file inventory**: one reference per case, none missing and none
+  left over from a deleted case.
+
+## Equivalence rules (Phase 1)
+
+Each rule is one documented exporter function. Each states its equations, its constraint count,
+how mass is treated, which forces it exposes and its travel bounds, and each has its own spec.
+
+- **Bodies and welds.** A `RealLink` is one body. A welded compound (`subset`) is one body whose
+  mass, centre of mass and inertia are aggregated with the parallel-axis rule. A weld merges the
+  bodies that meet at that joint. A *grounded* welded pivot does **not** weld the turning body to
+  ground: welding fixes the bars to each other, not to the frame.
+- **Pin-in-slot versus prismatic.** A pin-in-slot (`PrisJoint` with `rotates`) is **one**
+  constraint: the point stays on the line. A Slide (`rotates` false) is **two**: on the line, plus
+  the rotation lock. The lock is set explicitly in every case, never left to a library default.
+- **Sliders.** A grounded slot is to ground; a floating slot is to its carrier, along the line
+  through carrier joints a→b. The block's own mass (`PrisJoint.mass`) is a point mass. Several
+  riders on one slider are handled explicitly. Slot ends are travel limits.
+- **Cylinders.** Barrel and rod are two bodies with a prismatic pair, with stroke limits. A frozen
+  cylinder (S25) is folded into its body: its mass and loads are aggregated once, without double
+  counting, and its internal force is `undefined`. A passive cylinder adds a freedom (S30). Whether
+  the whole mechanism is then under-driven is the rank analysis's answer, not an assumption.
+- **Several machines.** `partitionMechanisms` groups chains that share a ground pivot. Shared
+  geometry is grounded only after it is proven fixed, and a whole-drawing versus per-partition
+  equivalence test confirms the split changes nothing.
+- **Conventions.** Y points up. Angles are counter-clockwise positive. Negative `driveSpeed` is
+  clockwise (`drive-direction.ts`). The oracle works in SI, converted once at the edge.
+
+Tested on their own: a slot axis reversed (b→a), an oblique moving carrier, a custom centre of
+mass, local versus global loads, and every unit and speed conversion.
+
+## CI integration
+
+- **Required `test` job.** It runs `oracle.spec.ts` against the committed JSON, with no Python.
+  It fails on a stale hash, a missing or extra reference, or a comparison outside budget. Its
+  added time is measured in Phase 1, not assumed.
+- **New `oracle` job, always reporting.** It runs on every pull request so it can become required,
+  but skips the expensive step unless the change could affect references. The trigger is broad
+  on purpose: `src/app/model/**`, `src/app/services/transcoding/**`, `src/test-utils/**`,
+  `src/test-data/oracle/**`, `oracle/**`, the library templates and the workflow itself. When it
+  runs, it regenerates every reference on **pinned Linux**, which is the canonical platform, and
+  fails if any tracked file changed or any untracked file appeared (`git status --porcelain`).
+  Other platforms are compared numerically, not byte for byte. It becomes required once green for
+  two weeks.
+- **Two nightlies.** A *pinned* regeneration confirms the committed references still reproduce. A
+  separate *upstream* run tries the latest Exudyn patch release and files an issue if numbers move.
+  Scheduled workflows run off the default branch (`main`, see the note in `e2e-nightly.yml`), so
+  both check out `staging` explicitly.
+
+## Keeping it current
+
+- **Adding a mechanism**: add it to `FIXTURE_GALLERY` as today, run `npm run oracle` (which wraps
+  the uv runner), and commit the JSON. Until then the spec fails and names the case, just as it
+  does with `npm run fixture-urls`.
+- **An exclusion** in `src/test-data/oracle/manifest.ts` names the case, the quantity, the samples,
+  the reason, a tracking issue, an owner, and the condition under which it is reviewed. The spec
+  reports verified coverage and excluded coverage separately, and this document's status line
+  carries both counts.
+- **Triage of a disagreement**: first the exporter's equivalence rule, then the oracle model, then
+  PMKS+'s solver. Never loosen a budget for one case.
+- **Changing a PMKS+ solver** never regenerates oracle data. If the spec goes red, either the
+  solver change is wrong, or it fixed something the manifest excluded, in which case delete that
+  exclusion.
+- **Upgrading the oracle library** is its own pull request: bump the lock, regenerate, and attach
+  the runner's diff report (largest change per quantity per case).
+- **A new joint type or feature** extends the schema and the exporter, adds one raw benchmark case
+  that proves the mapping, then retires the matching exclusions.
+- **Keeping the other witnesses.** The MATLAB v1 data, the power-balance and equilibrium residuals,
+  and transformation tests (translate, rotate, rescale units, speed and loads, which must change the
+  answers in known ways) all stay. The oracle adds a witness; it replaces none.
+- A short project skill, `.claude/skills/oracle/SKILL.md`, carries the commands and the triage
+  order, so an agent that adds a fixture also regenerates its reference.
+
+## Phases
+
+| Phase | Delivers | Done when |
+| --- | --- | --- |
+| **0. Contract and spike** | The comparison contract above. The non-solving builder. Raw benchmark cases: a four-bar, a slider-crank, Stephenson III Ex. 2, a closed-form dynamic case, a floating slot and a redundant support. Exudyn, then Simbody, then PyChrono attempt them. | For each library: agreement with the raw cases and MATLAB v1; integration-free rates and reactions shown; rank classification working; cold CI install time; determinism on pinned Linux. Step-refinement measurements set the tolerance budgets. One library is chosen and recorded here. |
+| **1. Kinematics: pins, grounded slots, welds** | Schema v1, exporter, runner, `oracle.spec.ts`, manifest, new alignment by driver coordinate | Textbook worked examples (such as Norton, *Design of Machinery*) and the five MATLAB cases agree three ways. The classic gallery fixtures pass. The equivalence-rule specs pass. |
+| **2. Inverse dynamics** | Reactions per `(joint, body)`, Slide couples, typed actuator effort, gravity on and off | The force fixtures and the two MATLAB dynamics cases agree. Redundant supports compare resultants. Power balance holds inside the oracle too. |
+| **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
+| **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
+
+## Decisions
+
+Settled with the team on 2026-11-03:
+
+1. **Textbook worked examples become fixtures,** each citing its source (book, edition, example
+   number). We enter the numbers ourselves and copy no text or figures.
+2. **The MATLAB v1 data stays** as a second witness after the oracle covers its five cases. Those
+   five then agree three ways.
+3. **Tolerances**: the team accepted a starting point of about 1e-9 relative for positions and 1e-6
+   for rates and forces. The review showed 1e-6 cannot hold for finite-differenced rates, so those
+   numbers now apply only to analytically solved quantities. Phase 0 measures and sets the budgets
+   per method (see [Tolerances justified by method](#4-tolerances-justified-by-method)).
+
+## Review history
+
+- **2026-11-03, GPT-6 Astra (external review).** Its verdict: an external oracle is the right
+  direction, and Exudyn is a sensible provisional choice, but the comparison contract should be
+  defined before the engine is chosen. Taken in full:
+  - per-method tolerances;
+  - a non-solving exporter and two problem sources;
+  - quantity classes, including redundant-support resultants;
+  - pin-in-slot versus prismatic constraint counts, weld mass aggregation, and travel limits;
+  - alignment by driver coordinate, and the current force API;
+  - bracketed toggles and return sweeps;
+  - a broader staleness hash, a file inventory check, an always-reporting CI job, and pinned
+    versus upstream nightlies;
+  - Simbody as the second candidate, and fuller exclusion records.
+
+  One claim was corrected: the 4-decimal rounding it cited applies only to exported CSV, not to
+  the solver output under test.
+
+[exudyn]: https://exudyn.readthedocs.io/ "Exudyn documentation"
+[simbody]: https://simbody.github.io/ "Simbody"
+[chrono]: https://api.projectchrono.org/ "Project Chrono API documentation"

@@ -47,6 +47,7 @@ In this order, the first time:
 - [analysis-editing-visual-brief.md](analysis-editing-visual-brief.md) — the analysis panel's before-and-after comparison as shipped; `.html` and `.pdf` renderings sit beside it. *Built*
 - [cad-export-design.md](cad-export-design.md) — screen brief for the CAD Export (DXF) dialog. *Built*
 - [setup-issues-spec.md](setup-issues-spec.md) — the setup drawers' issues: what is wrong always on screen, how to fix it behind Show fixes, parts named as links, and the writing rules and word budgets for every message. *Built*
+- [numerical-oracle-plan.md](numerical-oracle-plan.md) — an independent multibody solver (Exudyn first, Simbody next, chosen by a Phase 0 spike) re-solving every gallery fixture and template, compared in CI. *Proposed*
 
 ## History
 
