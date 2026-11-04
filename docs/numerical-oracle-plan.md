@@ -225,10 +225,11 @@ mass, local versus global loads, and every unit and speed conversion.
   but skips the expensive step unless the change could affect references. The trigger is broad
   on purpose: `src/app/model/**`, `src/app/services/transcoding/**`, `src/test-utils/**`,
   `src/test-data/oracle/**`, `oracle/**`, the library templates and the workflow itself. When it
-  runs, it regenerates every reference on **pinned Linux**, which is the canonical platform, and
-  fails if any tracked file changed or any untracked file appeared (`git status --porcelain`).
-  Other platforms are compared numerically, not byte for byte. It becomes required once green for
-  two weeks.
+  runs, it regenerates every reference on **pinned Linux** and fails if any tracked file changed
+  or any untracked file appeared (`git status --porcelain`). The regeneration leaves a reference
+  alone when it reproduces it numerically (see [Reproduction across
+  platforms](#reproduction-across-platforms)), so a reference written on macOS passes on Linux and
+  the reverse. It becomes required once green for two weeks.
 - **Two nightlies.** A *pinned* regeneration confirms the committed references still reproduce. A
   separate *upstream* run tries the latest Exudyn patch release and files an issue if numbers move.
   Scheduled workflows run off the default branch (`main`, see the note in `e2e-nightly.yml`), so
@@ -374,6 +375,24 @@ The five MATLAB v1 cases are problems read straight from their fixtures by
 compares the oracle to each table at the precision the table claims for itself. The worst error is
 2×10⁻⁵ of that tolerance. With the existing MATLAB specs and the published versions of the same
 fixtures in `oracle.spec.ts`, the three agree three ways.
+
+### Reproduction across platforms
+
+The oracle is byte-identical from one run to the next on one platform, but not between macOS and
+Linux: their BLAS and LAPACK round differently, so a number that is physically zero comes out as
+10⁻¹⁷ on one and −10⁻¹⁷ on the other, and the tenth stored digit of an ordinary one can move. The
+first Linux run rewrote every reference that way. Two changes followed:
+
+- **A regeneration keeps what it reproduces.** `pmks_oracle/agree.py` compares a new solve with the
+  committed reference: the grid, the limits, the mobility counts and which reactions are
+  identifiable must be equal, and every number must agree to one hundredth of the budget PMKS+ is
+  held to for it, on the same scales, plus a unit in its last stored digit. Rates and forces past
+  the conditioning limit are not compared, as PMKS+'s are not. `run.py` rewrites a reference only
+  when that check fails or its problem or generator changed.
+- **A toggle on a grid point is not stored.** The two cylinder booms stop exactly at their stroke
+  ends, which fall on grid points; whether the refined toggle landed a hair before the last one or
+  after it differed between the platforms. A grid point within 10⁻⁹ of a step of a toggle is the
+  dead point itself, where no rate is defined, and is left out.
 
 ### Disagreements and exclusions
 

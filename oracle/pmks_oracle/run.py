@@ -5,6 +5,12 @@
 Each PROBLEM.json becomes DIR/<id>.reference.json. The generator's own source
 is hashed into every reference, so a change to the oracle makes every
 reference stale, just as a change to a problem makes its own reference stale.
+
+A reference already in DIR is left alone when the new solve reproduces it
+(`agree.py`): the same problem and generator, and every number within what
+rounding on another platform can move. So regenerating on macOS or on Linux
+rewrites only what has changed, and a clean `git status` after a regeneration
+means every committed reference reproduces.
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ from pathlib import Path
 
 import exudyn as exu
 
+from . import agree
 from .problem import load_problem
 from .reference import generator_info, solve
 
@@ -67,7 +74,15 @@ def main(argv: list[str] | None = None) -> int:
             failures += 1
             print(f"FAILED {path.name}: {error}", file=sys.stderr)
             continue
-        write_json(args.out / f"{raw['id']}.reference.json", reference)
+        target = args.out / f"{raw['id']}.reference.json"
+        if target.exists():
+            try:
+                agree.check(raw, json.loads(target.read_text(encoding="utf-8")), reference)
+                print(f"reproduced {raw['id']}", file=sys.stderr)
+                continue
+            except (agree.Disagreement, KeyError, TypeError) as change:
+                print(f"changed {raw['id']}: {change}", file=sys.stderr)
+        write_json(target, reference)
         print(f"solved {raw['id']}", file=sys.stderr)
     if args.prune:
         wanted = {json.loads(p.read_text(encoding="utf-8"))["id"] for p in args.problems}

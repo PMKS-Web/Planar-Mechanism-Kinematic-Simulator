@@ -23,6 +23,8 @@ Do not run Python with `-I` here: it drops this directory from the import path.
 | `pmks_oracle/sweep.py` | The walk along the configuration curve: grid samples, toggles, closure |
 | `pmks_oracle/mobility.py` | Rank of the constraint Jacobian, before and after the driver |
 | `pmks_oracle/reference.py` | The reference file, `pmks-oracle-reference/1` |
+| `pmks_oracle/agree.py` | Whether a new solve reproduces a committed reference, to within another platform's rounding |
+| `pmks_oracle/run.py` | The command line: problems in, references out, keeping each one it reproduces |
 | `benchmarks/cases/` | Raw benchmark problems, each with the values it must reproduce |
 | `benchmarks/derivations/` | The scripts that derive or re-derive those values |
 | `spike/` | The Phase 0 library trial: the scripts, and pinned conda environments for Simbody and PyChrono |
