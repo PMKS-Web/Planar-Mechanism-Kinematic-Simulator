@@ -11,6 +11,10 @@ A reference already in DIR is left alone when the new solve reproduces it
 rounding on another platform can move. So regenerating on macOS or on Linux
 rewrites only what has changed, and a clean `git status` after a regeneration
 means every committed reference reproduces.
+
+With PMKS_ORACLE_NUMBERS_ONLY=1 a reference whose numbers reproduce is left
+alone even when the generator differs: the upstream nightly solves with the
+newest Exudyn patch release and asks only whether any number moved.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -62,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     # makes that hundreds of lines.
     exu.config.printToConsole = False
     generator = generator_info(source_sha256())
+    numbers_only = os.environ.get("PMKS_ORACLE_NUMBERS_ONLY") == "1"
     failures = 0
     for path in args.problems:
         data = path.read_bytes()
@@ -77,7 +83,8 @@ def main(argv: list[str] | None = None) -> int:
         target = args.out / f"{raw['id']}.reference.json"
         if target.exists():
             try:
-                agree.check(raw, json.loads(target.read_text(encoding="utf-8")), reference)
+                old = json.loads(target.read_text(encoding="utf-8"))
+                agree.check(raw, old, reference, same_generator=not numbers_only)
                 print(f"reproduced {raw['id']}", file=sys.stderr)
                 continue
             except (agree.Disagreement, KeyError, TypeError) as change:

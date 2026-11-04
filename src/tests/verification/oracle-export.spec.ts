@@ -131,7 +131,14 @@ describe('the oracle exporter', () => {
     const d = problem.points.find((p) => p.id === 'D')!.at;
     const length = Math.hypot(d[0] - c[0], d[1] - c[1]);
     close(slot.axis, [(d[0] - c[0]) / length, (d[1] - c[1]) / length]);
-    expect(problem.unsupported).toContain('floating slot B: slot-end limits');
+    // The channel's ends, symmetric about its midpoint and no longer than the
+    // carrier between its joints plus PMKS+'s refusal tolerance at each end.
+    const [lo, hi] = slot.limits!;
+    const along = (d[0] - c[0]) * slot.axis[0] + (d[1] - c[1]) * slot.axis[1];
+    expect((lo + hi) / 2).toBeCloseTo(along / 2, 12);
+    expect(hi - lo).toBeGreaterThan(0);
+    expect(hi - lo).toBeLessThanOrEqual(length * (1 + 4e-3) + 1e-15);
+    expect(problem.unsupported).toEqual([]);
   });
 
   it('turns the axis round when the slot is cut b to a, and keeps the line', () => {

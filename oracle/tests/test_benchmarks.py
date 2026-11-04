@@ -113,12 +113,35 @@ def test_benchmark(case, check):
     assert abs(actual - target) <= tolerance, f"{case}: {check} gave {actual!r}, off by {actual - target:.3e} (allowed {tolerance:.1e})"
 
 
-def test_a_bounded_slot_is_refused_until_its_limits_are_walked():
+
+def _bounded(limits: dict[str, list[float]]) -> dict:
     raw = json.loads((CASES / "metu-double-slider.problem.json").read_text())
-    slider = next(joint for joint in raw["joints"] if joint["kind"] == "slider")
-    slider["limits"] = [0.1, 0.3]
-    with pytest.raises(NotImplementedError, match="slot limits"):
-        solve(load_problem(raw), {"oracle": "test"})
+    for joint in raw["joints"]:
+        if joint["id"] in limits:
+            joint["limits"] = limits[joint["id"]]
+    return solve(load_problem(raw), {"oracle": "test"})["sweep"]
+
+
+def test_a_driven_block_stops_at_the_ends_of_its_slot():
+    # A starts at x = 0.2 m and runs along x; ends at 0.0995 and 0.3005 m are
+    # off the 1 mm grid, so the last stored samples are k = +-100.
+    sweep = _bounded({"A": [0.0995, 0.3005]})
+    assert sweep["high"]["kind"] == sweep["low"]["kind"] == "slot-end"
+    assert sweep["high"]["travel"] == pytest.approx(0.1005, abs=1e-9)
+    assert sweep["low"]["travel"] == pytest.approx(-0.1005, abs=1e-9)
+    assert (sweep["kMin"], sweep["kMax"]) == (-100, 100)
+
+
+def test_a_passive_block_stops_the_driver_where_it_reaches_its_end():
+    # The 0.5 m bar keeps B at y = sqrt(0.25 - x^2): B reaches y = 0.3 m at
+    # x = 0.4 m, and y = 0.49 m at x = sqrt(0.0099) m, short of the toggles
+    # at x = 0 and x = 0.5 m that would end the travel without the slot.
+    sweep = _bounded({"B": [0.3, 0.49]})
+    assert sweep["high"]["kind"] == sweep["low"]["kind"] == "slot-end"
+    assert sweep["high"]["travel"] == pytest.approx(0.4 - 0.2, abs=1e-9)
+    assert sweep["low"]["travel"] == pytest.approx(math.sqrt(0.0099) - 0.2, abs=1e-9)
+    assert sweep["kMax"] == 199
+    assert sweep["kMin"] == math.ceil((math.sqrt(0.0099) - 0.2) / 0.001)
 
 
 def test_a_singular_pose_on_the_grid_stores_no_state():

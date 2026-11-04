@@ -72,7 +72,11 @@
     "FG"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.002848000000000002,
+    0.043151999999999975
+   ]
   },
   {
    "id": "E",
@@ -137,7 +141,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "floating slot G: slot-end limits"
- ]
+ "unsupported": []
 }

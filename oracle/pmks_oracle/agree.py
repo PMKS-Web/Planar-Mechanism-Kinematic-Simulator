@@ -136,9 +136,13 @@ def _condition(where: str, u: float, v: float) -> None:
         raise Disagreement(f"{where}: {u!r} against {v!r}, either side of {CONDITIONING_LIMIT:.0e}")
 
 
-def check(problem: dict, a: dict, b: dict) -> None:
-    """Raise Disagreement unless reference `b` reproduces reference `a` for `problem`."""
-    for key in ("schema", "problem", "problemSha256", "generator"):
+def check(problem: dict, a: dict, b: dict, same_generator: bool = True) -> None:
+    """Raise Disagreement unless reference `b` reproduces reference `a` for `problem`.
+
+    With `same_generator` false the generator may differ, as it does when the
+    upstream nightly solves with a newer Exudyn: only the numbers are compared.
+    """
+    for key in ("schema", "problem", "problemSha256") + (("generator",) if same_generator else ()):
         _same(key, a[key], b[key])
     ma, mb = a["mobility"], b["mobility"]
     _same("mobility keys", sorted(ma), sorted(mb))

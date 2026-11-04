@@ -1,12 +1,12 @@
 # An independent numerical oracle for every verification mechanism
 
-> **Status:** Phases 0, 1 and 2 built, 2026-11-04. **Exudyn is chosen**, with Simbody as the
-> cross-engine check (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **97
-> are verified** against the oracle in their motion and forces (three of them in part; most carry
-> no force, and are checked to come out zero) and **33 agree they do not run**; **72 are excluded**: 68 wait for the Phase 3 exporter and 4 are excluded by
-> the manifest. There are **2 disagreements**, each with an issue (see [Phase 1
-> results](#phase-1-results) and [Phase 2 results](#phase-2-results)). The plan was revised on
-> 2026-11-03 after an external review (see [Review history](#review-history)).
+> **Status:** Phases 0 to 3 built, 2026-11-04. **Exudyn is chosen**; Simbody, the runner-up, is
+> the intended cross-engine check, not yet built (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **154
+> are verified** against the oracle in their motion and forces (twelve of them in part; many carry
+> no force, and are checked to come out zero) and **43 agree they do not run**; **5 are
+> excluded** whole by the manifest, and none is left unsupported by the exporter. There are **6
+> disagreements**, each with an issue (see [Phase 3 results](#phase-3-results)). The plan was
+> revised on 2026-11-03 after an external review (see [Review history](#review-history)).
 
 ## The problem
 
@@ -230,10 +230,13 @@ mass, local versus global loads, and every unit and speed conversion.
   alone when it reproduces it numerically (see [Reproduction across
   platforms](#reproduction-across-platforms)), so a reference written on macOS passes on Linux and
   the reverse. It becomes required once green for two weeks.
-- **Two nightlies.** A *pinned* regeneration confirms the committed references still reproduce. A
-  separate *upstream* run tries the latest Exudyn patch release and files an issue if numbers move.
-  Scheduled workflows run off the default branch (`main`, see the note in `e2e-nightly.yml`), so
-  both check out `staging` explicitly.
+- **Two nightlies**, in `.github/workflows/oracle-nightly.yml`. A *pinned* regeneration confirms
+  the committed references still reproduce. A separate *upstream* run installs the newest Exudyn
+  patch release over the lock and solves again with `PMKS_ORACLE_NUMBERS_ONLY=1`, which lets the
+  generator differ and asks only whether a number moved. Either failing opens or updates one issue
+  labelled `nightly-oracle`, and a green night closes it. Scheduled workflows run off the default
+  branch (`main`, see the note in `e2e-nightly.yml`), so both check out `staging` explicitly, and
+  neither runs until a release carries the file to `main`.
 
 ## Keeping it current
 
@@ -268,6 +271,117 @@ mass, local versus global loads, and every unit and speed conversion.
 | **2. Inverse dynamics** | Reactions per `(joint, body)`, Slide couples, typed actuator effort, gravity on and off | The force fixtures and the two MATLAB dynamics cases agree. Redundant supports compare resultants. Power balance holds inside the oracle too. |
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
+
+## Phase 3 results
+
+Measured on 2026-11-04. Every published machine is now exported in full: none is left out as
+unsupported. Of 202 machines, **154 are verified** (twelve of them in part) and **43 agree they
+do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,126
+force samples pass, and none fails.
+
+### What the exporter now writes down
+
+Each rule is in `src/test-utils/oracle/export-problem.ts`, beside the ones in [Equivalence rules
+(Phase 1)](#equivalence-rules-phase-1).
+
+- **An input that turns one link against another.** A floating pin input drives the two bodies
+  `resolveActuator` names, the reference and the driven one; a grounded one drives its link against
+  the ground. PMKS+'s driver coordinate is read the same way, as the driven body's turn less the
+  reference body's (`driverCoordinate` in `pmks-samples.ts`).
+- **A floating slot's ends.** The block may travel the channel between the slot's end joints, from
+  its midpoint out to half their separation less the inset the slot mark draws, plus PMKS+'s own
+  tolerance of 0.2% of the separation (`ridersAreInTheirSlots` in `position-solver.ts`). The
+  constants are restated rather than imported, as the units table is, so a change to PMKS+'s rule
+  shows up as a disagreement.
+- **A cylinder.** Its seal slides along the line from one end joint to the other. The stroke is the
+  part's own geometry (`cylinderStrokeAlong`), plus PMKS+'s tolerance of 10⁻³ model units. The
+  hidden end N and the seal S are derived, not read: N a barrel length along the line from end A,
+  S a rod length back from end B. A driven cylinder is sampled 180 times a stroke
+  (`SAMPLES_PER_STROKE`), and its driver coordinate is the change in the span between its ends.
+- **Several machines, Slides and frozen cylinders** need nothing new. A frozen cylinder's seal joins
+  one body to itself, so its couple is internal and is not compared (decision S25).
+
+### In the oracle: slot ends
+
+`sweep.py` stops the walk where a block reaches the end of its slot. The crossing is bracketed
+between two accepted points and bisected on arclength, so the end is found to the solver's
+precision, and the limit's kind is `slot-end`. A drawn pose already outside its slot has no travel
+in either direction. Two benchmarks check it against closed forms. A driven block stops at its ends,
+±100.5 mm from the start on a 1 mm grid. A passive block stops the driver where the bar holding it
+reaches its end, at x = 0.4 m and x = √0.0099 m, short of the toggles that would otherwise end the
+travel. The refusal of slot limits that Phase 0 added is gone.
+
+### In the comparison
+
+- **The frames PMKS+ solved.** PMKS+'s frame 0, and the closing copy of it, are the decoded
+  drawing. Every other frame is solved, and a cylinder stored a hair off its line is straightened
+  there. Where frame 0 does not match the exported problem to 10⁻⁹ of the machine's size, its
+  poses are not compared (`solvedFrames` in `compare-oracle.ts`). How far PMKS+ travels is still
+  read off every frame.
+- **Inertia from differenced accelerations.** A force PMKS+ balances against differenced
+  accelerations can be no better than they are, so it is held to the differenced acceleration
+  budget, 10⁻², instead of 10⁻⁸ (`DIFFERENCED_INERTIA_BUDGET`). It is `undefined` within a sample
+  of a reversal, where the difference reaches across the turn. The worst measured is 4.8×10⁻⁵, on
+  the telescoping strut.
+- **A cycle's first and last frames.** PMKS+ differences them one-sided, to first order, although
+  the last frame repeats the first and a central difference across it is available. On the
+  hydraulic cylinder that put an angular acceleration 9.9×10⁻³ off at frame 0, where the same pose
+  differenced centrally mid-sweep is 1.0×10⁻⁴ off. A differenced rate there, and any force resting
+  on one, is `undefined`, and the gap is filed as [#84][i84]: 80 kinematic and 58 force samples.
+
+### The budgets, from the measurement
+
+Unchanged, and still the same for every machine. The worst passing errors over the whole gallery:
+
+| Method | Order | Phase 1 worst | Phase 3 worst | Budget |
+| --- | --- | --- | --- | --- |
+| Pose | position | 1.8×10⁻⁸ | 6.4×10⁻⁸ (the excavator bucket, at its last sample before a toggle) | 1×10⁻⁷ |
+| Analytic | rate | 6.9×10⁻⁹ | 6.2×10⁻⁸ (the leg on a bicycle crank) | 1×10⁻⁷ |
+| Analytic | acceleration | 8.3×10⁻⁷ | 5.6×10⁻⁶ (the same, at a condition of 557) | 1×10⁻⁵ |
+| Differenced | rate | not exercised | 8.5×10⁻⁵ (the telescoping strut) | 1×10⁻³ |
+| Differenced | acceleration | not exercised | 1.7×10⁻³ (the same) | 1×10⁻² |
+| Forces, static | — | 1.9×10⁻⁹ | 1.9×10⁻⁹ | 1×10⁻⁸ |
+| Forces, dynamic | — | 4.6×10⁻¹⁰ | 1.6×10⁻⁹ (the offset-mount hatch) | 1×10⁻⁸ |
+
+Three of the budgets are no longer five times the worst error, as they were set to be: the pose,
+the analytic rate and the analytic acceleration stand at 1.6, 1.6 and 1.8 times. Each worst sits
+where the conditioning predicts it: at a toggle for the pose, and near the conditioning limit for
+the rates. None was widened. Whether to keep them, or to raise them for every machine alike, is an
+open question.
+
+### Return sweeps
+
+A rocking pin input reverses at its toggle and PMKS+ retraces, so one stored state per k serves
+both directions (see [The sweep](#the-sweep)), and every return frame is compared pose by pose.
+That holds for every published machine. A slider input that reverses at a crank's dead center can
+instead carry on: PMKS+ keeps its motion history across that reversal to choose the continuing
+branch (`mechanism.ts`; `piston-driven-wheels.spec.ts` is its guard). No published machine does
+so: the piston-driven wheels are a spec fixture, not a gallery entry. A machine that did would fail
+on its return poses rather than pass, because the oracle stops at the turning point. Storing the
+continuing branch as a second segment is not built, and is an open question.
+
+### Disagreements and exclusions
+
+Four new issues, and no PMKS+ solver changed:
+
+| Machine | Kind | What | Issue |
+| --- | --- | --- | --- |
+| Four-bar driven at its coupler-rocker pin, oscillating fan, walking-beam pumping unit, leg on a bicycle crank | disagreement | A floating pin's motor torque is applied to one body only, so the frame supplies the reaction couple: every reaction and the effort differ. The body totals agree | [#81][i81] |
+| Leg on a bicycle crank, and the pedaling-leg template | disagreement | One pose, k = −39, is solved twenty times looser than its neighbors, and at a condition of 557 the angular velocity of BP is 1.3×10⁻⁷ off | [#82][i82] |
+| Hood hinge, aircraft landing gear (templates), cylinder riding a slot | disagreement | A cylinder stored a hair off its line: PMKS+ straightens it from frame 1 but carries the members' centers of mass rigidly from the unstraightened frame 0, and on the slot-riding one every analytic rate comes out a uniform 10⁻⁷ high | [#83][i83] |
+| Every machine with differenced rates | disagreement | One-sided differences at the first and last frames | [#84][i84] |
+| Scotch yoke on two guides | by design | Two guides hold one yoke, a redundant support; PMKS+ refuses its forces | — |
+| Cylinder-driven gripper | oracle limitation | Drawn within 10⁻⁵ m of a dead point of its drive; the oracle's projection onto the constraints slides along the nearly free direction | — |
+
+[#83][i83] may describe the test harness rather than the app: `solvedDrawing` decodes a URL and
+solves it directly, without the rebuild that `planDerivedInteriors` and `commitEditPlan` run in
+the app, which may straighten the cylinder before frame 0 is stored.
+
+The CI `oracle` job is not made a required check. That is the team's to switch on, after the two
+weeks green that [CI integration](#ci-integration) asks for. The two nightlies are added
+(`oracle-nightly.yml`). The Simbody cross-engine check is not: Simbody passed Phase 0 only
+through OpenSim's packaging, with a hand-written velocity projection, and modelling every
+published machine in it a second time is a phase of its own.
 
 ## Phase 2 results
 
@@ -424,7 +538,7 @@ In `src/test-data/oracle/manifest.ts`:
 
 The other 68 excluded machines are those whose problem names something the Phase 1 exporter does
 not yet write down: a floating slot's ends, a cylinder's stroke, or an input that turns one link
-against another. Phase 3 takes them.
+against another. Phase 3 took them (see [Phase 3 results](#phase-3-results)).
 
 ## Phase 0 results
 
@@ -496,7 +610,8 @@ center may carry on, in PMKS+, onto the other branch (the crank turning through 
 different poses at the same k. The oracle stops at the turning point and cannot represent that
 return. Such a machine fails on its positions rather than passing; none of the verified ones does,
 because each retraces. Storing the continuing branch as a second segment, keyed by segment as well
-as k, is Phase 3's, with the other return sweeps.
+as k, was left to Phase 3, which found no published machine that needs it (see [Return
+sweeps](#return-sweeps)).
 
 **A singular pose on the grid stores no state.** The walk carries on through a singular pose on
 the branch it is on, as a parallelogram's does where its cranks lie along the frame: the pose is
@@ -506,9 +621,10 @@ for rank against the drawn pose; one that has lost rank is listed by k in `singu
 state is stored for it. Its neighbors are stored as usual, with the condition numbers that say
 how close they are.
 
-**Slot limits are refused, not ignored.** The problem schema can carry a slider's travel limits,
-but the walk does not yet stop at them, so `solve` refuses a problem that sets any; the exporter
-marks such a slot unsupported instead of writing them. Phase 3 brackets and refines the crossings.
+**Slot limits were refused, not ignored.** The problem schema could carry a slider's travel
+limits before the walk stopped at them, so `solve` refused a problem that set any, and the
+exporter marked such a slot unsupported. Phase 3 brackets and refines the crossings (see [Phase 3
+results](#phase-3-results)).
 
 A reference stores about 36 states per cycle, plus the two grid points at each end of travel,
 rounded to 10 significant figures, in schema `pmks-oracle-reference/1`.
@@ -612,6 +728,10 @@ Settled with the team on 2026-11-03:
 [ttu]: http://ttu-dom.wikidot.com/example-item-1 "TTU Dynamics of Machinery II: Force Analysis - 4 Bar"
 [i77]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/77 "Issue 77"
 [i78]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/78 "Issue 78"
+[i81]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/81 "Issue 81"
+[i82]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/82 "Issue 82"
+[i83]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/83 "Issue 83"
+[i84]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/84 "Issue 84"
 [metu]: https://ocw.metu.edu.tr/pluginfile.php/6467/mod_resource/content/6/ch6/6-5.htm "METU OCW ME 301, 6.4 Dynamic force analysis of machinery"
 [exudyn]: https://exudyn.readthedocs.io/ "Exudyn documentation"
 [simbody]: https://simbody.github.io/ "Simbody"

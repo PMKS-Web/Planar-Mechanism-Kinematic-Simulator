@@ -28,7 +28,8 @@ export interface Exclusion {
   /**
    * What is left out. `'runs'` is the question of whether the machine runs at
    * all, and with it every comparison; otherwise only these quantities, only
-   * for `parts` when it is given, and for a force only in `modes` when given.
+   * for `parts` when it is given, for a force only in `modes` when given,
+   * and only at the grid samples `samples` when given.
    */
   what:
     | 'runs'
@@ -36,6 +37,7 @@ export interface Exclusion {
         quantities: (Quantity | ForceQuantity)[];
         parts?: string[];
         modes?: ('static' | 'dynamic')[];
+        samples?: number[];
       };
   reason: string;
   /** Required for a disagreement. */
@@ -108,6 +110,111 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
     reason:
       "PMKS+ refuses the force analysis of a redundant support and tells the reader to remove one (unsupported-topology). Equilibrium fixes each body's total and the input torque, which the oracle reports; the split between the cranks it does not fix.",
     review: 'If PMKS+ starts reporting resultants for a redundant support.',
+  },
+  {
+    problem: 'gallery.four-bar-driven-at-its-coupler-rocker-pin.m1',
+    kind: 'disagreement',
+    what: { quantities: ['reaction', 'effort'] },
+    reason:
+      "PMKS+ applies a floating pin's motor torque to one body only, so the frame supplies the reaction couple from outside: every reaction and the effort differ, while the body totals, which a couple does not change, agree.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/81',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.oscillating-fan.m1',
+    kind: 'disagreement',
+    what: { quantities: ['reaction', 'effort'] },
+    reason:
+      "PMKS+ applies a floating pin's motor torque to one body only, so the frame supplies the reaction couple from outside: every reaction and the effort differ, while the body totals, which a couple does not change, agree.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/81',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.walking-beam-pumping-unit.m1',
+    kind: 'disagreement',
+    what: { quantities: ['reaction', 'effort'] },
+    reason:
+      "PMKS+ applies a floating pin's motor torque to one body only, so the frame supplies the reaction couple from outside: every reaction and the effort differ, while the body totals, which a couple does not change, agree.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/81',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.leg-on-a-bicycle-crank.m1',
+    kind: 'disagreement',
+    what: { quantities: ['omega'], parts: ['BP'], samples: [-39] },
+    reason:
+      "PMKS+ solves the pose at k = -39 twenty times looser than its neighbors (2.2e-9 of scale), and at a condition number of 557 the analytic angular velocity of BP carries that out to 1.29e-7, just outside the budget.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/82',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'template.pedaling-leg.m1',
+    kind: 'disagreement',
+    what: { quantities: ['omega'], parts: ['BP'], samples: [-39] },
+    reason:
+      "PMKS+ solves the pose at k = -39 twenty times looser than its neighbors (2.2e-9 of scale), and at a condition number of 557 the analytic angular velocity of BP carries that out to 1.29e-7, just outside the budget.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/82',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.leg-on-a-bicycle-crank.m1',
+    kind: 'disagreement',
+    what: { quantities: ['reaction', 'effort'] },
+    reason:
+      "PMKS+ applies a floating pin's motor torque to one body only, so the frame supplies the reaction couple from outside: every reaction and the effort differ, while the body totals, which a couple does not change, agree.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/81',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.scotch-yoke-on-two-guides.m1',
+    kind: 'by-design',
+    what: { quantities: ['reaction', 'bodyTotal', 'couple', 'effort'] },
+    reason:
+      "Two guides hold one yoke, a redundant support, and PMKS+ refuses the force analysis and says so (unsupported-topology). Its motion is verified.",
+    review: 'If PMKS+ starts reporting resultants for a redundant support.',
+  },
+  {
+    problem: 'gallery.cylinder-driven-gripper.m1',
+    kind: 'oracle-limitation',
+    what: 'runs',
+    reason:
+      "Drawn within 1e-5 m of a dead point of its drive: the oracle's minimum-norm projection of the drawn pose slides two percent of the machine's size along the nearly free direction, and its corrector fails two steps later. Which way the reader meant it to go from a dead point is not the oracle's to choose.",
+    review: 'If the oracle learns to start a walk at a dead point.',
+  },
+  {
+    problem: 'template.hood-hinge.m1',
+    kind: 'disagreement',
+    what: {
+      quantities: ['com', 'comVelocity', 'comAcceleration', 'reaction', 'bodyTotal', 'couple', 'effort'],
+      parts: ['AA1', 'BP'],
+    },
+    reason:
+      "The cylinder is stored a hair off its line. From frame 1 PMKS+ straightens its interior but carries the barrel's and rod's centers of mass rigidly from the unstraightened frame 0, which puts them 3e-6 of the machine's size off the members.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/83',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'template.aircraft-landing-gear.m1',
+    kind: 'disagreement',
+    what: {
+      quantities: ['com', 'comVelocity', 'comAcceleration', 'reaction', 'bodyTotal', 'couple', 'effort'],
+      parts: ['ER', 'II1'],
+    },
+    reason:
+      "The cylinder is stored a hair off its line. From frame 1 PMKS+ straightens its interior but carries the barrel's and rod's centers of mass rigidly from the unstraightened frame 0, which puts them 4e-5 of the machine's size off the members.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/83',
+    review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.cylinder-riding-a-slot.m1',
+    kind: 'disagreement',
+    what: {
+      quantities: ['velocity', 'comVelocity', 'omega', 'reaction', 'bodyTotal', 'couple', 'effort'],
+    },
+    reason:
+      "The cylinder is stored a hair off its line. Every analytic rate comes out about 1e-7 of its scale too high, and the static forces 3e-8 of the largest force off, a uniform scale the size of 1 - cos of the drawn misalignment, against budgets of 1e-7 and 1e-8.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/83',
+    review: 'When the issue is closed, delete this entry.',
   },
   {
     problem: 'gallery.locomotive-drive-wheels.m1',

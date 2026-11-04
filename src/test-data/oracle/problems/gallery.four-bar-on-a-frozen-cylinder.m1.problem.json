@@ -83,7 +83,7 @@
    "id": "S",
    "kind": "slider",
    "at": [
-    0.024540000000000003,
+    0.02454,
     0
    ],
    "guide": "ACDNPQS",
@@ -99,7 +99,11 @@
     "ACDNPQS"
    ],
    "rotates": false,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.005501949999999999,
+    0.03949205000000001
+   ]
   },
   {
    "id": "G",
@@ -186,7 +190,7 @@
    "id": "S",
    "body": "ACDNPQS",
    "at": [
-    0.024540000000000003,
+    0.02454,
     0
    ]
   },
@@ -203,7 +207,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "cylinder at S: stroke limits"
- ]
+ "unsupported": []
 }

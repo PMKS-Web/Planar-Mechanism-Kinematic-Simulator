@@ -108,7 +108,11 @@
     "IJ"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.0028278988849297208,
+    0.053222658650209934
+   ]
   },
   {
    "id": "J",
@@ -196,7 +200,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "floating slot I: slot-end limits"
- ]
+ "unsupported": []
 }

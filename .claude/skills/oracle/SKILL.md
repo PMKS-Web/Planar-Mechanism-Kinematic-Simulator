@@ -23,6 +23,9 @@ cd oracle && uv run pytest   # the oracle's own raw benchmarks
 Commit what it writes under `src/test-data/oracle/`. A regeneration leaves alone every reference
 it reproduces to within rounding (`pmks_oracle/agree.py`), so a reference written on macOS passes
 CI's Linux regeneration; a `changed` line in its output says what moved and why.
+`.github/workflows/oracle-nightly.yml` repeats that regeneration each night on `staging`, and once
+more with the newest Exudyn patch release (`PMKS_ORACLE_NUMBERS_ONLY=1`), and keeps one
+`nightly-oracle` issue open while either fails.
 
 ## When a spec fails
 
@@ -38,5 +41,10 @@ CI's Linux regeneration; a `changed` line in its output says what moved and why.
   for one machine.** Open a GitHub issue with the numbers, add an entry to
   `src/test-data/oracle/manifest.ts` naming the issue, and leave the solver for its own pull
   request.
+- **"never reached"**, **"never reports"**, **"left blank"** or **"reports no …"**: PMKS+
+  reported less than the oracle has. Nothing passes by not being compared, so this is a failure
+  like any other, triaged the same way.
+- A spec message truncates a long list; `artifacts/oracle/coverage.json` holds every machine's
+  whole list under `failed`, beside the counts and the worst passing error per budget.
 - **Changing a PMKS+ solver** never regenerates oracle data. If the spec goes red, the change is
   wrong, or it fixed a manifest entry: delete that entry.

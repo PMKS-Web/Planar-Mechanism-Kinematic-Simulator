@@ -13,7 +13,7 @@ export const REFERENCE_SCHEMA = 'pmks-oracle-reference/1';
 type Vec = [number, number];
 
 export interface OracleLimit {
-  kind: 'toggle' | 'singular' | 'solver-failure' | 'budget';
+  kind: 'toggle' | 'slot-end' | 'singular' | 'solver-failure' | 'budget';
   travel: number;
 }
 

@@ -1,0 +1,135 @@
+# The numerical oracle, once a night, against `staging`.
+#
+# Two runs, as docs/numerical-oracle-plan.md § CI integration asks:
+#
+# - **pinned** regenerates every reference with the locked dependencies, as the
+#   pull-request job does, and fails if anything committed would change. It
+#   catches a reference that no longer reproduces on Linux after a merge the
+#   pull-request job skipped.
+# - **upstream** installs the newest Exudyn patch release over the lock and
+#   solves again, asking only whether any number moved (PMKS_ORACLE_NUMBERS_ONLY:
+#   the generator is allowed to differ). It is how a new Exudyn is found to be
+#   safe, or not, before anyone raises the pin.
+#
+# Either failing opens one issue, labelled `nightly-oracle`, or comments on the
+# one already open; a night with both green closes it. The reporting is shell
+# and `gh`, kept short on purpose: like `e2e-nightly.yml`, this file is read off
+# the default branch, so it runs only once a release carries it to `main`.
+
+name: Oracle nightly
+
+on:
+  schedule:
+    # 09:30 UTC, after the e2e nightly has started.
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-nightly
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    name: oracle ${{ matrix.run }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [pinned, upstream]
+    steps:
+      # A scheduled run checks out the default branch, which is `main` and a
+      # release behind. What wants watching is what is about to be released.
+      - name: Check out staging
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: staging
+          persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.15.0
+          cache: npm
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: 0.13.7
+          enable-cache: true
+          cache-dependency-glob: oracle/uv.lock
+
+      - name: Install locked dependencies
+        run: |
+          npm ci
+          cd oracle && uv sync --locked
+
+      - name: Take the newest Exudyn patch release
+        if: matrix.run == 'upstream'
+        run: |
+          cd oracle
+          uv pip install --upgrade-package exudyn 'exudyn~=1.13.6'
+          uv run --no-sync python -c "import exudyn; print('exudyn', exudyn.__version__)"
+
+      - name: Check the oracle against its benchmarks
+        env:
+          UV_NO_SYNC: ${{ matrix.run == 'upstream' && '1' || '0' }}
+        run: cd oracle && uv run pytest -q -W error::DeprecationWarning
+
+      - name: Regenerate every reference
+        env:
+          UV_NO_SYNC: ${{ matrix.run == 'upstream' && '1' || '0' }}
+          PMKS_ORACLE_NUMBERS_ONLY: ${{ matrix.run == 'upstream' && '1' || '0' }}
+        run: npm run oracle
+
+      - name: Fail if any committed number would change
+        run: |
+          status=$(git status --porcelain -- src/test-data/oracle)
+          if [ -n "$status" ]; then
+            echo "$status"
+            echo "::error::The ${{ matrix.run }} oracle run does not reproduce the committed references."
+            exit 1
+          fi
+
+      - name: Keep the regenerated files
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oracle-nightly-${{ matrix.run }}
+          path: src/test-data/oracle/
+          retention-days: 14
+
+  report:
+    name: Report
+    runs-on: ubuntu-24.04
+    needs: regenerate
+    if: always()
+    permissions:
+      issues: write
+    steps:
+      - name: Open, update or close the one nightly-oracle issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ needs.regenerate.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          label=nightly-oracle
+          open=$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty')
+          if [ "$RESULT" = success ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "Both oracle runs reproduce again: $RUN_URL"
+            fi
+            exit 0
+          fi
+          body="The nightly oracle did not reproduce the committed references on staging ($RESULT): $RUN_URL. The regenerated files are attached to the run. The upstream run means a newer Exudyn moves a number; the pinned run means a committed reference no longer reproduces."
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "$body"
+          else
+            gh label create "$label" --color d93f0b \
+              --description 'Raised by the nightly oracle run; closed when it is green again.' 2>/dev/null || true
+            gh issue create --title 'Nightly oracle: references do not reproduce' --label "$label" --body "$body"
+          fi

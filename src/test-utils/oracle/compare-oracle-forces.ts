@@ -21,6 +21,12 @@ export type ForceQuantity = 'reaction' | 'bodyTotal' | 'couple' | 'effort';
 export interface ForceDeviation {
   mode: ForceAnalysisMode;
   quantity: ForceQuantity;
+  /**
+   * How PMKS+ got the accelerations this frame's inertia rests on: in the
+   * dynamic mode, a frame whose rates PMKS+ filled by differences is judged
+   * by the differenced budget, as the rates themselves are.
+   */
+  inertia: 'analytic' | 'differenced' | 'none';
   /** `joint/body`, `body`, `joint`, or the input joint. */
   part: string;
   k: number;
@@ -113,8 +119,21 @@ export function compareForces(
       continue;
     }
     const condition = sweep.samples.condition[i];
+    const differenced = [...sample.bodies.values()].some(
+      (body) => body.comAcc?.method === 'differenced' || body.alpha?.method === 'differenced'
+    );
+    const inertia = mode === 'static' ? 'none' : differenced ? 'differenced' : 'analytic';
     const note = (quantity: ForceQuantity, part: string, error: number): void => {
-      result.deviations.push({ mode, quantity, part, k, frame: sample.frame, error, condition });
+      result.deviations.push({
+        mode,
+        quantity,
+        part,
+        k,
+        frame: sample.frame,
+        error,
+        condition,
+        inertia,
+      });
     };
 
     // Body totals: PMKS+'s reactions on a body, summed over the joints it meets.
@@ -194,13 +213,14 @@ export function frameBodies(problem: OracleProblem): Set<string> {
 /**
  * The rider a Slide's guide couple acts on: the slider's one rider. A
  * Pin-in-slot's rider turns freely on its block, so the couple on it is zero
- * by construction and PMKS+ reports none; only a Slide has one to compare.
+ * by construction and PMKS+ reports none; only a Slide has one to compare. A
+ * frozen cylinder's seal joins one body to itself (decision S25), so its couple
+ * is internal to that body and is not solved for.
  */
 function riderOf(problem: OracleProblem, joint: string): string | undefined {
   const slider = problem.joints.find((j) => j.id === joint);
-  return slider?.kind === 'slider' && !slider.rotates && slider.riders.length === 1
-    ? slider.riders[0]
-    : undefined;
+  if (slider?.kind !== 'slider' || slider.rotates || slider.riders.length !== 1) return undefined;
+  return slider.riders[0] === slider.guide ? undefined : slider.riders[0];
 }
 
 /**
@@ -212,7 +232,24 @@ function riderOf(problem: OracleProblem, joint: string): string | undefined {
  * way a rate is, once.
  */
 export const FORCE_BUDGETS: Record<ForceAnalysisMode, number> = {
-  // Measured worst over every verified machine: 1.9e-9 static, 4.6e-10 dynamic.
+  // Measured worst over every verified machine: 1.9e-9 static, 4.6e-10
+  // dynamic in Phase 2; with the cylinders and floating slots of Phase 3,
+  // 1.9e-9 static and 1.6e-9 dynamic.
   static: 1e-8,
   dynamic: 1e-8,
 };
+
+/**
+ * The dynamic budget where PMKS+'s accelerations were differenced. A force is
+ * linear in the accelerations it balances, and at most the whole force is
+ * inertia, so it can be no better than they are: the differenced acceleration
+ * budget (BUDGETS in compare-oracle.ts), as a fraction of the largest force.
+ * Measured worst: 4.8e-5, on the telescoping strut.
+ */
+export const DIFFERENCED_INERTIA_BUDGET = 1e-2;
+
+export function forceBudget(deviation: ForceDeviation): number {
+  return deviation.inertia === 'differenced'
+    ? DIFFERENCED_INERTIA_BUDGET
+    : FORCE_BUDGETS[deviation.mode];
+}

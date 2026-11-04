@@ -9,7 +9,9 @@ import {
   SampleRates,
 } from '../../app/model/mechanism/finite-difference-kinematics';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { cylinderAtSeal } from '../../app/model/cylinder';
 import { drivenLinkAt } from './export-problem';
+import { angleReference, GROUND_BODY, resolveActuator } from '../../app/model/actuator';
 
 type Vec = [number, number];
 
@@ -60,22 +62,61 @@ function driverCoordinate(
   const input0 = first.find((joint) => joint.id === inputId);
   if (!(input instanceof RealJoint) || !(input0 instanceof RealJoint)) return undefined;
   if (input instanceof PrisJoint && input0 instanceof PrisJoint) {
+    // A cylinder is commanded by the span between its mounts, which nothing
+    // but the solve moves (CylinderDrive in position-solver.ts): the seal's
+    // travel is that span's change, whatever frame 0 left its interior at.
+    const cylinder = cylinderAtSeal(input0);
+    if (cylinder) {
+      const span = (frameJoints: Joint[]): number | undefined => {
+        const a = frameJoints.find((joint) => joint.id === cylinder.mountA.id);
+        const b = frameJoints.find((joint) => joint.id === cylinder.mountB.id);
+        return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : undefined;
+      };
+      const now = span(joints);
+      const then = span(first);
+      if (now === undefined || then === undefined) return undefined;
+      return ((now - then) / MODEL_SCALE) * meters;
+    }
+    // A slot cut into a moving link moves with it: the travel is the block's
+    // along the slot from the slot's first joint, as it points at each frame.
+    const along = (block: PrisJoint): number | undefined => {
+      const origin = block.slotJointA;
+      if (!block.isFloating || !origin) return undefined;
+      return (
+        (block.x - origin.x) * Math.cos(block.slotAngle) +
+        (block.y - origin.y) * Math.sin(block.slotAngle)
+      );
+    };
+    const now = along(input);
+    const then = along(input0);
+    if (now !== undefined && then !== undefined) return ((now - then) / MODEL_SCALE) * meters;
     const angle = input0.slotAngle;
     const dx = input.x - input0.x;
     const dy = input.y - input0.y;
     return ((dx * Math.cos(angle) + dy * Math.sin(angle)) / MODEL_SCALE) * meters;
   }
-  const link0 = drivenLinkAt(input0);
-  if (!link0) return undefined;
-  const tip0 = link0.joints.find(
-    (joint) => joint.id !== inputId && Math.hypot(joint.x - input0.x, joint.y - input0.y) > 1e-9
-  );
+  // A pin input turns one body against another: the frame and a crank, or two
+  // links at a floating pin (PinDrive in position-solver.ts). Its coordinate is
+  // the angle between them, read off one other joint on each.
+  const drivenBody = drivenLinkAt(input0);
+  const tip0 = drivenBody && angleReference(drivenBody, input0);
+  let base0: Joint | undefined;
+  if (!input0.ground) {
+    const actuator = resolveActuator(input0);
+    if (!actuator || actuator.kind !== 'angle' || actuator.referenceBody === GROUND_BODY) {
+      return undefined;
+    }
+    base0 = angleReference(actuator.referenceBody, input0);
+    if (!base0) return undefined;
+  }
   if (!tip0) return undefined;
-  const tip = joints.find((joint) => joint.id === tip0.id);
-  if (!tip) return undefined;
-  return (
-    Math.atan2(tip.y - input.y, tip.x - input.x) - Math.atan2(tip0.y - input0.y, tip0.x - input0.x)
-  );
+  const where = (id: string): Joint | undefined => joints.find((joint) => joint.id === id);
+  const tip = where(tip0.id);
+  const base = base0 && where(base0.id);
+  if (!tip || (base0 && !base)) return undefined;
+  const bearing = (from: Joint, to: Joint): number => Math.atan2(to.y - from.y, to.x - from.x);
+  const turn = bearing(input, tip) - bearing(input0, tip0);
+  return base && base0 ? turn - (bearing(input, base) - bearing(input0, base0)) : turn;
 }
 
 function rates(mechanism: Mechanism, frame: number): { kept: SampleRates; filled: SampleRates } {

@@ -225,15 +225,18 @@ export const CONDITIONING_LIMIT = 1e3;
  * worst, and the same for every machine: a budget is never widened for one.
  */
 export const BUDGETS: Record<Method, [number, number, number]> = {
-  // Measured worst over every verified machine: 1.8e-8, at the last sample
-  // before a toggle.
+  // Measured worst over every verified machine: 1.8e-8 in Phase 1, at the
+  // last sample before a toggle; 6.4e-8 in Phase 3, the same way, at the
+  // excavator bucket's.
   pose: [1e-7, NaN, NaN],
-  // Measured worst: 6.9e-9 for a rate and 8.3e-7 for an acceleration, both
-  // where the condition number nears CONDITIONING_LIMIT, as an error that
-  // grows with its square would.
+  // Measured worst: 6.9e-9 for a rate and 8.3e-7 for an acceleration in
+  // Phase 1, both where the condition number nears CONDITIONING_LIMIT, as an
+  // error that grows with its square would; 6.2e-8 and 5.6e-6 in Phase 3,
+  // both on the leg on a bicycle crank, the acceleration at a condition of 557.
   analytic: [NaN, 1e-7, 1e-5],
   // A central difference over 1° samples: about 5e-5 of a sinusoid's speed,
-  // and a second difference for the acceleration.
+  // and a second difference for the acceleration. Measured worst in Phase 3,
+  // over a cylinder's 180 samples a stroke: 8.5e-5 and 1.7e-3.
   differenced: [NaN, 1e-3, 1e-2],
 };
 
@@ -243,13 +246,54 @@ export type Verdict = 'pass' | 'fail' | 'ill-conditioned' | 'undefined';
  * Whether a deviation is within budget, or why it is not compared. A
  * differenced rate at the last sample before a reversal is undefined: the
  * difference reaches across the turn, onto the return sweep at the same pose.
+ * So is one at PMKS+'s first or last frame (`lastFrame`), which it differences
+ * one-sided, to first order, though the last frame repeats the first (#84).
  */
-export function judge(d: Deviation, ends: readonly number[] | undefined): Verdict {
+export function judge(
+  d: Deviation,
+  ends: readonly number[] | undefined,
+  lastFrame: number
+): Verdict {
   const order = ORDER[d.quantity];
   if (order > 0 && d.condition > CONDITIONING_LIMIT) return 'ill-conditioned';
-  if (d.method === 'differenced' && ends) {
+  if (d.method === 'differenced') {
+    if (oneSided(d.frame, lastFrame)) return 'undefined';
     const reach = order === 1 ? 0 : 1;
-    if (ends.some((end) => Math.abs(d.k - end) <= reach)) return 'undefined';
+    if (ends?.some((end) => Math.abs(d.k - end) <= reach)) return 'undefined';
   }
   return d.error <= BUDGETS[d.method][order] ? 'pass' : 'fail';
+}
+
+/** Whether PMKS+ differences this frame one-sided: its first or its last (#84). */
+export function oneSided(frame: number, lastFrame: number): boolean {
+  return frame === 0 || frame === lastFrame;
+}
+
+/**
+ * The PMKS+ frames that are poses of the mechanism the problem describes.
+ *
+ * PMKS+ shows the drawing as decoded at frame 0, solves the frames after it,
+ * and closes a cycle on a copy of frame 0. A drawing that satisfies its
+ * constraints exactly (any linkage of pins, whose lengths are read off the
+ * drawing) is the same pose either way. A cylinder's four points, stored to
+ * the URL's grain, are not quite on one line: frames 1 onward put them on the
+ * line, and so does the exporter, but frame 0 and its copy keep them where the
+ * URL left them. Those frames are not poses of the mechanism and are not
+ * compared; every solved visit to the same grid point is.
+ */
+export function solvedFrames(problem: OracleProblem, samples: PmksSample[]): PmksSample[] {
+  const first = samples.find((sample) => sample.frame === 0);
+  if (!first) return samples;
+  const { length } = machineScale(problem);
+  const exported = problem.points.every((p) => {
+    const at = first.points.get(p.id)?.pos;
+    return !at || distance(at, p.at) <= 1e-9 * length;
+  });
+  if (exported) return samples;
+  const asDrawn = (sample: PmksSample): boolean =>
+    [...first.points].every(([id, { pos }]) => {
+      const at = sample.points.get(id)?.pos;
+      return !!at && at[0] === pos[0] && at[1] === pos[1];
+    });
+  return samples.filter((sample) => !asDrawn(sample));
 }

@@ -15,10 +15,12 @@ import {
   compareMachine,
   CONDITIONING_LIMIT,
   judge,
+  oneSided,
   ORDER,
+  solvedFrames,
   Verdict,
 } from '../../test-utils/oracle/compare-oracle';
-import { compareForces, FORCE_BUDGETS } from '../../test-utils/oracle/compare-oracle-forces';
+import { compareForces, forceBudget } from '../../test-utils/oracle/compare-oracle-forces';
 import {
   oracleSourceSha256,
   readReference,
@@ -70,7 +72,7 @@ const outcome = new Map<string, string>();
 /** What failed, per machine, for the artifact: a spec's own message truncates a long list. */
 const failed = new Map<string, string[]>();
 const tally: Record<Verdict, number> = { pass: 0, fail: 0, 'ill-conditioned': 0, undefined: 0 };
-const forceTally = { pass: 0, fail: 0, 'ill-conditioned': 0 };
+const forceTally = { pass: 0, fail: 0, 'ill-conditioned': 0, undefined: 0 };
 /** Machine-modes compared on their forces, split by whether the oracle finds any force at all. */
 const forceCoverage = { loaded: 0, unloaded: 0 };
 let excludedSamples = 0;
@@ -145,14 +147,18 @@ describe('numerical oracle', () => {
           return;
         }
 
-        const samples = pmksSamples(
+        const everyFrame = pmksSamples(
           mechanism,
           input.id,
           sweep.step,
           siFactors(solverUnit(settings)).meters
         );
+        // Where PMKS+ travels is read off every frame; what its poses are, only
+        // off the frames it solved (`solvedFrames`).
+        const travel = compareMachine(problem, reference, everyFrame);
+        const samples = solvedFrames(problem, everyFrame);
         const comparison = compareMachine(problem, reference, samples);
-        expect(comparison.offGrid, 'PMKS+ samples off the oracle grid').toEqual([]);
+        expect(travel.offGrid, 'PMKS+ samples off the oracle grid').toEqual([]);
         if (sweep.closesAfterTurns) {
           const perTurn = Math.round((2 * Math.PI) / sweep.step);
           expect(mechanism.joints.length - 1, 'PMKS+ closes after the same turns').toBe(
@@ -161,36 +167,40 @@ describe('numerical oracle', () => {
         } else {
           // PMKS+ reverses at the last sample it can solve; the oracle's refined
           // toggle lies within the next step.
-          expect(comparison.outOfRange, 'PMKS+ ran past the toggle').toEqual([]);
-          expect(comparison.range.pmks, 'PMKS+ reverses where the oracle finds the toggle').toEqual(
-            comparison.range.oracle
+          expect(travel.outOfRange, 'PMKS+ ran past the toggle').toEqual([]);
+          expect(travel.range.pmks, 'PMKS+ reverses where the oracle finds the toggle').toEqual(
+            travel.range.oracle
           );
         }
         // Nothing passes by not being compared: every stored sample is reached,
         // every part the oracle reports is reported back, and every quantity
         // the oracle has at a sample PMKS+ has too, unless the manifest leaves
-        // it out.
-        const leftOut = (quantity: string, part: string): boolean =>
+        // it out. Reaching is read off every frame: a decoded drawing PMKS+ did
+        // not solve (`solvedFrames`) still stands at its k.
+        const leftOut = (quantity: string, part: string, k: number): boolean =>
           exclusions.some(
             (e) =>
               e.what !== 'runs' &&
               e.what.quantities.includes(quantity as never) &&
-              (!e.what.parts || e.what.parts.includes(part))
+              (!e.what.parts || e.what.parts.includes(part)) &&
+              (!e.what.samples || e.what.samples.includes(k))
           );
-        expect(comparison.unvisited, 'oracle samples PMKS+ never reached').toEqual([]);
+        expect(travel.unvisited, 'oracle samples PMKS+ never reached').toEqual([]);
+        expect(comparison.compared, 'samples compared').toBeGreaterThan(0);
         expect(comparison.unreported, 'parts PMKS+ never reports').toEqual([]);
         const missing = comparison.missing
-          .filter((m) => !leftOut(m.quantity, m.part))
+          .filter((m) => !leftOut(m.quantity, m.part, m.k))
           .map((m) => `${m.quantity} of ${m.part} at k=${m.k}`);
         expect(missing.slice(0, 10), 'quantities PMKS+ left blank').toEqual([]);
         const ends = sweep.closesAfterTurns ? undefined : [sweep.kMin, sweep.kMax];
+        const lastFrame = mechanism.joints.length - 1;
         const failures: string[] = [];
         for (const d of comparison.deviations) {
-          if (leftOut(d.quantity, d.part)) {
+          if (leftOut(d.quantity, d.part, d.k)) {
             excludedSamples++;
             continue;
           }
-          const verdict = judge(d, ends);
+          const verdict = judge(d, ends, lastFrame);
           tally[verdict]++;
           if (verdict === 'pass') {
             const key = `${d.method}/${['pose', 'rate', 'acceleration'][ORDER[d.quantity]]}`;
@@ -212,13 +222,14 @@ describe('numerical oracle', () => {
         for (const mode of ['static', 'dynamic'] as const) {
           const forces = compareForces(problem, reference, mechanism, samples, mode);
           forceCoverage[forces.forceScale === 0 ? 'unloaded' : 'loaded']++;
-          const leftOut = (quantity: string, part?: string): boolean =>
+          const leftOut = (quantity: string, part?: string, k?: number): boolean =>
             exclusions.some(
               (e) =>
                 e.what !== 'runs' &&
                 e.what.quantities.includes(quantity as never) &&
                 (!e.what.modes || e.what.modes.includes(mode)) &&
-                (!e.what.parts || part === undefined || e.what.parts.includes(part))
+                (!e.what.parts || part === undefined || e.what.parts.includes(part)) &&
+                (!e.what.samples || k === undefined || e.what.samples.includes(k))
             );
           if (leftOut('reaction') && leftOut('bodyTotal') && leftOut('effort')) {
             excludedSamples += forces.deviations.length;
@@ -234,7 +245,7 @@ describe('numerical oracle', () => {
               forceFailures.push(`${mode}: PMKS+ reports no ${what.quantity} ${what.part}`);
           }
           for (const d of forces.deviations) {
-            if (leftOut(d.quantity, d.part)) {
+            if (leftOut(d.quantity, d.part, d.k)) {
               excludedSamples++;
               continue;
             }
@@ -242,9 +253,22 @@ describe('numerical oracle', () => {
               forceTally['ill-conditioned']++;
               continue;
             }
-            const pass = d.error <= FORCE_BUDGETS[mode];
+            // Differenced accelerations are undefined within a sample of a
+            // reversal and at the first and last frames (`judge`), and so is
+            // any inertia resting on them.
+            if (
+              d.inertia === 'differenced' &&
+              (oneSided(d.frame, lastFrame) || ends?.some((end) => Math.abs(d.k - end) <= 1))
+            ) {
+              forceTally.undefined++;
+              continue;
+            }
+            const pass = d.error <= forceBudget(d);
             forceTally[pass ? 'pass' : 'fail']++;
-            const key = `${mode}/${d.quantity}`;
+            const key =
+              d.inertia === 'differenced'
+                ? `${mode}/${d.quantity} (differenced inertia)`
+                : `${mode}/${d.quantity}`;
             if (pass && (worstPassing.get(key)?.error ?? -1) < d.error) {
               worstPassing.set(key, { error: d.error, problem: problem.id, part: d.part, k: d.k });
             }

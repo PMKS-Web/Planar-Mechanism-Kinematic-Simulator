@@ -149,7 +149,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "input C drives one link against another"
- ]
+ "unsupported": []
 }

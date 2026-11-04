@@ -22,6 +22,23 @@ was the main checkout rather than the worktree. The oracle helpers read the repo
 `process.cwd()`, which `ng test` sets, and `REPOSITORY_ROOT` in `src/test-utils/oracle/reference.ts`
 says so.
 
+### `Mechanism`'s frame 0 is the drawing as decoded, not as solved
+
+PMKS+ stores the drawing it was handed as frame 0, and the cycle's closing frame copies it; only
+frames 1 onward are solved. A cylinder saved a hair off its line is therefore straightened from
+frame 1, and frame 0 keeps the misalignment. `solvedDrawing` in
+`src/test-utils/machine-facts/drawing.ts` decodes a URL and solves it at once, without the
+`planDerivedInteriors` and `commitEditPlan` rebuild the app runs, so a spec may see a frame 0 the
+app would have straightened first (#83). `solvedFrames` in `src/test-utils/oracle/compare-oracle.ts`
+leaves such a frame 0 out of the oracle comparison.
+
+### `fillRatesByDifference` differences the first and last frames one-sided
+
+`derivative` in `finite-difference-kinematics.ts` clamps its three-point stencil to `[1, count - 2]`,
+so frame 0 and the last frame get a first-order acceleration, though the last frame repeats the
+first and a central difference across it exists. On the hydraulic cylinder that is a hundred times
+the error of the same pose mid-cycle (#84). The oracle comparison calls those samples `undefined`.
+
 ### A throwing spy inside `Mechanism` is swallowed, so a "no solver" guard counts calls
 
 `new Mechanism(...)` catches what its solvers throw and carries on with an empty cycle. A spec

@@ -83,3 +83,12 @@ def test_two_singular_poses_agree_however_singular(case):
     a["sweep"]["samples"]["condition"][0] = 1e12
     b["sweep"]["samples"]["condition"][0] = 1e16
     agree.check(problem, a, b)
+
+
+def test_a_newer_generator_reproduces_when_only_its_numbers_are_asked(case):
+    problem, reference = case
+    other = copy.deepcopy(reference)
+    other["generator"]["exudyn"] = "1.13.99"
+    with pytest.raises(agree.Disagreement, match="generator"):
+        agree.check(problem, reference, other)
+    agree.check(problem, reference, other, same_generator=False)

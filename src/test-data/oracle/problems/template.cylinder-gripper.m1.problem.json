@@ -127,7 +127,11 @@
     "MQS"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.0027879999999999997,
+    0.073212
+   ]
   },
   {
    "id": "H",
@@ -192,7 +196,11 @@
     "TVX"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.0027879999999999997,
+    0.073212
+   ]
   },
   {
    "id": "J",
@@ -242,7 +250,11 @@
     "CDGHIJ"
    ],
    "rotates": false,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.005501949999999999,
+    0.016822049999999998
+   ]
   },
   {
    "id": "A",
@@ -469,12 +481,8 @@
   }
  ],
  "sweep": {
-  "step": 0.001,
+  "step": 0.00006288888888888887,
   "maxSamples": 2000
  },
- "unsupported": [
-  "floating slot M: slot-end limits",
-  "floating slot T: slot-end limits",
-  "cylinder at C: stroke limits"
- ]
+ "unsupported": []
 }

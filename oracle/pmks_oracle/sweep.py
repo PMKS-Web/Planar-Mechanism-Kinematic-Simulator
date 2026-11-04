@@ -11,6 +11,10 @@ exactly from the curve's neighboring points.
 Starting from the drawn pose is what fixes the assembly branch: the authored
 pose is the reader's input, not anything PMKS+ computed.
 
+A slider with `limits` is a block in a channel with ends. The walk stops where
+its travel reaches one, refined by bisection along the curve, as a limit of kind
+`slot-end`: the mechanism runs to the end and comes back the way it went.
+
 Every sample is stored once, for the driver moving toward increasing d. A
 sample walked the other way has the same pose, the opposite velocities, and the
 same accelerations and forces, because the driver's speed is constant.
@@ -24,7 +28,8 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import analysis
-from .exudyn_model import ExudynModel
+from .exudyn_model import ExudynModel, block_id
+from .problem import GROUND
 
 MAX_REVOLUTIONS = 3
 # A singular value this far below the largest is zero, for rank and for singularity alike.
@@ -35,7 +40,7 @@ TOGGLE_CLEARANCE = 1e-9
 
 @dataclass
 class Limit:
-    kind: str  # 'toggle', 'singular', 'solver-failure', 'budget'
+    kind: str  # 'toggle', 'slot-end', 'singular', 'solver-failure', 'budget'
     travel: float  # driver travel from the start where the walk stopped, rad or m
 
 
@@ -85,6 +90,54 @@ def corrector(model: ExudynModel, predicted, t, max_iterations=30):
         step, *_ = np.linalg.lstsq(j, -r, rcond=None)
         q = q + step
     raise analysis.SolveFailed("corrector did not converge")
+
+
+
+def _point(model: ExudynModel, q, body_id: str, at) -> np.ndarray:
+    if body_id == GROUND:
+        return np.array(at, dtype=float)
+    body = model.bodies[body_id]
+    cx, cy, ct = body.columns
+    c, s = math.cos(q[ct]), math.sin(q[ct])
+    r = np.array(at, dtype=float) - np.array(body.com)
+    return np.array(body.com) + q[[cx, cy]] + np.array([c * r[0] - s * r[1], s * r[0] + c * r[1]])
+
+
+def slot_travel(model: ExudynModel, q, slider) -> float:
+    """How far a slider's block sits along its slot from the slot's line point, at pose q."""
+    block = _point(model, q, block_id(slider), slider.at)
+    origin = _point(model, q, slider.guide, slider.line_point)
+    turn = 0.0 if slider.guide == GROUND else q[model.bodies[slider.guide].columns[2]]
+    axis = np.array(slider.axis) / np.linalg.norm(slider.axis)
+    c, s = math.cos(turn), math.sin(turn)
+    u = np.array([c * axis[0] - s * axis[1], s * axis[0] + c * axis[1]])
+    return float((block - origin) @ u)
+
+
+def past_slot_end(model: ExudynModel, q) -> float:
+    """How far the furthest-out block is past an end of its slot; negative while all are inside."""
+    worst = -math.inf
+    for slider in model.problem.sliders:
+        if slider.limits is None:
+            continue
+        travel = slot_travel(model, q, slider)
+        lo, hi = slider.limits
+        worst = max(worst, lo - travel, travel - hi)
+    return worst
+
+
+def _slot_end_crossing(model, q, t, h):
+    """The pose along the curve between q and q + h*t where a block reaches its slot's end."""
+    lo, hi = 0.0, h
+    for _ in range(100):
+        mid = (lo + hi) / 2
+        if past_slot_end(model, corrector(model, q + mid * t, t)) > 0:
+            hi = mid
+        else:
+            lo = mid
+        if hi - lo < 1e-15 * max(1.0, model.length_scale):
+            break
+    return corrector(model, q + lo * t, t)
 
 
 def _same_pose(model: ExudynModel, a, b) -> bool:
@@ -204,6 +257,17 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
                 # A turn the corrector cannot follow is not a toggle anyone has measured.
                 return Limit("solver-failure", d - d0)
             return Limit("toggle", extremum - d0)
+        if past_slot_end(model, q_new) > 0:
+            # A block reached the end of its slot within this step.
+            try:
+                q_end = _slot_end_crossing(model, q, t, h)
+                d_end = driver_coordinate(model, q_end)
+                while (d0 + k_next * step - d_end) * direction < -TOGGLE_CLEARANCE * step:
+                    walk.samples[k_next] = analysis.newton(model, q, d0 + k_next * step)
+                    k_next += direction
+            except analysis.SolveFailed:
+                return Limit("solver-failure", d - d0)
+            return Limit("slot-end", d_end - d0)
         _, jc = _undriven(model, q_new)
         s = np.linalg.svd(jc, compute_uv=False)
         if s[rank - 1] < SINGULAR_RATIO * s[0]:
@@ -248,6 +312,10 @@ def walk(model: ExudynModel) -> Walk:
     revolute = problem.driver.kind == "rotation"
     budget = problem.sweep.max_samples
     rank = regular_rank(model, q0)
+    if past_slot_end(model, q0) > 0:
+        # Drawn with a block outside its slot: there is no travel to walk.
+        result.high = result.low = Limit("slot-end", 0.0)
+        return result
     high = _walk_one_way(model, q0, d0, step, +1, result, revolute, budget, rank)
     if high is None:
         return result

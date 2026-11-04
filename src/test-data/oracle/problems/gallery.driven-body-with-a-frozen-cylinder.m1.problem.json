@@ -24,7 +24,7 @@
    "id": "B",
    "kind": "slider",
    "at": [
-    0.024540000000000003,
+    0.02454,
     0
    ],
    "guide": "ABCDEN",
@@ -40,7 +40,11 @@
     "ABCDEN"
    ],
    "rotates": false,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.005501949999999999,
+    0.03949205000000001
+   ]
   },
   {
    "id": "E",
@@ -79,7 +83,7 @@
    "id": "B",
    "body": "ABCDEN",
    "at": [
-    0.024540000000000003,
+    0.02454,
     0
    ]
   },
@@ -120,7 +124,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "cylinder at B: stroke limits"
- ]
+ "unsupported": []
 }

@@ -71,7 +71,11 @@
     "AB"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.0028599999999999997,
+    0.03714
+   ]
   },
   {
    "id": "C",
@@ -187,7 +191,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "floating slot B: slot-end limits"
- ]
+ "unsupported": []
 }

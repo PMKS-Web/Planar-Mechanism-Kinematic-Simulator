@@ -134,7 +134,11 @@
     "EF"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.002838,
+    0.048162
+   ]
   }
  ],
  "driver": {
@@ -236,7 +240,5 @@
   "step": 0.017453292519943295,
   "maxSamples": 2000
  },
- "unsupported": [
-  "floating slot F: slot-end limits"
- ]
+ "unsupported": []
 }

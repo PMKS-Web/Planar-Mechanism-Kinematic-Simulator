@@ -137,13 +137,17 @@
    ],
    "axis": [
     0.9999999652460401,
-    -0.0002636435447524607
+    -0.00026364354475245304
    ],
    "riders": [
     "CD"
    ],
    "rotates": false,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.005501949999999999,
+    0.050065385090956996
+   ]
   },
   {
    "id": "D",
@@ -236,7 +240,11 @@
     "MQS"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.0025986552540319396,
+    0.16807371772999852
+   ]
   },
   {
    "id": "Q",
@@ -259,7 +267,11 @@
     "MQS"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.00254064669376603,
+    0.19713600642321708
+   ]
   },
   {
    "id": "T",
@@ -282,7 +294,11 @@
     "TVX"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.0025986552540319396,
+    0.16807371772999852
+   ]
   },
   {
    "id": "V",
@@ -305,7 +321,11 @@
     "TVX"
    ],
    "rotates": true,
-   "blockMass": 0
+   "blockMass": 0,
+   "limits": [
+    0.00254064669376603,
+    0.19713600642321708
+   ]
   },
   {
    "id": "K",
@@ -379,7 +399,7 @@
    "id": "B",
    "body": "AB",
    "at": [
-    -0.0008066665088836888,
+    -0.0008066665088836885,
     0.007457863608359843
    ]
   },
@@ -513,14 +533,8 @@
   }
  ],
  "sweep": {
-  "step": 0.001,
+  "step": 0.00024757408383864997,
   "maxSamples": 2000
  },
- "unsupported": [
-  "cylinder at C: stroke limits",
-  "floating slot M: slot-end limits",
-  "floating slot Q: slot-end limits",
-  "floating slot T: slot-end limits",
-  "floating slot V: slot-end limits"
- ]
+ "unsupported": []
 }
