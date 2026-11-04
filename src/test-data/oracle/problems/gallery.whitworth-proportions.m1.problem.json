@@ -1,0 +1,132 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.whitworth-proportions.m1",
+ "title": "Whitworth proportions, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.whitworth-proportions",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    9.184850993605148e-19,
+    0.015
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0020943058495790537,
+    0.023717082451262847
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    1.8369701987210296e-18,
+    0.03
+   ],
+   "guide": "CD",
+   "linePoint": [
+    0.01,
+    0
+   ],
+   "axis": [
+    -0.31622776601683805,
+    0.9486832980505138
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    1.8369701987210296e-18,
+    0.03
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ground",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    -0.005811388300841893,
+    0.047434164902525694
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot B: slot-end limits"
+ ]
+}

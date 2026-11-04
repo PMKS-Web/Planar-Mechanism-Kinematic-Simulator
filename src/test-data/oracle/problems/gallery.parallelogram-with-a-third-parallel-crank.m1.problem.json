@@ -1,0 +1,197 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.parallelogram-with-a-third-parallel-crank.m1",
+ "title": "Parallelogram with a third parallel crank, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.parallelogram-with-a-third-parallel-crank",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0,
+    0.01
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04,
+    0.01
+   ]
+  },
+  {
+   "id": "BEI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02,
+    0.02
+   ]
+  },
+  {
+   "id": "IJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02,
+    0.01
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.02
+   ],
+   "bodies": [
+    "AB",
+    "BEI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0.02
+   ],
+   "bodies": [
+    "EF",
+    "BEI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0
+   ],
+   "bodies": [
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0.02
+   ],
+   "bodies": [
+    "BEI",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0
+   ],
+   "bodies": [
+    "IJ"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "J",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "IJ"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.02
+   ]
+  },
+  {
+   "id": "E",
+   "body": "EF",
+   "at": [
+    0.04,
+    0.02
+   ]
+  },
+  {
+   "id": "F",
+   "body": "ground",
+   "at": [
+    0.04,
+    0
+   ]
+  },
+  {
+   "id": "I",
+   "body": "BEI",
+   "at": [
+    0.02,
+    0.02
+   ]
+  },
+  {
+   "id": "J",
+   "body": "ground",
+   "at": [
+    0.02,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

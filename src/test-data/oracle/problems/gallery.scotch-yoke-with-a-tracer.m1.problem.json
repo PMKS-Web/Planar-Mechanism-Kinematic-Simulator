@@ -1,0 +1,149 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.scotch-yoke-with-a-tracer.m1",
+ "title": "Scotch yoke with a tracer, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.scotch-yoke-with-a-tracer",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.005,
+    0
+   ]
+  },
+  {
+   "id": "CDG",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.01666666666666667,
+    0.005333333333333333
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.01,
+    0
+   ],
+   "guide": "CDG",
+   "linePoint": [
+    0.01,
+    -0.02
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.01,
+    -0.02
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.01,
+    -0.02
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "CDG"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CDG",
+   "at": [
+    0.01,
+    -0.02
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CDG",
+   "at": [
+    0.01,
+    0.018000000000000002
+   ]
+  },
+  {
+   "id": "G",
+   "body": "CDG",
+   "at": [
+    0.03,
+    0.018000000000000002
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot B: slot-end limits"
+ ]
+}

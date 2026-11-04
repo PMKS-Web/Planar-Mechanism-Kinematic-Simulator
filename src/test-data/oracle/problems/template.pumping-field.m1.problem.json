@@ -1,0 +1,208 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.pumping-field.m1",
+ "title": "Template Pumping_Field, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.pumping-field",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.021991329150270342,
+    -0.032096445602528105
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.020996007562231533,
+    -0.0160068124421539
+   ]
+  },
+  {
+   "id": "CDE",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.002333333333333334,
+    0
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.033,
+    -0.012961481396815721
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.026990643176077626,
+    -0.03217926632074842
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.016992015124463057,
+    -0.0320136248843078
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    -0.025,
+    0
+   ],
+   "bodies": [
+    "BC",
+    "CDE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "CDE"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.032,
+    0
+   ],
+   "bodies": [
+    "CDE",
+    "EF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "slider",
+   "at": [
+    0.034,
+    -0.025922962793631443
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.034,
+    -0.025922962793631443
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "EF"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "BC",
+   "CDE"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.026990643176077626,
+    -0.03217926632074842
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.016992015124463057,
+    -0.0320136248843078
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    -0.025,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDE",
+   "at": [
+    0.032,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    0.034,
+    -0.025922962793631443
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "input C drives one link against another"
+ ]
+}

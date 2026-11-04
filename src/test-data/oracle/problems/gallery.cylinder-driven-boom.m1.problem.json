@@ -1,0 +1,159 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.cylinder-driven-boom.m1",
+ "title": "Cylinder-driven boom, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.cylinder-driven-boom",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "OC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0,
+    0.02
+   ]
+  },
+  {
+   "id": "GN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.021361999999999996,
+    0.011517333333333336
+   ]
+  },
+  {
+   "id": "PC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.008638,
+    0.028482666666666667
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "OC"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0,
+    0.04
+   ],
+   "bodies": [
+    "OC",
+    "PC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0
+   ],
+   "bodies": [
+    "GN"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "slider",
+   "at": [
+    0.017276,
+    0.016965333333333336
+   ],
+   "guide": "GN",
+   "linePoint": [
+    0.03,
+    0
+   ],
+   "axis": [
+    -0.5999999999999999,
+    0.8000000000000002
+   ],
+   "riders": [
+    "PC"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "P",
+  "kind": "translation",
+  "speed": -0.01
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "OC",
+   "at": [
+    0,
+    0.04
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.03,
+    0
+   ]
+  },
+  {
+   "id": "N",
+   "body": "GN",
+   "at": [
+    0.012723999999999997,
+    0.023034666666666672
+   ]
+  },
+  {
+   "id": "P",
+   "body": "PC",
+   "at": [
+    0.017276,
+    0.016965333333333336
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at P: stroke limits"
+ ]
+}

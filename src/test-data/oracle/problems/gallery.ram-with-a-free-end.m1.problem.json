@@ -1,0 +1,190 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.ram-with-a-free-end.m1",
+ "title": "Ram with a free end, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.ram-with-a-free-end",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04,
+    0.01
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02,
+    -0.005
+   ]
+  },
+  {
+   "id": "ABN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.01607053546148353,
+    0.0002798617009828834
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.030894196807774714,
+    -0.015419792551474326
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.04,
+    -0.01
+   ],
+   "bodies": [
+    "CD",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0.03
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "BC",
+    "ABN"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "slider",
+   "at": [
+    -0.02678839361554942,
+    -0.00583958510294865
+   ],
+   "guide": "ABN",
+   "linePoint": [
+    -0.02,
+    0.01
+   ],
+   "axis": [
+    -0.3939192985791678,
+    -0.9191450300180578
+   ],
+   "riders": [
+    "EF"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "B",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "BC",
+   "ABN"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    0.04,
+    -0.01
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.04,
+    0.03
+   ]
+  },
+  {
+   "id": "B",
+   "body": "BC",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "A",
+   "body": "ABN",
+   "at": [
+    -0.02,
+    0.01
+   ]
+  },
+  {
+   "id": "N",
+   "body": "ABN",
+   "at": [
+    -0.028211606384450583,
+    -0.009160414897051352
+   ]
+  },
+  {
+   "id": "E",
+   "body": "EF",
+   "at": [
+    -0.02678839361554942,
+    -0.00583958510294865
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    -0.035,
+    -0.025
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at E: stroke limits",
+  "input B drives one link against another"
+ ]
+}

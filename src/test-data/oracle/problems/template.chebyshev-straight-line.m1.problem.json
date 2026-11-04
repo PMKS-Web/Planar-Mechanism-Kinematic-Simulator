@@ -1,0 +1,153 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.chebyshev-straight-line.m1",
+ "title": "Template Chebyshev_Straight_Line, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.chebyshev-straight-line",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "GB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.005,
+    0.02
+   ]
+  },
+  {
+   "id": "ABM",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0,
+    0.04
+   ]
+  },
+  {
+   "id": "AH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005,
+    0.02
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    -0.02,
+    0
+   ],
+   "bodies": [
+    "GB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0.04
+   ],
+   "bodies": [
+    "GB",
+    "ABM"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.01,
+    0.04
+   ],
+   "bodies": [
+    "ABM",
+    "AH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0
+   ],
+   "bodies": [
+    "AH"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "G",
+  "kind": "rotation",
+  "speed": -0.3141592653589793,
+  "bodies": [
+   "ground",
+   "GB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    -0.02,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "GB",
+   "at": [
+    0.01,
+    0.04
+   ]
+  },
+  {
+   "id": "A",
+   "body": "ABM",
+   "at": [
+    -0.01,
+    0.04
+   ]
+  },
+  {
+   "id": "M",
+   "body": "ABM",
+   "at": [
+    0,
+    0.04
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    0.02,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

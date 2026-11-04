@@ -1,0 +1,155 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.four-bar-driven-at-its-coupler-rocker-pin.m1",
+ "title": "Four-bar driven at its coupler-rocker pin, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.four-bar-driven-at-its-coupler-rocker-pin",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "OA",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0022500000000000003,
+    0.00715
+   ]
+  },
+  {
+   "id": "ACT",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0195,
+    0.023766666666666665
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0365,
+    0.012
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "OA"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.0045000000000000005,
+    0.0143
+   ],
+   "bodies": [
+    "OA",
+    "ACT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.033,
+    0.024
+   ],
+   "bodies": [
+    "ACT",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ACT",
+   "CD"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "A",
+   "body": "OA",
+   "at": [
+    0.0045000000000000005,
+    0.0143
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ACT",
+   "at": [
+    0.033,
+    0.024
+   ]
+  },
+  {
+   "id": "T",
+   "body": "ACT",
+   "at": [
+    0.021,
+    0.033
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.04,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "input C drives one link against another"
+ ]
+}

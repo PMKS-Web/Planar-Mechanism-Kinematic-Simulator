@@ -1,0 +1,143 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.slider-crank-inversions.m2",
+ "title": "Slider-crank inversions, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.slider-crank-inversions",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "FG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.11449999999999999,
+    0.0762583302491977
+   ]
+  },
+  {
+   "id": "EH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.1130901010754857,
+    0.08039248015199896
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.102,
+    0.065
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.10800000000000001,
+    0.065
+   ],
+   "bodies": [
+    "FG",
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "slider",
+   "at": [
+    0.121,
+    0.0875166604983954
+   ],
+   "guide": "EH",
+   "linePoint": [
+    0.096,
+    0.065
+   ],
+   "axis": [
+    0.7430478728472052,
+    0.6692382674782156
+   ],
+   "riders": [
+    "FG"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.096,
+    0.065
+   ],
+   "bodies": [
+    "EH",
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "F",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "FG"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "F",
+   "body": "ground",
+   "at": [
+    0.10800000000000001,
+    0.065
+   ]
+  },
+  {
+   "id": "G",
+   "body": "FG",
+   "at": [
+    0.121,
+    0.0875166604983954
+   ]
+  },
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.096,
+    0.065
+   ]
+  },
+  {
+   "id": "H",
+   "body": "EH",
+   "at": [
+    0.13018020215097142,
+    0.09578496030399791
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot G: slot-end limits"
+ ]
+}

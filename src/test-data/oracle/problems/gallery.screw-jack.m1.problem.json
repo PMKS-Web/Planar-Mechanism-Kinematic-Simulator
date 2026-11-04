@@ -1,0 +1,119 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.screw-jack.m1",
+ "title": "Screw jack, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.screw-jack",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.0006820331119013078,
+    0.004871644455048177
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005142300877492316,
+    0.015871644455048177
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "slider",
+   "at": [
+    -0.011648667978787245,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    -0.011648667978787245,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.010284601754984631,
+    0.009743288910096353
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0,
+    0.022000000000000002
+   ],
+   "bodies": [
+    "BC"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "translation",
+  "speed": -0.022000000000000002
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "AB",
+   "at": [
+    -0.011648667978787245,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.010284601754984631,
+    0.009743288910096353
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ground",
+   "at": [
+    0,
+    0.022000000000000002
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

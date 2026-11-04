@@ -1,0 +1,169 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.loader-bucket.m1",
+ "title": "Loader bucket, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.loader-bucket",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "OA",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.019021130325903073,
+    0.0061803398874989484
+   ]
+  },
+  {
+   "id": "AMBCD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.05174226065180614,
+    0.008060679774997895
+   ]
+  },
+  {
+   "id": "BP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.044021130325903074,
+    0.025930339887498946
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "OA"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.038042260651806145,
+    0.012360679774997897
+   ],
+   "bodies": [
+    "OA",
+    "AMBCD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.05604226065180615,
+    0.017860679774997897
+   ],
+   "bodies": [
+    "AMBCD",
+    "BP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.032,
+    0.034
+   ],
+   "bodies": [
+    "BP"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "O",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "OA"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "A",
+   "body": "OA",
+   "at": [
+    0.038042260651806145,
+    0.012360679774997897
+   ]
+  },
+  {
+   "id": "M",
+   "body": "AMBCD",
+   "at": [
+    0.04804226065180615,
+    0.010360679774997897
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AMBCD",
+   "at": [
+    0.05604226065180615,
+    0.017860679774997897
+   ]
+  },
+  {
+   "id": "C",
+   "body": "AMBCD",
+   "at": [
+    0.05154226065180614,
+    0.0008606797749978966
+   ]
+  },
+  {
+   "id": "D",
+   "body": "AMBCD",
+   "at": [
+    0.06504226065180614,
+    -0.0011393202250021051
+   ]
+  },
+  {
+   "id": "P",
+   "body": "ground",
+   "at": [
+    0.032,
+    0.034
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

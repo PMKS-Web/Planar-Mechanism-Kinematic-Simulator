@@ -1,0 +1,268 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.three-cylinders-in-a-triangle.m1",
+ "title": "Three cylinders in a triangle, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.three-cylinders-in-a-triangle",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AFGN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0032810473175897592,
+    -0.0001399211373504039
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04227,
+    0
+   ]
+  },
+  {
+   "id": "CP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.05116790536482048,
+    0.01472015772529919
+   ]
+  },
+  {
+   "id": "DE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.03883209463517952,
+    0.03527984227470081
+   ]
+  },
+  {
+   "id": "EQ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.021167905364820487,
+    0.03527984227470081
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "F",
+   "kind": "slider",
+   "at": [
+    0.01766418927035903,
+    0.02944031545059838
+   ],
+   "guide": "EQ",
+   "linePoint": [
+    0.03,
+    0.05
+   ],
+   "axis": [
+    -0.5144957554275263,
+    -0.8574929257125443
+   ],
+   "riders": [
+    "AFGN"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    -0.04,
+    -0.03
+   ],
+   "bodies": [
+    "AFGN"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.024540000000000003,
+    0
+   ],
+   "guide": "AFGN",
+   "linePoint": [
+    0,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "BC"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.06,
+    0
+   ],
+   "bodies": [
+    "BC",
+    "CP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "slider",
+   "at": [
+    0.04766418927035903,
+    0.020559684549401616
+   ],
+   "guide": "CP",
+   "linePoint": [
+    0.06,
+    0
+   ],
+   "axis": [
+    -0.5144957554275263,
+    0.8574929257125443
+   ],
+   "riders": [
+    "DE"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0.05
+   ],
+   "bodies": [
+    "DE",
+    "EQ"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "G",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AFGN"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "AFGN",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "AFGN",
+   "at": [
+    0.01766418927035903,
+    0.02944031545059838
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    -0.04,
+    -0.03
+   ]
+  },
+  {
+   "id": "N",
+   "body": "AFGN",
+   "at": [
+    0.035460000000000005,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "BC",
+   "at": [
+    0.024540000000000003,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "P",
+   "body": "CP",
+   "at": [
+    0.042335810729640974,
+    0.02944031545059838
+   ]
+  },
+  {
+   "id": "D",
+   "body": "DE",
+   "at": [
+    0.04766418927035903,
+    0.020559684549401616
+   ]
+  },
+  {
+   "id": "E",
+   "body": "DE",
+   "at": [
+    0.03,
+    0.05
+   ]
+  },
+  {
+   "id": "Q",
+   "body": "EQ",
+   "at": [
+    0.01233581072964097,
+    0.020559684549401616
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at F: stroke limits",
+  "cylinder at B: stroke limits",
+  "cylinder at D: stroke limits"
+ ]
+}

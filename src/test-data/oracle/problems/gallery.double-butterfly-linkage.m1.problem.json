@@ -1,0 +1,313 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.double-butterfly-linkage.m1",
+ "title": "Double butterfly linkage, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.double-butterfly-linkage",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ACD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.003966666666666667,
+    0.008066666666666665
+   ]
+  },
+  {
+   "id": "CE",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.0124,
+    0.026549999999999997
+   ]
+  },
+  {
+   "id": "EFG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.04633333333333333,
+    0.02786666666666667
+   ]
+  },
+  {
+   "id": "BFJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.0538,
+    0.0174
+   ]
+  },
+  {
+   "id": "DHI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.03233333333333333,
+    0.0014
+   ]
+  },
+  {
+   "id": "GH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.045,
+    0.01425
+   ]
+  },
+  {
+   "id": "IJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.044000000000000004,
+    0.004799999999999999
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ACD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    -0.0021,
+    0.0194
+   ],
+   "bodies": [
+    "ACD",
+    "CE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.013999999999999999,
+    0.0048
+   ],
+   "bodies": [
+    "ACD",
+    "DHI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.0269,
+    0.0337
+   ],
+   "bodies": [
+    "CE",
+    "EFG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.0584,
+    0.0317
+   ],
+   "bodies": [
+    "EFG",
+    "BFJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.053700000000000005,
+    0.0182
+   ],
+   "bodies": [
+    "EFG",
+    "GH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.0617,
+    0
+   ],
+   "bodies": [
+    "BFJ"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.041299999999999996,
+    0.020499999999999997
+   ],
+   "bodies": [
+    "BFJ",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.0363,
+    0.0103
+   ],
+   "bodies": [
+    "DHI",
+    "GH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.0467,
+    -0.010900000000000002
+   ],
+   "bodies": [
+    "DHI",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "ACD"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ACD",
+   "at": [
+    -0.0021,
+    0.0194
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ACD",
+   "at": [
+    0.013999999999999999,
+    0.0048
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CE",
+   "at": [
+    0.0269,
+    0.0337
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EFG",
+   "at": [
+    0.0584,
+    0.0317
+   ]
+  },
+  {
+   "id": "G",
+   "body": "EFG",
+   "at": [
+    0.053700000000000005,
+    0.0182
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ground",
+   "at": [
+    0.0617,
+    0
+   ]
+  },
+  {
+   "id": "J",
+   "body": "BFJ",
+   "at": [
+    0.041299999999999996,
+    0.020499999999999997
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DHI",
+   "at": [
+    0.0363,
+    0.0103
+   ]
+  },
+  {
+   "id": "I",
+   "body": "DHI",
+   "at": [
+    0.0467,
+    -0.010900000000000002
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

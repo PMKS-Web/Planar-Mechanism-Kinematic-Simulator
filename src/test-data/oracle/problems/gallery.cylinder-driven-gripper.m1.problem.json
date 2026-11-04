@@ -1,0 +1,526 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.cylinder-driven-gripper.m1",
+ "title": "Cylinder-driven gripper, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.cylinder-driven-gripper",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.023823333254441845,
+    0.007463931804179922
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.006003333254441845,
+    0.007456068195820077
+   ]
+  },
+  {
+   "id": "DGHIJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.05603199999999999,
+    0.009462
+   ]
+  },
+  {
+   "id": "GM",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.021654999999999997,
+    0.044535
+   ]
+  },
+  {
+   "id": "HQ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.07399,
+    0.043949999999999996
+   ]
+  },
+  {
+   "id": "MQS",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.07141000000000002,
+    0.05336333333333333
+   ]
+  },
+  {
+   "id": "IT",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.021905,
+    -0.02292
+   ]
+  },
+  {
+   "id": "JV",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.07438,
+    -0.023635000000000003
+   ]
+  },
+  {
+   "id": "TVX",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.07183666666666669,
+    -0.031706666666666675
+   ]
+  },
+  {
+   "id": "KL",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.00045,
+    0.011624999999999996
+   ]
+  },
+  {
+   "id": "OP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.06600500000000001,
+    -0.0012150000000000017
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.04684,
+    0.00747
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    -0.017013333491116313,
+    0.007462136391640157
+   ],
+   "guide": "AB",
+   "linePoint": [
+    -0.04684,
+    0.00747
+   ],
+   "axis": [
+    0.9999999652460401,
+    -0.0002636435447524607
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.029019999999999997,
+    0.00745
+   ],
+   "bodies": [
+    "CD",
+    "DGHIJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.04311,
+    0.030039999999999997
+   ],
+   "bodies": [
+    "DGHIJ",
+    "GM"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.08246,
+    0.030039999999999997
+   ],
+   "bodies": [
+    "DGHIJ",
+    "HQ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.04311,
+    -0.01011
+   ],
+   "bodies": [
+    "DGHIJ",
+    "IT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.08246,
+    -0.01011
+   ],
+   "bodies": [
+    "DGHIJ",
+    "JV"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "M",
+   "kind": "slider",
+   "at": [
+    0.0002,
+    0.05903
+   ],
+   "guide": "KL",
+   "linePoint": [
+    0,
+    0.09696
+   ],
+   "axis": [
+    0.0052732611861217756,
+    -0.9999860962615745
+   ],
+   "riders": [
+    "GM",
+    "MQS"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "Q",
+   "kind": "slider",
+   "at": [
+    0.06552,
+    0.05785999999999999
+   ],
+   "guide": "OP",
+   "linePoint": [
+    0.06519,
+    0.09862
+   ],
+   "axis": [
+    0.00816319772269551,
+    -0.999966680546377
+   ],
+   "riders": [
+    "HQ",
+    "MQS"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "T",
+   "kind": "slider",
+   "at": [
+    0.0007000000000000001,
+    -0.03573
+   ],
+   "guide": "KL",
+   "linePoint": [
+    0,
+    0.09696
+   ],
+   "axis": [
+    0.0052732611861217756,
+    -0.9999860962615745
+   ],
+   "riders": [
+    "IT",
+    "TVX"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "V",
+   "kind": "slider",
+   "at": [
+    0.0663,
+    -0.037160000000000006
+   ],
+   "guide": "OP",
+   "linePoint": [
+    0.06519,
+    0.09862
+   ],
+   "axis": [
+    0.00816319772269551,
+    -0.999966680546377
+   ],
+   "riders": [
+    "JV",
+    "TVX"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0,
+    0.09696
+   ],
+   "bodies": [
+    "KL"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "L",
+   "kind": "pin",
+   "at": [
+    0.0009,
+    -0.07371000000000001
+   ],
+   "bodies": [
+    "KL"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0.06519,
+    0.09862
+   ],
+   "bodies": [
+    "OP"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.06682,
+    -0.10105
+   ],
+   "bodies": [
+    "OP"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "translation",
+  "speed": -0.0025
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.04684,
+    0.00747
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.0008066665088836888,
+    0.007457863608359843
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    -0.017013333491116313,
+    0.007462136391640157
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    0.029019999999999997,
+    0.00745
+   ]
+  },
+  {
+   "id": "G",
+   "body": "DGHIJ",
+   "at": [
+    0.04311,
+    0.030039999999999997
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DGHIJ",
+   "at": [
+    0.08246,
+    0.030039999999999997
+   ]
+  },
+  {
+   "id": "I",
+   "body": "DGHIJ",
+   "at": [
+    0.04311,
+    -0.01011
+   ]
+  },
+  {
+   "id": "J",
+   "body": "DGHIJ",
+   "at": [
+    0.08246,
+    -0.01011
+   ]
+  },
+  {
+   "id": "M",
+   "body": "GM",
+   "at": [
+    0.0002,
+    0.05903
+   ]
+  },
+  {
+   "id": "Q",
+   "body": "HQ",
+   "at": [
+    0.06552,
+    0.05785999999999999
+   ]
+  },
+  {
+   "id": "S",
+   "body": "MQS",
+   "at": [
+    0.14851,
+    0.0432
+   ]
+  },
+  {
+   "id": "T",
+   "body": "IT",
+   "at": [
+    0.0007000000000000001,
+    -0.03573
+   ]
+  },
+  {
+   "id": "V",
+   "body": "JV",
+   "at": [
+    0.0663,
+    -0.037160000000000006
+   ]
+  },
+  {
+   "id": "X",
+   "body": "TVX",
+   "at": [
+    0.14851,
+    -0.02223
+   ]
+  },
+  {
+   "id": "K",
+   "body": "ground",
+   "at": [
+    0,
+    0.09696
+   ]
+  },
+  {
+   "id": "L",
+   "body": "ground",
+   "at": [
+    0.0009,
+    -0.07371000000000001
+   ]
+  },
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0.06519,
+    0.09862
+   ]
+  },
+  {
+   "id": "P",
+   "body": "ground",
+   "at": [
+    0.06682,
+    -0.10105
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at C: stroke limits",
+  "floating slot M: slot-end limits",
+  "floating slot Q: slot-end limits",
+  "floating slot T: slot-end limits",
+  "floating slot V: slot-end limits"
+ ]
+}

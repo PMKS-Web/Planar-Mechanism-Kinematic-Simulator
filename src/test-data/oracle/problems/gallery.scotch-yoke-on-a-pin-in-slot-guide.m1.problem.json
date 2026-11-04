@@ -1,0 +1,141 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.scotch-yoke-on-a-pin-in-slot-guide.m1",
+ "title": "Scotch yoke on a Pin-in-slot guide, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.scotch-yoke-on-a-pin-in-slot-guide",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.002,
+    0.004
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.004,
+    0.0019999999999999996
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.004,
+    0.008
+   ],
+   "guide": "CD",
+   "linePoint": [
+    0.004,
+    -0.016
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.004,
+    -0.016
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.004,
+    -0.016
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.004,
+    0.008
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    0.004,
+    -0.016
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    0.004,
+    0.02
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot B: slot-end limits"
+ ]
+}

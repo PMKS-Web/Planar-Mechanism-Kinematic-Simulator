@@ -1,0 +1,258 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.gripper-the-cylinder-closes.m1",
+ "title": "Gripper the cylinder closes, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.gripper-the-cylinder-closes",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.07306535619060812,
+    0.03302070771694114
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.01993464380939188,
+    0.03897929228305886
+   ]
+  },
+  {
+   "id": "DGHI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.05225,
+    0.0275
+   ]
+  },
+  {
+   "id": "HK",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04,
+    0
+   ]
+  },
+  {
+   "id": "JKL",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.059333333333333335,
+    -0.022666666666666665
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.1,
+    0.03
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    -0.046869287618783756,
+    0.03595858456611772
+   ],
+   "guide": "AB",
+   "linePoint": [
+    -0.1,
+    0.03
+   ],
+   "axis": [
+    0.9937699488771516,
+    0.11145083538809171
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.006999999999999999,
+    0.042
+   ],
+   "bodies": [
+    "CD",
+    "DGHI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0.03
+   ],
+   "bodies": [
+    "DGHI"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.052000000000000005,
+    0.018000000000000002
+   ],
+   "bodies": [
+    "DGHI",
+    "HK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.027999999999999997,
+    -0.018000000000000002
+   ],
+   "bodies": [
+    "HK",
+    "JKL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.04,
+    -0.03
+   ],
+   "bodies": [
+    "JKL"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "translation",
+  "speed": -0.0025
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.1,
+    0.03
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.04613071238121625,
+    0.03604141543388229
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    -0.046869287618783756,
+    0.03595858456611772
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    0.006999999999999999,
+    0.042
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.04,
+    0.03
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DGHI",
+   "at": [
+    0.052000000000000005,
+    0.018000000000000002
+   ]
+  },
+  {
+   "id": "I",
+   "body": "DGHI",
+   "at": [
+    0.11,
+    0.02
+   ]
+  },
+  {
+   "id": "K",
+   "body": "HK",
+   "at": [
+    0.027999999999999997,
+    -0.018000000000000002
+   ]
+  },
+  {
+   "id": "J",
+   "body": "ground",
+   "at": [
+    0.04,
+    -0.03
+   ]
+  },
+  {
+   "id": "L",
+   "body": "JKL",
+   "at": [
+    0.11,
+    -0.02
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at C: stroke limits"
+ ]
+}

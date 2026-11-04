@@ -29,7 +29,7 @@ export function decodeDrawing(payload: string) {
  * Every machine in a drawing decoded from its URL payload, partitioned and
  * solved the way `MechanismService.updateMechanism` solves it.
  */
-export function solvedDrawing(payload: string) {
+export function solvedDrawing(payload: string, sampling: 'adaptive' | 'degree' = 'adaptive') {
   const { target, settings } = decodeDrawing(payload);
   const unit = settings.lengthUnit.value;
   const lengthUnit = unit === LengthUnit.INCH ? 'in' : unit === LengthUnit.METER ? 'm' : 'cm';
@@ -52,9 +52,9 @@ export function solvedDrawing(payload: string) {
       settings.isGravity.value,
       lengthUnit,
       driven instanceof PrisJoint ? signed * MODEL_SCALE : (signed * Math.PI) / 30,
-      'adaptive',
+      sampling,
       new Set(partition.ownJoints.map((joint) => joint.id))
     );
   });
-  return { partitions, mechanisms };
+  return { partitions, mechanisms, settings };
 }

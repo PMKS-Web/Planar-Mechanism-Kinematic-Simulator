@@ -1,0 +1,246 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.stephenson-six-bar-with-a-link-hung-beside-a-joint.m1",
+ "title": "Stephenson six-bar with a link hung beside a joint, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.stephenson-six-bar-with-a-link-hung-beside-a-joint",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.0020200000000000005,
+    0.00302
+   ]
+  },
+  {
+   "id": "BCE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.00855,
+    0.014363333333333336
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02863,
+    0.00738
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.022135,
+    0.017755
+   ]
+  },
+  {
+   "id": "FG",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.046445,
+    0.00661
+   ]
+  },
+  {
+   "id": "DH",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.036505,
+    0.005450000000000001
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.004040000000000001,
+    0.00604
+   ],
+   "bodies": [
+    "AB",
+    "BCE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.023639999999999998,
+    0.01476
+   ],
+   "bodies": [
+    "BCE",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.00605,
+    0.02229
+   ],
+   "bodies": [
+    "BCE",
+    "EF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.033620000000000004,
+    0
+   ],
+   "bodies": [
+    "CD",
+    "DH"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.038220000000000004,
+    0.01322
+   ],
+   "bodies": [
+    "EF",
+    "FG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.054669999999999996,
+    0
+   ],
+   "bodies": [
+    "FG"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.004040000000000001,
+    0.00604
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCE",
+   "at": [
+    0.023639999999999998,
+    0.01476
+   ]
+  },
+  {
+   "id": "E",
+   "body": "BCE",
+   "at": [
+    0.00605,
+    0.02229
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.033620000000000004,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    0.038220000000000004,
+    0.01322
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.054669999999999996,
+    0
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DH",
+   "at": [
+    0.039389999999999994,
+    0.010900000000000002
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

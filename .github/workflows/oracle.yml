@@ -1,0 +1,88 @@
+name: Numerical oracle
+
+# Regenerates every oracle reference on pinned Linux, the canonical platform,
+# and fails if anything committed would change. It reports on every pull
+# request so it can become a required check, but skips the regeneration when
+# nothing that could move a reference changed. docs/numerical-oracle-plan.md
+# § CI integration is the argument.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  oracle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out tested source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Decide whether a reference could have moved
+        id: scope
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE"...HEAD)
+          echo "$changed"
+          if echo "$changed" | grep -Eq '^(src/app/model/|src/app/services/transcoding/|src/app/component/MODALS/templates/|src/test-utils/|src/test-data/oracle/|oracle/|package(-lock)?\.json$|\.github/workflows/oracle\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing that could move a reference changed; skipping the regeneration."
+          fi
+
+      - name: Set up Node 24
+        if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.15.0
+          cache: npm
+
+      - name: Set up uv
+        if: steps.scope.outputs.run == 'true'
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: 0.13.7
+          enable-cache: true
+          cache-dependency-glob: oracle/uv.lock
+
+      - name: Install locked dependencies
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          npm ci
+          cd oracle && uv sync --locked
+
+      - name: Check the oracle against its benchmarks
+        if: steps.scope.outputs.run == 'true'
+        run: cd oracle && uv run pytest -q -W error::DeprecationWarning
+
+      - name: Regenerate every reference
+        if: steps.scope.outputs.run == 'true'
+        run: npm run oracle
+
+      - name: Fail if anything committed would change
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          status=$(git status --porcelain)
+          if [ -n "$status" ]; then
+            echo "$status"
+            echo "::error::The committed oracle problems or references do not reproduce. Run \`npm run oracle\` and commit, or see the uploaded files."
+            exit 1
+          fi
+
+      - name: Keep the regenerated files
+        if: failure() && steps.scope.outputs.run == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oracle-regenerated
+          path: src/test-data/oracle/

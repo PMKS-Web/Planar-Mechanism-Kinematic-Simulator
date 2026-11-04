@@ -1,0 +1,123 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.teachinglab-slider-crank.m1",
+ "title": "TeachingLab slider-crank, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.teachinglab-slider-crank",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.00108532,
+   "inertia": 4.647594e-8,
+   "com": [
+    0,
+    0.001
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.00050144,
+   "inertia": 3.0344427e-7,
+   "com": [
+    0.005,
+    0.006999999999999999
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.1379,
+    0.1001
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.1379,
+    0.13820000000000002
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    -0.0097,
+    0.1001
+   ],
+   "guide": "ground",
+   "linePoint": [
+    -0.0097,
+    0.1001
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "BC"
+   ],
+   "rotates": true,
+   "blockMass": 0.00131788
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0.1379,
+    0.1001
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.1379,
+    0.13820000000000002
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    -0.0097,
+    0.1001
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

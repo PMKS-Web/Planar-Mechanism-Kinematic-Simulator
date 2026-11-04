@@ -1,0 +1,147 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.leg-on-a-bicycle-crank.m1",
+ "title": "Leg on a bicycle crank, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.leg-on-a-bicycle-crank",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "HK",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.004686260724409471,
+    0.05068897143415695
+   ]
+  },
+  {
+   "id": "KP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02068626072440947,
+    0.02168897143415695
+   ]
+  },
+  {
+   "id": "BP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0085,
+    0
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    -0.015,
+    0.057999999999999996
+   ],
+   "bodies": [
+    "HK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.02437252144881894,
+    0.0433779428683139
+   ],
+   "bodies": [
+    "HK",
+    "KP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.017,
+    0
+   ],
+   "bodies": [
+    "KP",
+    "BP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "BP"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "K",
+  "kind": "rotation",
+  "speed": -0.41887902047863906,
+  "bodies": [
+   "HK",
+   "KP"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    -0.015,
+    0.057999999999999996
+   ]
+  },
+  {
+   "id": "K",
+   "body": "HK",
+   "at": [
+    0.02437252144881894,
+    0.0433779428683139
+   ]
+  },
+  {
+   "id": "P",
+   "body": "KP",
+   "at": [
+    0.017,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "input K drives one link against another"
+ ]
+}

@@ -1,0 +1,242 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.slotted-tool-drive.m1",
+ "title": "Slotted tool drive, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.slotted-tool-drive",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.005,
+    0
+   ]
+  },
+  {
+   "id": "BCX",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0235,
+    0.023382685902179845
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0325,
+    0.01299038105676658
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.022089442978079833,
+    0.01477927543539668
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0
+   ],
+   "bodies": [
+    "AB",
+    "BCX"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.025,
+    0.02598076211353316
+   ],
+   "bodies": [
+    "BCX",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0.005
+   ],
+   "bodies": [
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "slider",
+   "at": [
+    0.024178885956159663,
+    0.02455855087079336
+   ],
+   "guide": "BCX",
+   "linePoint": [
+    0.01,
+    0
+   ],
+   "axis": [
+    0.4999999999999999,
+    0.8660254037844387
+   ],
+   "riders": [
+    "EF"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "BCX",
+   "at": [
+    0.025,
+    0.02598076211353316
+   ],
+   "vector": [
+    -51.96152422706632,
+    29.999999999999996
+   ],
+   "frame": "local"
+  },
+  {
+   "id": "F2",
+   "body": "EF",
+   "at": [
+    0.024178885956159663,
+    0.02455855087079336
+   ],
+   "vector": [
+    6.123233995736766e-15,
+    -100
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCX",
+   "at": [
+    0.025,
+    0.02598076211353316
+   ]
+  },
+  {
+   "id": "X",
+   "body": "BCX",
+   "at": [
+    0.0355,
+    0.04416729559300637
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.04,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.02,
+    0.005
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    0.024178885956159663,
+    0.02455855087079336
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot F: slot-end limits"
+ ]
+}

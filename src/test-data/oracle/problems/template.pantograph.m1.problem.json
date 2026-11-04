@@ -1,0 +1,312 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.pantograph.m1",
+ "title": "Template Pantograph, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.pantograph",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "GR",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0,
+    0.006
+   ]
+  },
+  {
+   "id": "RST",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.014925566673123345,
+    0.02216009150973306
+   ]
+  },
+  {
+   "id": "HS",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.036445160718438625,
+    0.01198386906146209
+   ]
+  },
+  {
+   "id": "JKO",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.04,
+    0.045
+   ]
+  },
+  {
+   "id": "JLT",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.009056810708753608,
+    0.0502562682031375
+   ]
+  },
+  {
+   "id": "KP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.029528405354376806,
+    0.03512813410156875
+   ]
+  },
+  {
+   "id": "LP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.014056810708753609,
+    0.0377562682031375
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "GR"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "R",
+   "kind": "pin",
+   "at": [
+    0,
+    0.012
+   ],
+   "bodies": [
+    "GR",
+    "RST"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "pin",
+   "at": [
+    0.03289032143687726,
+    0.02396773812292418
+   ],
+   "bodies": [
+    "RST",
+    "HS"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "T",
+   "kind": "pin",
+   "at": [
+    0.011886378582492783,
+    0.030512536406274996
+   ],
+   "bodies": [
+    "RST",
+    "JLT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0
+   ],
+   "bodies": [
+    "HS"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    -0.03,
+    0.07
+   ],
+   "bodies": [
+    "JKO",
+    "JLT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    -0.04,
+    0.045
+   ],
+   "bodies": [
+    "JKO",
+    "KP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    -0.05,
+    0.02
+   ],
+   "bodies": [
+    "JKO"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "L",
+   "kind": "pin",
+   "at": [
+    -0.009056810708753608,
+    0.0502562682031375
+   ],
+   "bodies": [
+    "JLT",
+    "LP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    -0.01905681070875361,
+    0.025256268203137498
+   ],
+   "bodies": [
+    "KP",
+    "LP"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "G",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "GR"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "R",
+   "body": "GR",
+   "at": [
+    0,
+    0.012
+   ]
+  },
+  {
+   "id": "S",
+   "body": "RST",
+   "at": [
+    0.03289032143687726,
+    0.02396773812292418
+   ]
+  },
+  {
+   "id": "T",
+   "body": "RST",
+   "at": [
+    0.011886378582492783,
+    0.030512536406274996
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    0.04,
+    0
+   ]
+  },
+  {
+   "id": "J",
+   "body": "JKO",
+   "at": [
+    -0.03,
+    0.07
+   ]
+  },
+  {
+   "id": "K",
+   "body": "JKO",
+   "at": [
+    -0.04,
+    0.045
+   ]
+  },
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    -0.05,
+    0.02
+   ]
+  },
+  {
+   "id": "L",
+   "body": "JLT",
+   "at": [
+    -0.009056810708753608,
+    0.0502562682031375
+   ]
+  },
+  {
+   "id": "P",
+   "body": "KP",
+   "at": [
+    -0.01905681070875361,
+    0.025256268203137498
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

@@ -1,0 +1,287 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.car-steering.m1",
+ "title": "Template Car_Steering, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.car-steering",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.043,
+    0.141
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.233,
+    0.203
+   ]
+  },
+  {
+   "id": "BE",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.4109999999999999,
+    0.248
+   ]
+  },
+  {
+   "id": "EFGHIJK",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.7810000000000001,
+    0.019
+   ]
+  },
+  {
+   "id": "CDLMNOP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.746,
+    0.078
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.087,
+    0.282
+   ],
+   "bodies": [
+    "AB",
+    "BC",
+    "BE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.553,
+    0.124
+   ],
+   "bodies": [
+    "BC",
+    "CDLMNOP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    -0.735,
+    0.215
+   ],
+   "bodies": [
+    "BE",
+    "EFGHIJK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    -0.711,
+    0.016
+   ],
+   "bodies": [
+    "EFGHIJK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.7170000000000001,
+    0.016
+   ],
+   "bodies": [
+    "CDLMNOP"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.20943951023931953,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.087,
+    0.282
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0.553,
+    0.124
+   ]
+  },
+  {
+   "id": "E",
+   "body": "BE",
+   "at": [
+    -0.735,
+    0.215
+   ]
+  },
+  {
+   "id": "F",
+   "body": "ground",
+   "at": [
+    -0.711,
+    0.016
+   ]
+  },
+  {
+   "id": "G",
+   "body": "EFGHIJK",
+   "at": [
+    -0.877,
+    -0.063
+   ]
+  },
+  {
+   "id": "H",
+   "body": "EFGHIJK",
+   "at": [
+    -0.997,
+    0.19400000000000003
+   ]
+  },
+  {
+   "id": "I",
+   "body": "EFGHIJK",
+   "at": [
+    -0.893,
+    0.242
+   ]
+  },
+  {
+   "id": "J",
+   "body": "EFGHIJK",
+   "at": [
+    -0.7609999999999999,
+    -0.314
+   ]
+  },
+  {
+   "id": "K",
+   "body": "EFGHIJK",
+   "at": [
+    -0.6560000000000001,
+    -0.266
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.7170000000000001,
+    0.016
+   ]
+  },
+  {
+   "id": "L",
+   "body": "CDLMNOP",
+   "at": [
+    0.853,
+    0.128
+   ]
+  },
+  {
+   "id": "M",
+   "body": "CDLMNOP",
+   "at": [
+    0.691,
+    0.347
+   ]
+  },
+  {
+   "id": "N",
+   "body": "CDLMNOP",
+   "at": [
+    0.611,
+    0.289
+   ]
+  },
+  {
+   "id": "O",
+   "body": "CDLMNOP",
+   "at": [
+    0.945,
+    -0.161
+   ]
+  },
+  {
+   "id": "P",
+   "body": "CDLMNOP",
+   "at": [
+    1.024,
+    -0.103
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

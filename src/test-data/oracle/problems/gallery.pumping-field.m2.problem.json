@@ -1,0 +1,208 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.pumping-field.m2",
+ "title": "Pumping field, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.pumping-field",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "HI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.10800867084972966,
+    -0.032096445602528105
+   ]
+  },
+  {
+   "id": "IJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.10900399243776847,
+    -0.0160068124421539
+   ]
+  },
+  {
+   "id": "JKL",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.13233333333333336,
+    0
+   ]
+  },
+  {
+   "id": "LM",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.16299999999999998,
+    -0.012961481396815721
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.10300935682392239,
+    -0.03217926632074842
+   ],
+   "bodies": [
+    "HI"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.11300798487553694,
+    -0.0320136248843078
+   ],
+   "bodies": [
+    "HI",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.105,
+    0
+   ],
+   "bodies": [
+    "IJ",
+    "JKL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.13,
+    0
+   ],
+   "bodies": [
+    "JKL"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "L",
+   "kind": "pin",
+   "at": [
+    0.162,
+    0
+   ],
+   "bodies": [
+    "JKL",
+    "LM"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "M",
+   "kind": "slider",
+   "at": [
+    0.16399999999999998,
+    -0.025922962793631443
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.16399999999999998,
+    -0.025922962793631443
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "LM"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "J",
+  "kind": "rotation",
+  "speed": 0.8377580409572781,
+  "bodies": [
+   "IJ",
+   "JKL"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    0.10300935682392239,
+    -0.03217926632074842
+   ]
+  },
+  {
+   "id": "I",
+   "body": "HI",
+   "at": [
+    0.11300798487553694,
+    -0.0320136248843078
+   ]
+  },
+  {
+   "id": "J",
+   "body": "IJ",
+   "at": [
+    0.105,
+    0
+   ]
+  },
+  {
+   "id": "K",
+   "body": "ground",
+   "at": [
+    0.13,
+    0
+   ]
+  },
+  {
+   "id": "L",
+   "body": "JKL",
+   "at": [
+    0.162,
+    0
+   ]
+  },
+  {
+   "id": "M",
+   "body": "LM",
+   "at": [
+    0.16399999999999998,
+    -0.025922962793631443
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "input J drives one link against another"
+ ]
+}

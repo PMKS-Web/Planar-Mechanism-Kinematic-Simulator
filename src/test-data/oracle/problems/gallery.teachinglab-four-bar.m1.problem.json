@@ -1,0 +1,185 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.teachinglab-four-bar.m1",
+ "title": "TeachingLab four-bar, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.teachinglab-four-bar",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABH",
+   "mass": 0.010458382,
+   "inertia": 5277.7966276354,
+   "com": [
+    -0.0638,
+    0.0239
+   ]
+  },
+  {
+   "id": "BCFG",
+   "mass": 0.0006262020000000001,
+   "inertia": 1087.1793503827,
+   "com": [
+    1.8573,
+    2.091
+   ]
+  },
+  {
+   "id": "CDEI",
+   "mass": 0.004901229,
+   "inertia": 6334.361803601,
+   "com": [
+    4.7256,
+    -0.20800000000000002
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ABH"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.0152,
+    0
+   ],
+   "bodies": [
+    "ABH",
+    "BCFG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.042300000000000004,
+    0.03029
+   ],
+   "bodies": [
+    "BCFG",
+    "CDEI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.045720000000000004,
+    0
+   ],
+   "bodies": [
+    "CDEI"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "ABH"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABH",
+   "at": [
+    0.0152,
+    0
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ABH",
+   "at": [
+    0.007598000000000001,
+    0.010278
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCFG",
+   "at": [
+    0.042300000000000004,
+    0.03029
+   ]
+  },
+  {
+   "id": "F",
+   "body": "BCFG",
+   "at": [
+    0.025480000000000003,
+    0.019579999999999997
+   ]
+  },
+  {
+   "id": "G",
+   "body": "BCFG",
+   "at": [
+    0.02053,
+    0.03543
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.045720000000000004,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDEI",
+   "at": [
+    0.0479,
+    0.016319999999999998
+   ]
+  },
+  {
+   "id": "I",
+   "body": "CDEI",
+   "at": [
+    0.041798,
+    0.01952
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

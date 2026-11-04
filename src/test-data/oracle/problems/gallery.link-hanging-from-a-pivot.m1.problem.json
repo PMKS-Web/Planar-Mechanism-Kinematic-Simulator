@@ -1,0 +1,163 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.link-hanging-from-a-pivot.m1",
+ "title": "Link hanging from a pivot, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.link-hanging-from-a-pivot",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0025,
+    0.005
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0175,
+    0.015
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.035,
+    0.01
+   ]
+  },
+  {
+   "id": "DE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.045,
+    0.006
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.005,
+    0.01
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0.02
+   ],
+   "bodies": [
+    "BC",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0
+   ],
+   "bodies": [
+    "CD",
+    "DE"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.005,
+    0.01
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0.03,
+    0.02
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.04,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "DE",
+   "at": [
+    0.05,
+    0.012
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

@@ -1,0 +1,358 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.hood-hinge.m1",
+ "title": "Template Hood_Hinge, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.hood-hinge",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AA1",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.01202,
+    0.0004
+   ]
+  },
+  {
+   "id": "BP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.02573,
+    0.00027000000000000006
+   ]
+  },
+  {
+   "id": "EFG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.015,
+    0.01076
+   ]
+  },
+  {
+   "id": "GH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.0255,
+    0.008
+   ]
+  },
+  {
+   "id": "BHIJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.04204,
+    0.008830000000000001
+   ]
+  },
+  {
+   "id": "FK",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.019379999999999998,
+    0.02085
+   ]
+  },
+  {
+   "id": "IKLMNO",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.0020499999999999997,
+    0.03003
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.0014000000000000002,
+    0.0005
+   ],
+   "bodies": [
+    "AA1"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "slider",
+   "at": [
+    0.0151,
+    0.00037
+   ],
+   "guide": "AA1",
+   "linePoint": [
+    0.0014000000000000002,
+    0.0005
+   ],
+   "axis": [
+    0.9999557122848368,
+    -0.009411347880327875
+   ],
+   "riders": [
+    "BP"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.03635,
+    0.00017
+   ],
+   "bodies": [
+    "BP",
+    "BHIJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.02025,
+    0.00557
+   ],
+   "bodies": [
+    "EFG"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.0017599999999999998,
+    0.014710000000000003
+   ],
+   "bodies": [
+    "EFG",
+    "FK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.023,
+    0.012
+   ],
+   "bodies": [
+    "EFG",
+    "GH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.027999999999999997,
+    0.004
+   ],
+   "bodies": [
+    "GH",
+    "BHIJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.06226,
+    0.02108
+   ],
+   "bodies": [
+    "BHIJ",
+    "IKLMNO"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.033280000000000004,
+    0.008100000000000001
+   ],
+   "bodies": [
+    "BHIJ"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.037000000000000005,
+    0.02699
+   ],
+   "bodies": [
+    "FK",
+    "IKLMNO"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "P",
+  "kind": "translation",
+  "speed": 0.001
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0.0014000000000000002,
+    0.0005
+   ]
+  },
+  {
+   "id": "A1",
+   "body": "AA1",
+   "at": [
+    0.02265,
+    0.0003
+   ]
+  },
+  {
+   "id": "P",
+   "body": "BP",
+   "at": [
+    0.0151,
+    0.00037
+   ]
+  },
+  {
+   "id": "B",
+   "body": "BP",
+   "at": [
+    0.03635,
+    0.00017
+   ]
+  },
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.02025,
+    0.00557
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EFG",
+   "at": [
+    0.0017599999999999998,
+    0.014710000000000003
+   ]
+  },
+  {
+   "id": "G",
+   "body": "EFG",
+   "at": [
+    0.023,
+    0.012
+   ]
+  },
+  {
+   "id": "H",
+   "body": "GH",
+   "at": [
+    0.027999999999999997,
+    0.004
+   ]
+  },
+  {
+   "id": "I",
+   "body": "BHIJ",
+   "at": [
+    0.06226,
+    0.02108
+   ]
+  },
+  {
+   "id": "J",
+   "body": "ground",
+   "at": [
+    0.033280000000000004,
+    0.008100000000000001
+   ]
+  },
+  {
+   "id": "K",
+   "body": "FK",
+   "at": [
+    0.037000000000000005,
+    0.02699
+   ]
+  },
+  {
+   "id": "L",
+   "body": "IKLMNO",
+   "at": [
+    0.01643,
+    0.03134
+   ]
+  },
+  {
+   "id": "M",
+   "body": "IKLMNO",
+   "at": [
+    -0.0059,
+    0.032959999999999996
+   ]
+  },
+  {
+   "id": "N",
+   "body": "IKLMNO",
+   "at": [
+    -0.026659999999999996,
+    0.03153
+   ]
+  },
+  {
+   "id": "O",
+   "body": "IKLMNO",
+   "at": [
+    -0.04485,
+    0.027010000000000003
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at P: stroke limits"
+ ]
+}

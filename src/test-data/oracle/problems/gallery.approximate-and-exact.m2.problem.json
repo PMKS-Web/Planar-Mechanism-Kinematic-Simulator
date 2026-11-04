@@ -1,0 +1,229 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.approximate-and-exact.m2",
+ "title": "Approximate and exact, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.approximate-and-exact",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "HI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.11866025403784437,
+    -0.01
+   ]
+  },
+  {
+   "id": "GJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.13106538619908142,
+    0.0015371063926230822
+   ]
+  },
+  {
+   "id": "GK",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.11112651477289483,
+    -0.009974606392623082
+   ]
+  },
+  {
+   "id": "JI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.1397256402369258,
+    -0.013462893607376918
+   ]
+  },
+  {
+   "id": "KI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.1197867688107392,
+    -0.024974606392623083
+   ]
+  },
+  {
+   "id": "JL",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.1445970331332133,
+    -0.021900393607376924
+   ]
+  },
+  {
+   "id": "KL",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.1246581617070267,
+    -0.03341210639262309
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.11,
+    -0.005
+   ],
+   "bodies": [
+    "HI"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.12732050807568876,
+    -0.015
+   ],
+   "bodies": [
+    "HI",
+    "JI",
+    "KI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.11,
+    0.015
+   ],
+   "bodies": [
+    "GJ",
+    "GK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.15213077239816283,
+    -0.011925787214753836
+   ],
+   "bodies": [
+    "GJ",
+    "JI",
+    "JL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.11225302954578968,
+    -0.03494921278524617
+   ],
+   "bodies": [
+    "GK",
+    "KI",
+    "KL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "L",
+   "kind": "pin",
+   "at": [
+    0.1370632938682637,
+    -0.031875000000000014
+   ],
+   "bodies": [
+    "JL",
+    "KL"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "H",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "HI"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    0.11,
+    -0.005
+   ]
+  },
+  {
+   "id": "I",
+   "body": "HI",
+   "at": [
+    0.12732050807568876,
+    -0.015
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.11,
+    0.015
+   ]
+  },
+  {
+   "id": "J",
+   "body": "GJ",
+   "at": [
+    0.15213077239816283,
+    -0.011925787214753836
+   ]
+  },
+  {
+   "id": "K",
+   "body": "GK",
+   "at": [
+    0.11225302954578968,
+    -0.03494921278524617
+   ]
+  },
+  {
+   "id": "L",
+   "body": "JL",
+   "at": [
+    0.1370632938682637,
+    -0.031875000000000014
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

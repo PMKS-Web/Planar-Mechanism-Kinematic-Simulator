@@ -1,0 +1,356 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.one-follower-and-one-surplus.m1",
+ "title": "One follower and one surplus, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.one-follower-and-one-surplus",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0,
+    0.01
+   ]
+  },
+  {
+   "id": "BCP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.035,
+    0.03166666666666666
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.065,
+    0.015
+   ]
+  },
+  {
+   "id": "NP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04649256561419831,
+    0.02559664701542192
+   ]
+  },
+  {
+   "id": "GS",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04850743438580169,
+    -0.0005966470154219205
+   ]
+  },
+  {
+   "id": "HP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0625,
+    0.0475
+   ]
+  },
+  {
+   "id": "HM",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.08863800000000001,
+    0.038482666666666665
+   ]
+  },
+  {
+   "id": "KT",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.101362,
+    0.021517333333333336
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.02
+   ],
+   "bodies": [
+    "AB",
+    "BCP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.06,
+    0.03
+   ],
+   "bodies": [
+    "BCP",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.045,
+    0.045
+   ],
+   "bodies": [
+    "BCP",
+    "NP",
+    "HP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.07,
+    0
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.05,
+    -0.02
+   ],
+   "bodies": [
+    "GS"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.04701486877160337,
+    0.018806705969156158
+   ],
+   "guide": "NP",
+   "linePoint": [
+    0.045,
+    0.045
+   ],
+   "axis": [
+    0.07669649888473697,
+    -0.9970544855015816
+   ],
+   "riders": [
+    "GS"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.08,
+    0.05
+   ],
+   "bodies": [
+    "HP",
+    "HM"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.11,
+    0.01
+   ],
+   "bodies": [
+    "KT"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "T",
+   "kind": "slider",
+   "at": [
+    0.092724,
+    0.033034666666666664
+   ],
+   "guide": "HM",
+   "linePoint": [
+    0.08,
+    0.05
+   ],
+   "axis": [
+    0.6000000000000002,
+    -0.7999999999999998
+   ],
+   "riders": [
+    "KT"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.02
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCP",
+   "at": [
+    0.06,
+    0.03
+   ]
+  },
+  {
+   "id": "P",
+   "body": "BCP",
+   "at": [
+    0.045,
+    0.045
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.07,
+    0
+   ]
+  },
+  {
+   "id": "N",
+   "body": "NP",
+   "at": [
+    0.04798513122839663,
+    0.006193294030843846
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.05,
+    -0.02
+   ]
+  },
+  {
+   "id": "S",
+   "body": "GS",
+   "at": [
+    0.04701486877160337,
+    0.018806705969156158
+   ]
+  },
+  {
+   "id": "H",
+   "body": "HP",
+   "at": [
+    0.08,
+    0.05
+   ]
+  },
+  {
+   "id": "M",
+   "body": "HM",
+   "at": [
+    0.09727600000000002,
+    0.02696533333333333
+   ]
+  },
+  {
+   "id": "K",
+   "body": "ground",
+   "at": [
+    0.11,
+    0.01
+   ]
+  },
+  {
+   "id": "T",
+   "body": "KT",
+   "at": [
+    0.092724,
+    0.033034666666666664
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at S: stroke limits",
+  "cylinder at T: stroke limits"
+ ]
+}

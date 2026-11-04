@@ -1,0 +1,145 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.three-machines-three-drives.m3",
+ "title": "Three machines, three drives, M3",
+ "source": {
+  "kind": "published",
+  "case": "gallery.three-machines-three-drives",
+  "machine": "M3"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "HI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.01,
+    0.065
+   ]
+  },
+  {
+   "id": "IJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.023370956367418587,
+    0.07679834728596506
+   ]
+  },
+  {
+   "id": "JK",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.04087095636741859,
+    0.07179834728596506
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0.06
+   ],
+   "bodies": [
+    "HI"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0.07
+   ],
+   "bodies": [
+    "HI",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.03674191273483717,
+    0.08359669457193011
+   ],
+   "bodies": [
+    "IJ",
+    "JK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.045,
+    0.06
+   ],
+   "bodies": [
+    "JK"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "H",
+  "kind": "rotation",
+  "speed": 1.2566370614359172,
+  "bodies": [
+   "ground",
+   "HI"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    0.01,
+    0.06
+   ]
+  },
+  {
+   "id": "I",
+   "body": "HI",
+   "at": [
+    0.01,
+    0.07
+   ]
+  },
+  {
+   "id": "J",
+   "body": "IJ",
+   "at": [
+    0.03674191273483717,
+    0.08359669457193011
+   ]
+  },
+  {
+   "id": "K",
+   "body": "ground",
+   "at": [
+    0.045,
+    0.06
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

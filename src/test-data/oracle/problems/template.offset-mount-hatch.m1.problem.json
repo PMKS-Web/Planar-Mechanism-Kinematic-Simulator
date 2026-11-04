@@ -1,0 +1,183 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.offset-mount-hatch.m1",
+ "title": "Template Offset_Mount_Hatch, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.offset-mount-hatch",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "GAN",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005153333333333335,
+    0
+   ]
+  },
+  {
+   "id": "SBE",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.051513333333333335,
+    0.0033333333333333327
+   ]
+  },
+  {
+   "id": "OET",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.07,
+    0.01
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    -0.02,
+    0
+   ],
+   "bodies": [
+    "GAN"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.024540000000000003,
+    0
+   ],
+   "guide": "GAN",
+   "linePoint": [
+    0,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "SBE"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.07,
+    0.01
+   ],
+   "bodies": [
+    "SBE",
+    "OET"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0.05,
+    -0.02
+   ],
+   "bodies": [
+    "OET"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "S",
+  "kind": "translation",
+  "speed": -0.006
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    -0.02,
+    0
+   ]
+  },
+  {
+   "id": "A",
+   "body": "GAN",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "N",
+   "body": "GAN",
+   "at": [
+    0.035460000000000005,
+    0
+   ]
+  },
+  {
+   "id": "S",
+   "body": "SBE",
+   "at": [
+    0.024540000000000003,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "SBE",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "SBE",
+   "at": [
+    0.07,
+    0.01
+   ]
+  },
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0.05,
+    -0.02
+   ]
+  },
+  {
+   "id": "T",
+   "body": "OET",
+   "at": [
+    0.09,
+    0.04
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at S: stroke limits"
+ ]
+}

@@ -1,0 +1,143 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.slider-crank-inversions.m3",
+ "title": "Template Slider_Crank_Inversions, M3",
+ "source": {
+  "kind": "published",
+  "case": "template.slider-crank-inversions",
+  "machine": "M3"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "JK",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.004596266658713867,
+    0.0038567256581192367
+   ]
+  },
+  {
+   "id": "MN",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.0045101243606373706,
+    0.004710121548827405
+   ]
+  },
+  {
+   "id": "JM",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.013000000000000001,
+    0
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "JK",
+    "JM"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "slider",
+   "at": [
+    -0.009192533317427734,
+    0.007713451316238473
+   ],
+   "guide": "MN",
+   "linePoint": [
+    0.026000000000000002,
+    0
+   ],
+   "axis": [
+    -0.976812529061938,
+    0.2140964340376095
+   ],
+   "riders": [
+    "JK"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "M",
+   "kind": "pin",
+   "at": [
+    0.026000000000000002,
+    0
+   ],
+   "bodies": [
+    "MN",
+    "JM"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "J",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "JK"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "J",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "K",
+   "body": "JK",
+   "at": [
+    -0.009192533317427734,
+    0.007713451316238473
+   ]
+  },
+  {
+   "id": "M",
+   "body": "ground",
+   "at": [
+    0.026000000000000002,
+    0
+   ]
+  },
+  {
+   "id": "N",
+   "body": "MN",
+   "at": [
+    -0.01697975127872526,
+    0.00942024309765481
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot K: slot-end limits"
+ ]
+}

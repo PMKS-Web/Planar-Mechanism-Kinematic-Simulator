@@ -1,0 +1,145 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.drag-link.m1",
+ "title": "Drag link, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.drag-link",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0,
+    0.011000000000000001
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.01231068637328467,
+    0.017823039260583942
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.01731068637328467,
+    0.006823039260583941
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.022000000000000002
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.02462137274656934,
+    0.013646078521167882
+   ],
+   "bodies": [
+    "BC",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.022000000000000002
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0.02462137274656934,
+    0.013646078521167882
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.01,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

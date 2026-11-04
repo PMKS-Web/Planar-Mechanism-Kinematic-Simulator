@@ -1,0 +1,194 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.four-bar-on-a-passive-cylinder.m1",
+ "title": "Four-bar on a passive cylinder, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.four-bar-on-a-passive-cylinder",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0,
+    0.015
+   ]
+  },
+  {
+   "id": "BN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.017760885792901034,
+    0.03296014763215017
+   ]
+  },
+  {
+   "id": "CS",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.042239114207098964,
+    0.03703985236784983
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.065,
+    0.02
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.03
+   ],
+   "bodies": [
+    "AB",
+    "BN"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.06,
+    0.04
+   ],
+   "bodies": [
+    "CS",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.024478228414197934,
+    0.03407970473569966
+   ],
+   "guide": "BN",
+   "linePoint": [
+    0,
+    0.03
+   ],
+   "axis": [
+    0.9863939238321437,
+    0.1643989873053572
+   ],
+   "riders": [
+    "CS"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.07,
+    0
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.03
+   ]
+  },
+  {
+   "id": "N",
+   "body": "BN",
+   "at": [
+    0.03552177158580207,
+    0.03592029526430034
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CS",
+   "at": [
+    0.06,
+    0.04
+   ]
+  },
+  {
+   "id": "S",
+   "body": "CS",
+   "at": [
+    0.024478228414197934,
+    0.03407970473569966
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.07,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at S: stroke limits"
+ ]
+}

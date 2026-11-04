@@ -1,9 +1,11 @@
 # An independent numerical oracle for every verification mechanism
 
-> **Status:** Phase 0 built, 2026-11-03: the contract, the non-solving builder, nine raw benchmark
-> cases and the trial of three libraries. **Exudyn is chosen**, with Simbody as the cross-engine
-> check (see [Phase 0 results](#phase-0-results)). The plan was revised the same day after an
-> external review (see [Review history](#review-history)). Phases 1 to 4 follow.
+> **Status:** Phases 0 and 1 built, 2026-11-04. **Exudyn is chosen**, with Simbody as the
+> cross-engine check (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **97
+> are verified** against the oracle (one in its poses only) and **33 agree they do not run**; **72
+> are excluded**: 68 wait for the Phase 3 exporter and 4 are excluded by the manifest. There are
+> **2 disagreements**, each with an issue (see [Phase 1 results](#phase-1-results)). The plan was
+> revised on 2026-11-03 after an external review (see [Review history](#review-history)).
 
 ## The problem
 
@@ -265,6 +267,70 @@ mass, local versus global loads, and every unit and speed conversion.
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
 
+## Phase 1 results
+
+Measured on 2026-11-04. `npm run oracle` exports every published machine, solves it and writes
+`src/test-data/oracle/`; `oracle.spec.ts` compares; the whole regeneration takes about 40 seconds
+and the comparison about 10.
+
+### What is compared, and how
+
+- **Published cases.** Every `FIXTURE_GALLERY` entry, as `npm run fixture-urls` links it, and
+  every template as the library dialog stores it: 157 drawings, 202 machines. Each machine is
+  exported from its decoded URL by `src/test-utils/oracle/export-problem.ts`, which reads the start
+  pose only. Units come from its own table (`si-units.ts`), not the app's.
+- **PMKS+ is sampled at whole degrees** (`'degree'`), and each frame is placed on the oracle's grid
+  by its driver coordinate. Adaptive sampling adds frames between grid points and agrees with
+  `'degree'` on which machines run, for all 202.
+- **Whether it runs.** PMKS+ must run exactly the machines the oracle can walk. A full rotation must
+  close after the same number of turns. A rocker must reverse at the same grid samples the oracle's
+  refined toggles bound, which every rocker does.
+- **Scale.** Every error is divided by the machine's own size L, by L·Ω or by L·Ω², so one budget
+  serves every machine.
+- **Conditioning.** Above a driven-Jacobian condition number of 10³, only positions are compared:
+  a rate there is the pose's error amplified once or twice by the conditioning. The oracle's own
+  acceleration at such a pose was checked by differencing its velocities, which converges to it as
+  δ².
+- **Differenced rates** (what PMKS+ fills by `fillRatesByDifference`) are `undefined` at the last
+  sample before a reversal, where the difference reaches across the turn.
+
+### The budgets, from the measurement
+
+| Method | Order | Worst measured | Budget |
+| --- | --- | --- | --- |
+| Pose | position | 1.8×10⁻⁸ (the last sample before a toggle) | 1×10⁻⁷ |
+| Analytic | velocity | 6.9×10⁻⁹ | 1×10⁻⁷ |
+| Analytic | acceleration | 8.3×10⁻⁷ (near the conditioning limit) | 1×10⁻⁵ |
+| Differenced | velocity | not yet exercised by a verified machine | 1×10⁻³ |
+| Differenced | acceleration | not yet exercised by a verified machine | 1×10⁻² |
+
+The median error is about 10⁻¹⁰. The differenced budgets come from the method (a central
+difference over 1° is about 5×10⁻⁵ of a sinusoid's speed); the machines that use them are Phase 3's.
+
+### The MATLAB cases, three ways
+
+The five MATLAB v1 cases are problems read straight from their fixtures by
+`fixture-problem.ts`, with no PMKS+ model class or codec in between, and `oracle-matlab.spec.ts`
+compares the oracle to each table at the precision the table claims for itself. The worst error is
+2×10⁻⁵ of that tolerance. With the existing MATLAB specs and the published versions of the same
+fixtures in `oracle.spec.ts`, the three agree three ways.
+
+### Disagreements and exclusions
+
+In `src/test-data/oracle/manifest.ts`:
+
+| Machine | Kind | What | Issue |
+| --- | --- | --- | --- |
+| Slider-crank whose rod comes square to the guide | disagreement | PMKS+ refuses the published URL (`cycle-never-closes`); the oracle and the directly built fixture both close it after two turns | [#77][i77] |
+| Four-bar with two inputs | disagreement | The coupler's analytic angular velocity is wrong (0.1625 rad/s where PMKS+'s own joint velocities and the oracle give 0.1745), and the blank joint rates are differenced outside budget | [#78][i78] |
+| Four-bar with a second crank on its input | by design | PMKS+ refuses three bodies at a driven pin; the physics runs | — |
+| MotionGen gripper | oracle limitation | A first-order freedom that dies at second order; the oracle's rank test is first order | Phase 4 |
+| Crank-rocker driven from the rocker at its limit | oracle limitation | The drawn pose is the driver's dead point | — |
+
+The other 68 excluded machines are those whose problem names something the Phase 1 exporter does
+not yet write down: a floating slot's ends, a cylinder's stroke, or an input that turns one link
+against another. Phase 3 takes them.
+
 ## Phase 0 results
 
 Measured on 2026-11-03 on macOS (Apple silicon). Everything the trial used is pinned:
@@ -357,8 +423,8 @@ and proves the guard can fail by expecting some from `buildMechanism`.
 ### Left to later phases
 
 - **Tolerance budgets.** PMKS+ samples at whole degrees and cannot easily be run at ½° or ¼°, so
-  the step-refinement experiment moves to Phase 1, where PMKS+ is measured against the oracle per
-  method. The oracle's own error is already far below any budget that will come out of it.
+  the step-refinement experiment moved to Phase 1, where PMKS+ was measured against the oracle per
+  method (see [Phase 1 results](#phase-1-results)).
 - **Determinism on pinned Linux and the cold CI install time** are measured by the `oracle` CI job
   that Phase 1 adds. There is no Linux machine in this trial.
 
@@ -421,6 +487,8 @@ Settled with the team on 2026-11-03:
 
 [miet]: https://bamason2.github.io/miet2510-module/tutorials/Week+2+Tutorial.html "MIET2510 Week 2 tutorial"
 [ttu]: http://ttu-dom.wikidot.com/example-item-1 "TTU Dynamics of Machinery II: Force Analysis - 4 Bar"
+[i77]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/77 "Issue 77"
+[i78]: https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/78 "Issue 78"
 [metu]: https://ocw.metu.edu.tr/pluginfile.php/6467/mod_resource/content/6/ch6/6-5.htm "METU OCW ME 301, 6.4 Dynamic force analysis of machinery"
 [exudyn]: https://exudyn.readthedocs.io/ "Exudyn documentation"
 [simbody]: https://simbody.github.io/ "Simbody"

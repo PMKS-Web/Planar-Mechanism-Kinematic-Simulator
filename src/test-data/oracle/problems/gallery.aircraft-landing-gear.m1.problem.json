@@ -1,0 +1,167 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.aircraft-landing-gear.m1",
+ "title": "Aircraft landing gear, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.aircraft-landing-gear",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.025199961883371425,
+    -0.006210369523457081
+   ]
+  },
+  {
+   "id": "DE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.011590976752306083,
+    0.009248312356317175
+   ]
+  },
+  {
+   "id": "BF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.020828972153453407,
+    0.000729397279700851
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.023,
+    0.002
+   ],
+   "bodies": [
+    "ABC"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.02416468570296134,
+    -0.0023466662183008074
+   ],
+   "bodies": [
+    "ABC",
+    "BF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.008255263202798149,
+    0.012324375854318835
+   ],
+   "bodies": [
+    "DE"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "slider",
+   "at": [
+    0.017493258603945475,
+    0.0038054607777025097
+   ],
+   "guide": "DE",
+   "linePoint": [
+    0.008255263202798149,
+    0.012324375854318835
+   ],
+   "axis": [
+    0.7351391030981174,
+    -0.6779162921010938
+   ],
+   "riders": [
+    "BF"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "F",
+  "kind": "translation",
+  "speed": -0.0034999999999999996
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0.023,
+    0.002
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABC",
+   "at": [
+    0.02416468570296134,
+    -0.0023466662183008074
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ABC",
+   "at": [
+    0.028435199947152934,
+    -0.018284442352070437
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.008255263202798149,
+    0.012324375854318835
+   ]
+  },
+  {
+   "id": "E",
+   "body": "DE",
+   "at": [
+    0.014926690301814016,
+    0.006172248858315516
+   ]
+  },
+  {
+   "id": "F",
+   "body": "BF",
+   "at": [
+    0.017493258603945475,
+    0.0038054607777025097
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at F: stroke limits"
+ ]
+}

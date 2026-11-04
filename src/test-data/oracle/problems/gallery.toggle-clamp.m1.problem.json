@@ -1,0 +1,159 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.toggle-clamp.m1",
+ "title": "Toggle clamp, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.toggle-clamp",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "HE",
+   "mass": 0.0015,
+   "inertia": 0.000005,
+   "com": [
+    -0.016,
+    0.017
+   ]
+  },
+  {
+   "id": "EP",
+   "mass": 0.001,
+   "inertia": 0.000008000000000000001,
+   "com": [
+    0.005,
+    0.009250000000000001
+   ]
+  },
+  {
+   "id": "NP",
+   "mass": 0.002,
+   "inertia": 0.00002,
+   "com": [
+    0.0010000000000000009,
+    -0.00125
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    -0.026000000000000002,
+    0.019
+   ],
+   "bodies": [
+    "HE"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    -0.006,
+    0.015
+   ],
+   "bodies": [
+    "HE",
+    "EP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.016,
+    0.0034999999999999996
+   ],
+   "bodies": [
+    "EP",
+    "NP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "N",
+   "kind": "pin",
+   "at": [
+    -0.013999999999999999,
+    -0.006
+   ],
+   "bodies": [
+    "NP"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "H",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "HE"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "NP",
+   "at": [
+    0.016,
+    0.0034999999999999996
+   ],
+   "vector": [
+    1.1021821192326179e-14,
+    180
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    -0.026000000000000002,
+    0.019
+   ]
+  },
+  {
+   "id": "E",
+   "body": "HE",
+   "at": [
+    -0.006,
+    0.015
+   ]
+  },
+  {
+   "id": "P",
+   "body": "EP",
+   "at": [
+    0.016,
+    0.0034999999999999996
+   ]
+  },
+  {
+   "id": "N",
+   "body": "ground",
+   "at": [
+    -0.013999999999999999,
+    -0.006
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

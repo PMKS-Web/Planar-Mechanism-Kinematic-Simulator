@@ -1,0 +1,313 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.rocker-that-swings-more-than-a-turn.m1",
+ "title": "Rocker that swings more than a turn, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.rocker-that-swings-more-than-a-turn",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ACD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.005523333333333333,
+    0.00977
+   ]
+  },
+  {
+   "id": "CE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.018054999999999998,
+    0.026150000000000003
+   ]
+  },
+  {
+   "id": "EFG",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04492,
+    0.027483333333333335
+   ]
+  },
+  {
+   "id": "BFJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.05407,
+    0.016643333333333336
+   ]
+  },
+  {
+   "id": "DHI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02645333333333333,
+    0.00392
+   ]
+  },
+  {
+   "id": "GH",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.03903,
+    0.016670000000000004
+   ]
+  },
+  {
+   "id": "IJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.039175,
+    0.007395
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.00154,
+    0.00528
+   ],
+   "bodies": [
+    "ACD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.0097,
+    0.021230000000000002
+   ],
+   "bodies": [
+    "ACD",
+    "CE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.008409999999999999,
+    0.0028000000000000004
+   ],
+   "bodies": [
+    "ACD",
+    "DHI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.02641,
+    0.031070000000000007
+   ],
+   "bodies": [
+    "CE",
+    "EFG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.0617,
+    0.031070000000000007
+   ],
+   "bodies": [
+    "EFG",
+    "BFJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.046650000000000004,
+    0.02031
+   ],
+   "bodies": [
+    "EFG",
+    "GH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.0617,
+    0
+   ],
+   "bodies": [
+    "BFJ"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.03881,
+    0.01886
+   ],
+   "bodies": [
+    "BFJ",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.03141,
+    0.01303
+   ],
+   "bodies": [
+    "DHI",
+    "GH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.039540000000000006,
+    -0.00407
+   ],
+   "bodies": [
+    "DHI",
+    "IJ"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "ACD"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.00154,
+    0.00528
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ACD",
+   "at": [
+    0.0097,
+    0.021230000000000002
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ACD",
+   "at": [
+    0.008409999999999999,
+    0.0028000000000000004
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CE",
+   "at": [
+    0.02641,
+    0.031070000000000007
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EFG",
+   "at": [
+    0.0617,
+    0.031070000000000007
+   ]
+  },
+  {
+   "id": "G",
+   "body": "EFG",
+   "at": [
+    0.046650000000000004,
+    0.02031
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ground",
+   "at": [
+    0.0617,
+    0
+   ]
+  },
+  {
+   "id": "J",
+   "body": "BFJ",
+   "at": [
+    0.03881,
+    0.01886
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DHI",
+   "at": [
+    0.03141,
+    0.01303
+   ]
+  },
+  {
+   "id": "I",
+   "body": "DHI",
+   "at": [
+    0.039540000000000006,
+    -0.00407
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

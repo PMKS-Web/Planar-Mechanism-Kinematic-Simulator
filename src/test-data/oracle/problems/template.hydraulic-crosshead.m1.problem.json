@@ -1,0 +1,152 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.hydraulic-crosshead.m1",
+ "title": "Template Hydraulic_Crosshead, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.hydraulic-crosshead",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ANG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.01220344827586207,
+    -0.006666666666666665
+   ]
+  },
+  {
+   "id": "SBCD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.05084741379310345,
+    0
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ANG"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0,
+    -0.02
+   ],
+   "bodies": [
+    "ANG"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.023389655172413794,
+    0
+   ],
+   "guide": "ANG",
+   "linePoint": [
+    0,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "SBCD"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "S",
+  "kind": "translation",
+  "speed": -0.01
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "N",
+   "body": "ANG",
+   "at": [
+    0.03661034482758621,
+    0
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0,
+    -0.02
+   ]
+  },
+  {
+   "id": "S",
+   "body": "SBCD",
+   "at": [
+    0.023389655172413794,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "SBCD",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "SBCD",
+   "at": [
+    0.06,
+    0.018000000000000002
+   ]
+  },
+  {
+   "id": "D",
+   "body": "SBCD",
+   "at": [
+    0.06,
+    -0.018000000000000002
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at S: stroke limits"
+ ]
+}

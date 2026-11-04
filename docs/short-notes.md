@@ -13,6 +13,15 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### `__dirname` in a shared test helper points somewhere else in the full run
+
+A spec file can resolve paths from its own `__dirname`, as `fixture-gallery.spec.ts` does. A
+helper under `src/test-utils/` cannot: run alone with `--include`, it sees its own directory, but
+in the full `npm test` the build moves shared modules into a chunk, and three levels up from there
+was the main checkout rather than the worktree. The oracle helpers read the repository root from
+`process.cwd()`, which `ng test` sets, and `REPOSITORY_ROOT` in `src/test-utils/oracle/reference.ts`
+says so.
+
 ### A throwing spy inside `Mechanism` is swallowed, so a "no solver" guard counts calls
 
 `new Mechanism(...)` catches what its solvers throw and carries on with an empty cycle. A spec

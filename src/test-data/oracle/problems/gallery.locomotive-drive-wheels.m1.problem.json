@@ -1,0 +1,221 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.locomotive-drive-wheels.m1",
+ "title": "Locomotive drive wheels, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.locomotive-drive-wheels",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0,
+    -0.0016666666666666663
+   ]
+  },
+  {
+   "id": "DEF",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.03,
+    -0.0016666666666666663
+   ]
+  },
+  {
+   "id": "GHI",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.06,
+    -0.0016666666666666663
+   ]
+  },
+  {
+   "id": "BEH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.03,
+    0.006999999999999998
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ABC"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.006999999999999999
+   ],
+   "bodies": [
+    "ABC",
+    "BEH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0
+   ],
+   "bodies": [
+    "DEF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0.006999999999999999
+   ],
+   "bodies": [
+    "DEF",
+    "BEH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.06,
+    0
+   ],
+   "bodies": [
+    "GHI"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.06,
+    0.006999999999999999
+   ],
+   "bodies": [
+    "GHI",
+    "BEH"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "D",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "DEF"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABC",
+   "at": [
+    0,
+    0.006999999999999999
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ABC",
+   "at": [
+    0,
+    -0.012
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.03,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "DEF",
+   "at": [
+    0.03,
+    0.006999999999999999
+   ]
+  },
+  {
+   "id": "F",
+   "body": "DEF",
+   "at": [
+    0.03,
+    -0.012
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "H",
+   "body": "GHI",
+   "at": [
+    0.06,
+    0.006999999999999999
+   ]
+  },
+  {
+   "id": "I",
+   "body": "GHI",
+   "at": [
+    0.06,
+    -0.012
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

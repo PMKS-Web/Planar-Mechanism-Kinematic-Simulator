@@ -1,0 +1,131 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.engine-with-a-flywheel.m1",
+ "title": "Engine with a flywheel, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.engine-with-a-flywheel",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABR",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.001333333333333333,
+    0
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.027999999999999997,
+    0
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ABR"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0
+   ],
+   "bodies": [
+    "ABR",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.046,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.046,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "BC"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "ABR"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABR",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "R",
+   "body": "ABR",
+   "at": [
+    -0.013999999999999999,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0.046,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

@@ -1,0 +1,286 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.excavator-bucket.m1",
+ "title": "Template Excavator_Bucket, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.excavator-bucket",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABCH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.007970000000000001,
+    0.0073
+   ]
+  },
+  {
+   "id": "CDL",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.00455,
+    0.0022500000000000003
+   ]
+  },
+  {
+   "id": "AA1",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.006679999999999999,
+    0.01118
+   ]
+  },
+  {
+   "id": "DM",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.00117,
+    0.0072499999999999995
+   ]
+  },
+  {
+   "id": "DE",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.011930000000000001,
+    -0.00099
+   ]
+  },
+  {
+   "id": "BEIJK",
+   "mass": 0.5,
+   "inertia": 0.000013600000000000002,
+   "com": [
+    0.017410000000000005,
+    -0.013090000000000003
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.01452,
+    0.01511
+   ],
+   "bodies": [
+    "ABCH",
+    "AA1"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.010629999999999999,
+    -0.00985
+   ],
+   "bodies": [
+    "ABCH",
+    "BEIJK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.0005,
+    0.00039
+   ],
+   "bodies": [
+    "ABCH",
+    "CDL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    -0.02094,
+    0.017390000000000003
+   ],
+   "bodies": [
+    "ABCH"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.009010000000000002,
+    0.00332
+   ],
+   "bodies": [
+    "CDL",
+    "DM",
+    "DE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "M",
+   "kind": "slider",
+   "at": [
+    -0.006679999999999999,
+    0.01118
+   ],
+   "guide": "AA1",
+   "linePoint": [
+    -0.01452,
+    0.01511
+   ],
+   "axis": [
+    0.8940850232850301,
+    -0.44789727743915464
+   ],
+   "riders": [
+    "DM"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.01484,
+    -0.0053
+   ],
+   "bodies": [
+    "DE",
+    "BEIJK"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "M",
+  "kind": "translation",
+  "speed": -0.01
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.01452,
+    0.01511
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABCH",
+   "at": [
+    0.010629999999999999,
+    -0.00985
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ABCH",
+   "at": [
+    0.0005,
+    0.00039
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    -0.02094,
+    0.017390000000000003
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CDL",
+   "at": [
+    0.009010000000000002,
+    0.00332
+   ]
+  },
+  {
+   "id": "L",
+   "body": "CDL",
+   "at": [
+    0.00414,
+    0.00304
+   ]
+  },
+  {
+   "id": "A1",
+   "body": "AA1",
+   "at": [
+    0.00117,
+    0.0072499999999999995
+   ]
+  },
+  {
+   "id": "M",
+   "body": "DM",
+   "at": [
+    -0.006679999999999999,
+    0.01118
+   ]
+  },
+  {
+   "id": "E",
+   "body": "DE",
+   "at": [
+    0.01484,
+    -0.0053
+   ]
+  },
+  {
+   "id": "I",
+   "body": "BEIJK",
+   "at": [
+    0.02,
+    -0.015
+   ]
+  },
+  {
+   "id": "J",
+   "body": "BEIJK",
+   "at": [
+    0.013000000000000001,
+    -0.022000000000000002
+   ]
+  },
+  {
+   "id": "K",
+   "body": "BEIJK",
+   "at": [
+    0.0207,
+    -0.00986
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at M: stroke limits"
+ ]
+}

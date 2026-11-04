@@ -1,0 +1,131 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.slider-crank-with-a-tracer.m1",
+ "title": "Slider-crank with a tracer, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.slider-crank-with-a-tracer",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.005,
+   "inertia": 0.00001,
+   "com": [
+    0.02,
+    0.01
+   ]
+  },
+  {
+   "id": "BCD",
+   "mass": 0.01,
+   "inertia": 0.00002,
+   "com": [
+    0.12,
+    0.01333333333333333
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0.02
+   ],
+   "bodies": [
+    "AB",
+    "BCD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.12,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.12,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "BCD"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.04,
+    0.02
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCD",
+   "at": [
+    0.12,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "BCD",
+   "at": [
+    0.2,
+    0.02
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

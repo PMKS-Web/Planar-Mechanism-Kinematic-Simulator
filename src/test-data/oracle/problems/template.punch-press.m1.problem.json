@@ -1,0 +1,137 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.punch-press.m1",
+ "title": "Template Punch_Press, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.punch-press",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.2,
+   "inertia": 0.0005,
+   "com": [
+    0,
+    0.006
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.3,
+   "inertia": 0.004,
+   "com": [
+    0,
+    -0.0040999999999999995
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.012
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0,
+    -0.034
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0,
+    -0.034
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "BC"
+   ],
+   "rotates": true,
+   "blockMass": 0.6
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "BC",
+   "at": [
+    0,
+    -0.034
+   ],
+   "vector": [
+    2.4492935982947064e-16,
+    4
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.012
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0,
+    -0.034
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

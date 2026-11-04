@@ -1,6 +1,6 @@
 """Command line: solve problem files into reference files.
 
-    uv run python -m pmks_oracle.run PROBLEM.json [PROBLEM.json ...] --out DIR
+    uv run python -m pmks_oracle.run PROBLEM.json [PROBLEM.json ...] --out DIR [--prune]
 
 Each PROBLEM.json becomes DIR/<id>.reference.json. The generator's own source
 is hashed into every reference, so a change to the oracle makes every
@@ -14,6 +14,8 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+
+import exudyn as exu
 
 from .problem import load_problem
 from .reference import generator_info, solve
@@ -33,7 +35,8 @@ def source_sha256() -> str:
 
 
 def write_json(path: Path, data: dict) -> None:
-    text = json.dumps(data, indent=1, sort_keys=True, ensure_ascii=False, allow_nan=False)
+    # One line: these files are generated, compared by a spec, and never read by hand.
+    text = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
     path.write_text(text + "\n", encoding="utf-8")
 
 
@@ -41,20 +44,37 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("problems", nargs="+", type=Path)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="delete references in --out whose problem is not among PROBLEMS",
+    )
     args = parser.parse_args(argv)
     args.out.mkdir(parents=True, exist_ok=True)
+    # Exudyn announces every solver it initializes; one reference per machine
+    # makes that hundreds of lines.
+    exu.config.printToConsole = False
     generator = generator_info(source_sha256())
     failures = 0
     for path in args.problems:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        data = path.read_bytes()
+        raw = json.loads(data.decode("utf-8"))
         try:
-            reference = solve(load_problem(raw), generator)
+            # The bytes are hashed, not a re-serialization: the exporter that wrote
+            # them is TypeScript, and the two languages print some floats differently.
+            reference = solve(load_problem(raw), generator, hashlib.sha256(data).hexdigest())
         except Exception as error:  # noqa: BLE001 - one bad case must not hide the others
             failures += 1
             print(f"FAILED {path.name}: {error}", file=sys.stderr)
             continue
         write_json(args.out / f"{raw['id']}.reference.json", reference)
         print(f"solved {raw['id']}", file=sys.stderr)
+    if args.prune:
+        wanted = {json.loads(p.read_text(encoding="utf-8"))["id"] for p in args.problems}
+        for old in args.out.glob("*.reference.json"):
+            if old.name.removesuffix(".reference.json") not in wanted:
+                old.unlink()
+                print(f"pruned {old.name}", file=sys.stderr)
     return 1 if failures else 0
 
 

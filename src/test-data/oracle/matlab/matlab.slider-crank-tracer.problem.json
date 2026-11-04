@@ -1,0 +1,131 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "matlab.slider-crank-tracer",
+ "title": "MATLAB v1 Slider-crank with connecting-rod tracer @ 10 RPM",
+ "source": {
+  "kind": "matlab-fixture",
+  "case": "matlab.slider-crank-tracer",
+  "machine": "M1"
+ },
+ "gravity": 0,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 5,
+   "inertia": 0.1,
+   "com": [
+    2,
+    1
+   ]
+  },
+  {
+   "id": "BCD",
+   "mass": 10,
+   "inertia": 0.2,
+   "com": [
+    12,
+    1.3333333333333333
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    4,
+    2
+   ],
+   "bodies": [
+    "AB",
+    "BCD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    12,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    12,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "BCD"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    4,
+    2
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCD",
+   "at": [
+    12,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "BCD",
+   "at": [
+    20,
+    2
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

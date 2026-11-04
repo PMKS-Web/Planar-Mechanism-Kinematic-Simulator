@@ -1,0 +1,123 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "matlab.teaching-lab-slider-crank",
+ "title": "MATLAB v1 Teaching slider-crank @ 15.1 RPM",
+ "source": {
+  "kind": "matlab-fixture",
+  "case": "matlab.teaching-lab-slider-crank",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 1.08532,
+   "inertia": 0.0004647594,
+   "com": [
+    0,
+    0.1
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.50144,
+   "inertia": 0.0030344427,
+   "com": [
+    0.5,
+    0.7
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    13.79,
+    10.01
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    13.79,
+    13.82
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    -0.97,
+    10.01
+   ],
+   "guide": "ground",
+   "linePoint": [
+    -0.97,
+    10.01
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "BC"
+   ],
+   "rotates": true,
+   "blockMass": 1.31788
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": 1.5812683023068625,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    13.79,
+    10.01
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    13.79,
+    13.82
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    -0.97,
+    10.01
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

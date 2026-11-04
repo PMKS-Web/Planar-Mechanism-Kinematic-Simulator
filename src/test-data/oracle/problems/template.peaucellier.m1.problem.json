@@ -1,0 +1,229 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.peaucellier.m1",
+ "title": "Template Peaucellier, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.peaucellier",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "CP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.025,
+    0.008660254037844387
+   ]
+  },
+  {
+   "id": "OA",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.01346289360737692,
+    0.021065386199081416
+   ]
+  },
+  {
+   "id": "OB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.024974606392623083,
+    0.0011265147728948266
+   ]
+  },
+  {
+   "id": "AP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.02846289360737692,
+    0.029725640236925806
+   ]
+  },
+  {
+   "id": "BP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.03997460639262308,
+    0.009786768810739213
+   ]
+  },
+  {
+   "id": "AQ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.03690039360737693,
+    0.03459703313321327
+   ]
+  },
+  {
+   "id": "BQ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.04841210639262309,
+    0.014658161707026683
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0
+   ],
+   "bodies": [
+    "CP"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0.017320508075688773
+   ],
+   "bodies": [
+    "CP",
+    "AP",
+    "BP"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "OA",
+    "OB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.02692578721475384,
+    0.04213077239816283
+   ],
+   "bodies": [
+    "OA",
+    "AP",
+    "AQ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.049949212785246166,
+    0.002253029545789653
+   ],
+   "bodies": [
+    "OB",
+    "BP",
+    "BQ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "Q",
+   "kind": "pin",
+   "at": [
+    0.04687500000000001,
+    0.027063293868263713
+   ],
+   "bodies": [
+    "AQ",
+    "BQ"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "CP"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "C",
+   "body": "ground",
+   "at": [
+    0.02,
+    0
+   ]
+  },
+  {
+   "id": "P",
+   "body": "CP",
+   "at": [
+    0.03,
+    0.017320508075688773
+   ]
+  },
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "A",
+   "body": "OA",
+   "at": [
+    0.02692578721475384,
+    0.04213077239816283
+   ]
+  },
+  {
+   "id": "B",
+   "body": "OB",
+   "at": [
+    0.049949212785246166,
+    0.002253029545789653
+   ]
+  },
+  {
+   "id": "Q",
+   "body": "AQ",
+   "at": [
+    0.04687500000000001,
+    0.027063293868263713
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

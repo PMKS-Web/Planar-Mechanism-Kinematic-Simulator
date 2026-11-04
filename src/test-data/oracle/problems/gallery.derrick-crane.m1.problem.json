@@ -1,0 +1,167 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.derrick-crane.m1",
+ "title": "Derrick crane, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.derrick-crane",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "GK",
+   "mass": 0.002,
+   "inertia": 0.000005,
+   "com": [
+    0.018296092892892524,
+    -0.002641269266237807
+   ]
+  },
+  {
+   "id": "CK",
+   "mass": 0.003,
+   "inertia": 0.00004,
+   "com": [
+    0.015899739438158214,
+    0.01264601139809707
+   ]
+  },
+  {
+   "id": "OCT",
+   "mass": 0.012,
+   "inertia": 0.00030000000000000003,
+   "com": [
+    0.017207293090531383,
+    0.024574561328669753
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.022000000000000002,
+    -0.006
+   ],
+   "bodies": [
+    "GK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.014592185785785045,
+    0.0007174614675243857
+   ],
+   "bodies": [
+    "GK",
+    "CK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.017207293090531383,
+    0.024574561328669753
+   ],
+   "bodies": [
+    "CK",
+    "OCT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "OCT"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "G",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "GK"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "OCT",
+   "at": [
+    0.034414586181062766,
+    0.049149122657339506
+   ],
+   "vector": [
+    1.5308084989341916e-14,
+    -250
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.022000000000000002,
+    -0.006
+   ]
+  },
+  {
+   "id": "K",
+   "body": "GK",
+   "at": [
+    0.014592185785785045,
+    0.0007174614675243857
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CK",
+   "at": [
+    0.017207293090531383,
+    0.024574561328669753
+   ]
+  },
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "T",
+   "body": "OCT",
+   "at": [
+    0.034414586181062766,
+    0.049149122657339506
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

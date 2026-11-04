@@ -163,10 +163,14 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
         if (d_new - d) * direction <= 0:
             # d turned round within the last two steps: a limit of travel.
             q_back, t_back, h_back = previous
-            extremum = _refine_turning_point(model, q_back, t_back, h_back + 2 * h, direction)
-            while (d0 + k_next * step - extremum) * direction <= 0:
-                walk.samples[k_next] = analysis.newton(model, q_back, d0 + k_next * step)
-                k_next += direction
+            try:
+                extremum = _refine_turning_point(model, q_back, t_back, h_back + 2 * h, direction)
+                while (d0 + k_next * step - extremum) * direction <= 0:
+                    walk.samples[k_next] = analysis.newton(model, q_back, d0 + k_next * step)
+                    k_next += direction
+            except analysis.SolveFailed:
+                # A turn the corrector cannot follow is not a toggle anyone has measured.
+                return Limit("solver-failure", d - d0)
             return Limit("toggle", extremum - d0)
         _, jc = _undriven(model, q_new)
         s = np.linalg.svd(jc, compute_uv=False)
@@ -175,7 +179,10 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
         while (d0 + k_next * step - d_new) * direction <= 0:
             target = d0 + k_next * step
             frac = (target - d) / (d_new - d)
-            walk.samples[k_next] = analysis.newton(model, q + frac * (q_new - q), target)
+            try:
+                walk.samples[k_next] = analysis.newton(model, q + frac * (q_new - q), target)
+            except analysis.SolveFailed:
+                return Limit("solver-failure", d - d0)
             per_turn = steps_per_turn(step) if revolute else None
             if per_turn and k_next % per_turn == 0:
                 turns = abs(k_next) // per_turn

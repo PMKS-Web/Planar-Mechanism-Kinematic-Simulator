@@ -1,0 +1,126 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.driven-body-with-a-frozen-cylinder.m1",
+ "title": "Driven body with a frozen cylinder, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.driven-body-with-a-frozen-cylinder",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABCDEN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.03,
+    0.0016666666666666663
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.024540000000000003,
+    0
+   ],
+   "guide": "ABCDEN",
+   "linePoint": [
+    0,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "ABCDEN"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.03,
+    -0.03
+   ],
+   "bodies": [
+    "ABCDEN"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "E",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "ABCDEN"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ABCDEN",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABCDEN",
+   "at": [
+    0.024540000000000003,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ABCDEN",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ABCDEN",
+   "at": [
+    0.03,
+    0.04
+   ]
+  },
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.03,
+    -0.03
+   ]
+  },
+  {
+   "id": "N",
+   "body": "ABCDEN",
+   "at": [
+    0.035460000000000005,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at B: stroke limits"
+ ]
+}

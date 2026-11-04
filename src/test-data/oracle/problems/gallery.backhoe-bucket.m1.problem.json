@@ -1,0 +1,250 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.backhoe-bucket.m1",
+ "title": "Backhoe bucket, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.backhoe-bucket",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.052465138070018846,
+    0.008298919507705513
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.028774861929981157,
+    0.01951108049229449
+   ]
+  },
+  {
+   "id": "DGH",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.00292,
+    0.01327
+   ]
+  },
+  {
+   "id": "HK",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.03409,
+    0.00686
+   ]
+  },
+  {
+   "id": "JKT",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.045393333333333334,
+    -0.01342666666666667
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.07,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    -0.046309723859962314,
+    0.011212160984588975
+   ],
+   "guide": "AB",
+   "linePoint": [
+    -0.07,
+    0
+   ],
+   "axis": [
+    0.9038787386279782,
+    0.42778876312532466
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    -0.011240000000000002,
+    0.02781
+   ],
+   "bodies": [
+    "CD",
+    "DGH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "DGH"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0.012
+   ],
+   "bodies": [
+    "DGH",
+    "HK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.04818,
+    0.00172
+   ],
+   "bodies": [
+    "HK",
+    "JKT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.032,
+    -0.016
+   ],
+   "bodies": [
+    "JKT"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "translation",
+  "speed": -0.012
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.07,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.03493027614003769,
+    0.016597839015411026
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    -0.046309723859962314,
+    0.011212160984588975
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    -0.011240000000000002,
+    0.02781
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DGH",
+   "at": [
+    0.02,
+    0.012
+   ]
+  },
+  {
+   "id": "K",
+   "body": "HK",
+   "at": [
+    0.04818,
+    0.00172
+   ]
+  },
+  {
+   "id": "J",
+   "body": "ground",
+   "at": [
+    0.032,
+    -0.016
+   ]
+  },
+  {
+   "id": "T",
+   "body": "JKT",
+   "at": [
+    0.055999999999999994,
+    -0.026000000000000002
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at C: stroke limits"
+ ]
+}

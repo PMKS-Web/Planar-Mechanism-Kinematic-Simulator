@@ -1,0 +1,185 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.shaper-s-quick-return-drive.m1",
+ "title": "Shaper's quick-return drive, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.shaper-s-quick-return-drive",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.005,
+    0
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.007905694150420948,
+    -0.0062829175487371545
+   ]
+  },
+  {
+   "id": "DR",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02470578874899381,
+    0.026217082451262842
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.01,
+    0
+   ],
+   "guide": "CD",
+   "linePoint": [
+    0,
+    -0.03
+   ],
+   "axis": [
+    0.31622776601683794,
+    0.9486832980505138
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0,
+    -0.03
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.015811388300841896,
+    0.01743416490252569
+   ],
+   "bodies": [
+    "CD",
+    "DR"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "R",
+   "kind": "slider",
+   "at": [
+    0.033600189197145726,
+    0.035
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.033600189197145726,
+    0.035
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "DR"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ground",
+   "at": [
+    0,
+    -0.03
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    0.015811388300841896,
+    0.01743416490252569
+   ]
+  },
+  {
+   "id": "R",
+   "body": "DR",
+   "at": [
+    0.033600189197145726,
+    0.035
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot B: slot-end limits"
+ ]
+}

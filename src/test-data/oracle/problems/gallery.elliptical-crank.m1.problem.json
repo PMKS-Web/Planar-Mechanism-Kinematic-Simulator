@@ -1,0 +1,206 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.elliptical-crank.m1",
+ "title": "Elliptical crank, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.elliptical-crank",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.03417819500000001,
+    0.0025244499999999997
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.036503365,
+    0.009346710000000001
+   ]
+  },
+  {
+   "id": "CDE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.005067380000000001,
+    0.00716921
+   ]
+  },
+  {
+   "id": "DF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.002587485,
+    0.00348471
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.028754400000000003,
+    0.00032816
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.039601990000000004,
+    0.00472074
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    -0.03340474,
+    0.01397268
+   ],
+   "bodies": [
+    "BC",
+    "CDE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    -0.00517497,
+    0.00696942
+   ],
+   "bodies": [
+    "CDE",
+    "DF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "slider",
+   "at": [
+    0.02337757,
+    0.00056553
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.02337757,
+    0.00056553
+   ],
+   "axis": [
+    0.9999960550034915,
+    -0.0028089103677465437
+   ],
+   "riders": [
+    "CDE"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "DF"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.028754400000000003,
+    0.00032816
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.039601990000000004,
+    0.00472074
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    -0.03340474,
+    0.01397268
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CDE",
+   "at": [
+    -0.00517497,
+    0.00696942
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDE",
+   "at": [
+    0.02337757,
+    0.00056553
+   ]
+  },
+  {
+   "id": "F",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

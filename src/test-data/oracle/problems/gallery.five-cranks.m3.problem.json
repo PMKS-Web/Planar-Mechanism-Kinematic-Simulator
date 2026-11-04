@@ -1,0 +1,70 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.five-cranks.m3",
+ "title": "Five cranks, M3",
+ "source": {
+  "kind": "published",
+  "case": "gallery.five-cranks",
+  "machine": "M3"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "EF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.065,
+    0.005
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.06,
+    0
+   ],
+   "bodies": [
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "E",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "EF"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    0.07,
+    0.01
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

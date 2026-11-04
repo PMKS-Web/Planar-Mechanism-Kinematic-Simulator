@@ -1,0 +1,153 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.crank-plate-held-by-a-grounded-link.m1",
+ "title": "Crank plate held by a grounded link, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.crank-plate-held-by-a-grounded-link",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.015,
+    0.01
+   ]
+  },
+  {
+   "id": "BDF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0016666666666666663,
+    0.004333333333333334
+   ]
+  },
+  {
+   "id": "FG",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0225,
+    0.006000000000000001
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.01,
+    0.005
+   ],
+   "bodies": [
+    "AB",
+    "BDF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "BDF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.015,
+    0.008
+   ],
+   "bodies": [
+    "BDF",
+    "FG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0.004
+   ],
+   "bodies": [
+    "FG"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "D",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "BDF"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "AB",
+   "at": [
+    -0.02,
+    0.015
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.01,
+    0.005
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "BDF",
+   "at": [
+    0.015,
+    0.008
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.03,
+    0.004
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

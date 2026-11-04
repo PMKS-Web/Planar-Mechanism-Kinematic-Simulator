@@ -1,0 +1,167 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.rocker-with-an-offset-load.m1",
+ "title": "Rocker with an offset load, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.rocker-with-an-offset-load",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.002,
+   "inertia": 0.000005,
+   "com": [
+    0.0055000000000000005,
+    0.0025
+   ]
+  },
+  {
+   "id": "BC",
+   "mass": 0.004,
+   "inertia": 0.00005,
+   "com": [
+    0.025999999999999995,
+    0.014499999999999999
+   ]
+  },
+  {
+   "id": "CDL",
+   "mass": 0.005,
+   "inertia": 0.00009,
+   "com": [
+    0.05,
+    0.017666666666666667
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.011000000000000001,
+    0.005
+   ],
+   "bodies": [
+    "AB",
+    "BC"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.040999999999999995,
+    0.024
+   ],
+   "bodies": [
+    "BC",
+    "CDL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.05,
+    0
+   ],
+   "bodies": [
+    "CDL"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.6755160819145563,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "CDL",
+   "at": [
+    0.059000000000000004,
+    0.028999999999999998
+   ],
+   "vector": [
+    -119.99999999999996,
+    -90.00000000000004
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.011000000000000001,
+    0.005
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BC",
+   "at": [
+    0.040999999999999995,
+    0.024
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.05,
+    0
+   ]
+  },
+  {
+   "id": "L",
+   "body": "CDL",
+   "at": [
+    0.059000000000000004,
+    0.028999999999999998
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

@@ -1,0 +1,202 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.crank-locked-by-a-grounded-link-at-a-slot-pin.m1",
+ "title": "Crank locked by a grounded link at a slot pin, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.crank-locked-by-a-grounded-link-at-a-slot-pin",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "BDE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.0032333333333333346,
+    0.014316666666666667
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.015299999999999998,
+    0.031025
+   ]
+  },
+  {
+   "id": "HI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.013325,
+    -0.006889339875111508
+   ]
+  },
+  {
+   "id": "IJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0072250000000000005,
+    -0.006889339875111508
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    -0.00385,
+    0.028399999999999998
+   ],
+   "bodies": [
+    "BDE",
+    "EF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    -0.02675,
+    0.033650000000000006
+   ],
+   "bodies": [
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    -0.0229,
+    -0.02105
+   ],
+   "bodies": [
+    "HI"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "slider",
+   "at": [
+    -0.00375,
+    0.007271320249776985
+   ],
+   "guide": "BDE",
+   "linePoint": [
+    -0.030950000000000002,
+    0.00715
+   ],
+   "axis": [
+    0.9999900529956496,
+    0.004460258933968107
+   ],
+   "riders": [
+    "HI",
+    "IJ"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    0.0182,
+    -0.02105
+   ],
+   "bodies": [
+    "IJ"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "H",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "HI"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "B",
+   "body": "BDE",
+   "at": [
+    -0.030950000000000002,
+    0.00715
+   ]
+  },
+  {
+   "id": "D",
+   "body": "BDE",
+   "at": [
+    0.025099999999999997,
+    0.0074
+   ]
+  },
+  {
+   "id": "E",
+   "body": "BDE",
+   "at": [
+    -0.00385,
+    0.028399999999999998
+   ]
+  },
+  {
+   "id": "F",
+   "body": "ground",
+   "at": [
+    -0.02675,
+    0.033650000000000006
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    -0.0229,
+    -0.02105
+   ]
+  },
+  {
+   "id": "I",
+   "body": "HI",
+   "at": [
+    -0.00375,
+    0.007271320249776985
+   ]
+  },
+  {
+   "id": "J",
+   "body": "ground",
+   "at": [
+    0.0182,
+    -0.02105
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot I: slot-end limits"
+ ]
+}

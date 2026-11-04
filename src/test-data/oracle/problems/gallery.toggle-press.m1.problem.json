@@ -1,0 +1,199 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.toggle-press.m1",
+ "title": "Toggle press, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.toggle-press",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.06294951726056613,
+    -0.009791578145549137
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.03999354019347573,
+    -0.022974503626010525
+   ]
+  },
+  {
+   "id": "GD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.011471528727020928,
+    -0.016383040885779833
+   ]
+  },
+  {
+   "id": "DR",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.011471528727020928,
+    -0.0491491226573395
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.08,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    -0.0570440229329096,
+    -0.013182925480461386
+   ],
+   "guide": "AB",
+   "linePoint": [
+    -0.08,
+    0
+   ],
+   "axis": [
+    0.8671797837968496,
+    -0.49799520336449954
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    -0.022943057454041856,
+    -0.032766081771559666
+   ],
+   "bodies": [
+    "CD",
+    "GD",
+    "DR"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "GD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "R",
+   "kind": "slider",
+   "at": [
+    0,
+    -0.06553216354311933
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0,
+    -0.06553216354311933
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "DR"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "translation",
+  "speed": -0.05
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.08,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    -0.04589903452113227,
+    -0.019583156291098275
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    -0.0570440229329096,
+    -0.013182925480461386
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    -0.022943057454041856,
+    -0.032766081771559666
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "R",
+   "body": "DR",
+   "at": [
+    0,
+    -0.06553216354311933
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at C: stroke limits"
+ ]
+}

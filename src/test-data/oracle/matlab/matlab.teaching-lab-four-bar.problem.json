@@ -1,0 +1,185 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "matlab.teaching-lab-four-bar",
+ "title": "MATLAB v1 Teaching four-bar @ 10.31 RPM",
+ "source": {
+  "kind": "matlab-fixture",
+  "case": "matlab.teaching-lab-four-bar",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABH",
+   "mass": 10.458382,
+   "inertia": 52777966.276354,
+   "com": [
+    -6.38,
+    2.39
+   ]
+  },
+  {
+   "id": "BCFG",
+   "mass": 0.626202,
+   "inertia": 10871793.503827,
+   "com": [
+    185.73,
+    209.1
+   ]
+  },
+  {
+   "id": "CDEI",
+   "mass": 4.901229,
+   "inertia": 63343618.03601,
+   "com": [
+    472.56,
+    -20.8
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ABH"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    1.52,
+    0
+   ],
+   "bodies": [
+    "ABH",
+    "BCFG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    4.23,
+    3.029
+   ],
+   "bodies": [
+    "BCFG",
+    "CDEI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    4.572,
+    0
+   ],
+   "bodies": [
+    "CDEI"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": 1.0796606752836921,
+  "bodies": [
+   "ground",
+   "ABH"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABH",
+   "at": [
+    1.52,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCFG",
+   "at": [
+    4.23,
+    3.029
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    4.572,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDEI",
+   "at": [
+    4.79,
+    1.632
+   ]
+  },
+  {
+   "id": "F",
+   "body": "BCFG",
+   "at": [
+    2.548,
+    1.958
+   ]
+  },
+  {
+   "id": "G",
+   "body": "BCFG",
+   "at": [
+    2.053,
+    3.543
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ABH",
+   "at": [
+    0.7598,
+    1.0278
+   ]
+  },
+  {
+   "id": "I",
+   "body": "CDEI",
+   "at": [
+    4.1798,
+    1.952
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

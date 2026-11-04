@@ -1,0 +1,71 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.slider-crank-with-its-rod-short-of-the-crank-pin.m2",
+ "title": "Slider-crank with its rod short of the crank pin, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.slider-crank-with-its-rod-short-of-the-crank-pin",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.01306,
+    0.00198
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.02978,
+    -0.0017599999999999998
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.02978,
+    -0.0017599999999999998
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": null,
+ "loads": [],
+ "points": [
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    0.02978,
+    -0.0017599999999999998
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    -0.00366,
+    0.005719999999999999
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

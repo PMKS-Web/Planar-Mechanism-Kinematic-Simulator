@@ -1,0 +1,156 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.four-bar-inversions.m2",
+ "title": "Four-bar inversions, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.four-bar-inversions",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "EF",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.0925,
+    0.06433012701892218
+   ]
+  },
+  {
+   "id": "FG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.10155989529057244,
+    0.07930063813696063
+   ]
+  },
+  {
+   "id": "GH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.10905989529057245,
+    0.07497051111803843
+   ]
+  },
+  {
+   "id": "EH",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.1,
+    0.06
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.09,
+    0.06
+   ],
+   "bodies": [
+    "EF",
+    "EH"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.095,
+    0.06866025403784437
+   ],
+   "bodies": [
+    "EF",
+    "FG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.10811979058114486,
+    0.08994102223607685
+   ],
+   "bodies": [
+    "FG",
+    "GH"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.11,
+    0.06
+   ],
+   "bodies": [
+    "GH",
+    "EH"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "E",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "EF"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.09,
+    0.06
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    0.095,
+    0.06866025403784437
+   ]
+  },
+  {
+   "id": "G",
+   "body": "FG",
+   "at": [
+    0.10811979058114486,
+    0.08994102223607685
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    0.11,
+    0.06
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

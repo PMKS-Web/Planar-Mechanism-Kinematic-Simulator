@@ -1,0 +1,237 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.braced-four-bar-with-a-dangling-link.m1",
+ "title": "Braced four-bar with a dangling link, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.braced-four-bar-with-a-dangling-link",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ACD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0021666666666666666,
+    0.01333333333333333
+   ]
+  },
+  {
+   "id": "CE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.015499999999999998,
+    0.0285
+   ]
+  },
+  {
+   "id": "DHI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.02916666666666666,
+    0.025333333333333333
+   ]
+  },
+  {
+   "id": "BEI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.05033333333333334,
+    0.023333333333333334
+   ]
+  },
+  {
+   "id": "HK",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.034,
+    0.0195
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ACD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    -0.002,
+    0.02
+   ],
+   "bodies": [
+    "ACD",
+    "CE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.0085,
+    0.02
+   ],
+   "bodies": [
+    "ACD",
+    "DHI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.033,
+    0.037000000000000005
+   ],
+   "bodies": [
+    "CE",
+    "BEI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    0.031000000000000003,
+    0.025
+   ],
+   "bodies": [
+    "DHI",
+    "HK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.048,
+    0.031000000000000003
+   ],
+   "bodies": [
+    "DHI",
+    "BEI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.07,
+    0.002
+   ],
+   "bodies": [
+    "BEI"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "ACD"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ACD",
+   "at": [
+    -0.002,
+    0.02
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ACD",
+   "at": [
+    0.0085,
+    0.02
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CE",
+   "at": [
+    0.033,
+    0.037000000000000005
+   ]
+  },
+  {
+   "id": "H",
+   "body": "DHI",
+   "at": [
+    0.031000000000000003,
+    0.025
+   ]
+  },
+  {
+   "id": "I",
+   "body": "DHI",
+   "at": [
+    0.048,
+    0.031000000000000003
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ground",
+   "at": [
+    0.07,
+    0.002
+   ]
+  },
+  {
+   "id": "K",
+   "body": "HK",
+   "at": [
+    0.037000000000000005,
+    0.013999999999999999
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

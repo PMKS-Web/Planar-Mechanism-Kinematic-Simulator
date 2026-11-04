@@ -1,6 +1,6 @@
 """Turns a solved walk into a reference file: schema pmks-oracle-reference/1.
 
-Columnar and rounded to twelve significant figures, so a reference stays small
+Columnar and rounded to ten significant figures, so a reference stays small
 enough to commit and every number is still far finer than any budget it is
 compared against. States are stored at a stride of the grid, plus the two grid
 points at each end of travel, where the toggle check looks.
@@ -20,8 +20,8 @@ from .problem import GROUND, Problem
 from .sweep import steps_per_turn, walk
 
 SCHEMA = "pmks-oracle-reference/1"
-STORED_PER_CYCLE = 72
-DIGITS = 12
+STORED_PER_CYCLE = 36
+DIGITS = 10
 
 
 def _r(x: float) -> float:
@@ -121,17 +121,21 @@ def _forces(model: ExudynModel, problem: Problem, state, joint_at, inertial: boo
     return reactions, couples, identifiable, totals, effort, solution.residual
 
 
-def solve(problem: Problem, generator: dict) -> dict:
+def solve(problem: Problem, generator: dict, problem_sha256: str | None = None) -> dict:
+    """Solve one problem. `problem_sha256` is the hash of the problem file's bytes, when there is one."""
     model = ExudynModel(problem)
     q_start = analysis.newton(model, np.zeros(model.n), None)
     mob = mobility(model, q_start)
     out = {
         "schema": SCHEMA,
         "problem": problem.id,
-        "problemSha256": problem.sha256,
+        "problemSha256": problem_sha256 or problem.sha256,
         "generator": generator,
         "mobility": mob.__dict__,
     }
+    # A drawn pose at the driver's dead point (driven_freedoms 1) is not walked:
+    # both ways along the curve move the driver the same way, and which branch
+    # the reader meant is not the oracle's to choose.
     if problem.driver is None or mob.freedoms != 1 or mob.driven_freedoms != 0:
         out["sweep"] = None
         return out

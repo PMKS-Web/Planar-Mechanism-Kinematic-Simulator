@@ -1,0 +1,123 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.slider-crank-inversions.m4",
+ "title": "Template Slider_Crank_Inversions, M4",
+ "source": {
+  "kind": "published",
+  "case": "template.slider-crank-inversions",
+  "machine": "M4"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "PQ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.10821600407021681,
+    0.004446261863233694
+   ]
+  },
+  {
+   "id": "QR",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.12446074931399562,
+    0.004446261863233694
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.096,
+    0
+   ],
+   "bodies": [
+    "PQ"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "Q",
+   "kind": "pin",
+   "at": [
+    0.12043200814043362,
+    0.008892523726467387
+   ],
+   "bodies": [
+    "PQ",
+    "QR"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "R",
+   "kind": "slider",
+   "at": [
+    0.1284894904875576,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.1284894904875576,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "QR"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "P",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "PQ"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "P",
+   "body": "ground",
+   "at": [
+    0.096,
+    0
+   ]
+  },
+  {
+   "id": "Q",
+   "body": "PQ",
+   "at": [
+    0.12043200814043362,
+    0.008892523726467387
+   ]
+  },
+  {
+   "id": "R",
+   "body": "QR",
+   "at": [
+    0.1284894904875576,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

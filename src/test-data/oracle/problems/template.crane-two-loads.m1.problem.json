@@ -1,0 +1,180 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.crane-two-loads.m1",
+ "title": "Template Crane_Two_Loads, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.crane-two-loads",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "GK",
+   "mass": 0.2,
+   "inertia": 0.0005,
+   "com": [
+    0.027414570367242472,
+    -0.003688305529475724
+   ]
+  },
+  {
+   "id": "CK",
+   "mass": 0.3,
+   "inertia": 0.004,
+   "com": [
+    0.0256991721222271,
+    0.012568405560427924
+   ]
+  },
+  {
+   "id": "OCT",
+   "mass": 1.2,
+   "inertia": 0.030000000000000002,
+   "com": [
+    0.00899902653561155,
+    0.010724622203665693
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.024,
+    -0.008
+   ],
+   "bodies": [
+    "GK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.030829140734484943,
+    0.0006233889410485521
+   ],
+   "bodies": [
+    "GK",
+    "CK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.020569203509969262,
+    0.024513422179807298
+   ],
+   "bodies": [
+    "CK",
+    "OCT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "OCT"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "G",
+  "kind": "rotation",
+  "speed": 0.9424777960769379,
+  "bodies": [
+   "ground",
+   "GK"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "OCT",
+   "at": [
+    0.044995132678057756,
+    0.053623111018328465
+   ],
+   "vector": [
+    1.5920408388915593e-16,
+    -2.6
+   ],
+   "frame": "global"
+  },
+  {
+   "id": "F2",
+   "body": "OCT",
+   "at": [
+    0.0359961061424462,
+    0.04289848881466277
+   ],
+   "vector": [
+    -1.157017697435771,
+    -1.3788799976141606
+   ],
+   "frame": "local"
+  }
+ ],
+ "points": [
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.024,
+    -0.008
+   ]
+  },
+  {
+   "id": "K",
+   "body": "GK",
+   "at": [
+    0.030829140734484943,
+    0.0006233889410485521
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CK",
+   "at": [
+    0.020569203509969262,
+    0.024513422179807298
+   ]
+  },
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "T",
+   "body": "OCT",
+   "at": [
+    0.044995132678057756,
+    0.053623111018328465
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

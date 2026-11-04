@@ -1,0 +1,153 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.approximate-and-exact.m1",
+ "title": "Approximate and exact, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.approximate-and-exact",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AC",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.005,
+    0.02
+   ]
+  },
+  {
+   "id": "BCD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0,
+    0.04
+   ]
+  },
+  {
+   "id": "BE",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005,
+    0.02
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.02,
+    0
+   ],
+   "bodies": [
+    "AC"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0.04
+   ],
+   "bodies": [
+    "AC",
+    "BCD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.01,
+    0.04
+   ],
+   "bodies": [
+    "BCD",
+    "BE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0
+   ],
+   "bodies": [
+    "BE"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AC"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.02,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "AC",
+   "at": [
+    0.01,
+    0.04
+   ]
+  },
+  {
+   "id": "B",
+   "body": "BCD",
+   "at": [
+    -0.01,
+    0.04
+   ]
+  },
+  {
+   "id": "D",
+   "body": "BCD",
+   "at": [
+    0,
+    0.04
+   ]
+  },
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.02,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

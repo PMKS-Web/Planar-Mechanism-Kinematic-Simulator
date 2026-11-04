@@ -1,0 +1,208 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.pumping-field.m3",
+ "title": "Pumping field, M3",
+ "source": {
+  "kind": "published",
+  "case": "gallery.pumping-field",
+  "machine": "M3"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "OP",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.23800867084972965,
+    -0.032096445602528105
+   ]
+  },
+  {
+   "id": "PQ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.23900399243776846,
+    -0.0160068124421539
+   ]
+  },
+  {
+   "id": "QRS",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.26233333333333336,
+    0
+   ]
+  },
+  {
+   "id": "ST",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.293,
+    -0.012961481396815721
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0.23300935682392238,
+    -0.03217926632074842
+   ],
+   "bodies": [
+    "OP"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.243007984875537,
+    -0.0320136248843078
+   ],
+   "bodies": [
+    "OP",
+    "PQ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "Q",
+   "kind": "pin",
+   "at": [
+    0.23500000000000001,
+    0
+   ],
+   "bodies": [
+    "PQ",
+    "QRS"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "R",
+   "kind": "pin",
+   "at": [
+    0.26,
+    0
+   ],
+   "bodies": [
+    "QRS"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "pin",
+   "at": [
+    0.292,
+    0
+   ],
+   "bodies": [
+    "QRS",
+    "ST"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "T",
+   "kind": "slider",
+   "at": [
+    0.294,
+    -0.025922962793631443
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.294,
+    -0.025922962793631443
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "ST"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "Q",
+  "kind": "rotation",
+  "speed": 1.2566370614359172,
+  "bodies": [
+   "PQ",
+   "QRS"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0.23300935682392238,
+    -0.03217926632074842
+   ]
+  },
+  {
+   "id": "P",
+   "body": "OP",
+   "at": [
+    0.243007984875537,
+    -0.0320136248843078
+   ]
+  },
+  {
+   "id": "Q",
+   "body": "PQ",
+   "at": [
+    0.23500000000000001,
+    0
+   ]
+  },
+  {
+   "id": "R",
+   "body": "ground",
+   "at": [
+    0.26,
+    0
+   ]
+  },
+  {
+   "id": "S",
+   "body": "QRS",
+   "at": [
+    0.292,
+    0
+   ]
+  },
+  {
+   "id": "T",
+   "body": "ST",
+   "at": [
+    0.294,
+    -0.025922962793631443
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "input Q drives one link against another"
+ ]
+}

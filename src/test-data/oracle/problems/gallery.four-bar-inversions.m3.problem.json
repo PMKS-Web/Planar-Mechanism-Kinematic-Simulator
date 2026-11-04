@@ -1,0 +1,156 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.four-bar-inversions.m3",
+ "title": "Four-bar inversions, M3",
+ "source": {
+  "kind": "published",
+  "case": "gallery.four-bar-inversions",
+  "machine": "M3"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "IJ",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.001736481776669303,
+    0.00984807753012208
+   ]
+  },
+  {
+   "id": "JK",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.011519893369692884,
+    0.01923329300141163
+   ]
+  },
+  {
+   "id": "KL",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.018256375146362188,
+    0.009385215471289551
+   ]
+  },
+  {
+   "id": "IL",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005,
+    0
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "IJ",
+    "IL"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "J",
+   "kind": "pin",
+   "at": [
+    -0.003472963553338606,
+    0.01969615506024416
+   ],
+   "bodies": [
+    "IJ",
+    "JK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "pin",
+   "at": [
+    0.026512750292724378,
+    0.018770430942579103
+   ],
+   "bodies": [
+    "JK",
+    "KL"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "L",
+   "kind": "pin",
+   "at": [
+    0.01,
+    0
+   ],
+   "bodies": [
+    "KL",
+    "IL"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "I",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "IJ"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "I",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "J",
+   "body": "IJ",
+   "at": [
+    -0.003472963553338606,
+    0.01969615506024416
+   ]
+  },
+  {
+   "id": "K",
+   "body": "JK",
+   "at": [
+    0.026512750292724378,
+    0.018770430942579103
+   ]
+  },
+  {
+   "id": "L",
+   "body": "ground",
+   "at": [
+    0.01,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

@@ -1,0 +1,193 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.slotted-lever-with-a-rod-that-cannot-tilt.m1",
+ "title": "Slotted lever with a rod that cannot tilt, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.slotted-lever-with-a-rod-that-cannot-tilt",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0,
+    0.005
+   ]
+  },
+  {
+   "id": "CDE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.01,
+    0.006666666666666665
+   ]
+  },
+  {
+   "id": "DF",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.035,
+    0.01
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0,
+    0.01
+   ],
+   "guide": "CDE",
+   "linePoint": [
+    0.02,
+    0.01
+   ],
+   "axis": [
+    -1,
+    1.2246467991473532e-16
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.03,
+    0
+   ],
+   "bodies": [
+    "CDE"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.02,
+    0.01
+   ],
+   "bodies": [
+    "CDE",
+    "DF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "slider",
+   "at": [
+    0.05,
+    0.01
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.05,
+    0.01
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "DF"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.5235987755982988,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.01
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ground",
+   "at": [
+    0.03,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CDE",
+   "at": [
+    0.02,
+    0.01
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDE",
+   "at": [
+    -0.02,
+    0.01
+   ]
+  },
+  {
+   "id": "F",
+   "body": "DF",
+   "at": [
+    0.05,
+    0.01
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot B: slot-end limits"
+ ]
+}

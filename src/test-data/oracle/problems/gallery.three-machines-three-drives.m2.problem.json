@@ -1,0 +1,123 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.three-machines-three-drives.m2",
+ "title": "Three machines, three drives, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.three-machines-three-drives",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "EF",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.085,
+    0
+   ]
+  },
+  {
+   "id": "FG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.105,
+    0
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    0.08,
+    0
+   ],
+   "bodies": [
+    "EF"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    0.09,
+    0
+   ],
+   "bodies": [
+    "EF",
+    "FG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "slider",
+   "at": [
+    0.12,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.12,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "FG"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "E",
+  "kind": "rotation",
+  "speed": -0.8377580409572781,
+  "bodies": [
+   "ground",
+   "EF"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "E",
+   "body": "ground",
+   "at": [
+    0.08,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    0.09,
+    0
+   ]
+  },
+  {
+   "id": "G",
+   "body": "FG",
+   "at": [
+    0.12,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

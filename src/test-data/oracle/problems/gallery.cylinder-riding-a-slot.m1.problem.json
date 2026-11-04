@@ -1,0 +1,200 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.cylinder-riding-a-slot.m1",
+ "title": "Cylinder riding a slot, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.cylinder-riding-a-slot",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.007818903333333335,
+    0.0076796316666666664
+   ]
+  },
+  {
+   "id": "DN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.008126400000000002,
+    0.0040544025
+   ]
+  },
+  {
+   "id": "EFGH",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04181852375,
+    -0.0005159062499999998
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.01234,
+    -0.00575
+   ],
+   "bodies": [
+    "ABC"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "slider",
+   "at": [
+    -0.002568585,
+    0.004245235000000001
+   ],
+   "guide": "ABC",
+   "linePoint": [
+    -0.01234,
+    -0.00575
+   ],
+   "axis": [
+    0.6990553447124694,
+    0.7150675667578068
+   ],
+   "riders": [
+    "DN"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "E",
+   "kind": "slider",
+   "at": [
+    0.01151139,
+    0.003994005
+   ],
+   "guide": "DN",
+   "linePoint": [
+    -0.002568585,
+    0.004245235000000001
+   ],
+   "axis": [
+    0.9998408485364164,
+    -0.01784033626305468
+   ],
+   "riders": [
+    "EFGH"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.06162000000000001,
+    -0.013090000000000003
+   ],
+   "bodies": [
+    "EFGH"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "E",
+  "kind": "translation",
+  "speed": -0.002
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.01234,
+    -0.00575
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABC",
+   "at": [
+    0.005431485000000001,
+    0.01242855
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ABC",
+   "at": [
+    -0.016548195,
+    0.016360345000000002
+   ]
+  },
+  {
+   "id": "D",
+   "body": "DN",
+   "at": [
+    -0.002568585,
+    0.004245235000000001
+   ]
+  },
+  {
+   "id": "N",
+   "body": "DN",
+   "at": [
+    0.018821384999999996,
+    0.00386357
+   ]
+  },
+  {
+   "id": "E",
+   "body": "EFGH",
+   "at": [
+    0.01151139,
+    0.003994005
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EFGH",
+   "at": [
+    0.03290136,
+    0.0036123399999999995
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.06162000000000001,
+    -0.013090000000000003
+   ]
+  },
+  {
+   "id": "H",
+   "body": "EFGH",
+   "at": [
+    0.061241345,
+    0.00342003
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot D: slot-end limits",
+  "cylinder at E: stroke limits"
+ ]
+}

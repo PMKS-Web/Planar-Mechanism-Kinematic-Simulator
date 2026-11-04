@@ -1,0 +1,209 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.four-bar-on-a-frozen-cylinder.m1",
+ "title": "Four-bar on a frozen cylinder, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.four-bar-on-a-frozen-cylinder",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "OP",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.008,
+    0.016
+   ]
+  },
+  {
+   "id": "ACDNPQS",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.030000000000000006,
+    0.010857142857142859
+   ]
+  },
+  {
+   "id": "GQ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.052000000000000005,
+    0.006999999999999999
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "O",
+   "kind": "pin",
+   "at": [
+    0.008,
+    0.01
+   ],
+   "bodies": [
+    "OP"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "P",
+   "kind": "pin",
+   "at": [
+    0.008,
+    0.022000000000000002
+   ],
+   "bodies": [
+    "OP",
+    "ACDNPQS"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "Q",
+   "kind": "pin",
+   "at": [
+    0.052000000000000005,
+    0.022000000000000002
+   ],
+   "bodies": [
+    "ACDNPQS",
+    "GQ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.024540000000000003,
+    0
+   ],
+   "guide": "ACDNPQS",
+   "linePoint": [
+    0,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "ACDNPQS"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.052000000000000005,
+    -0.008
+   ],
+   "bodies": [
+    "GQ"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "O",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "OP"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "O",
+   "body": "ground",
+   "at": [
+    0.008,
+    0.01
+   ]
+  },
+  {
+   "id": "P",
+   "body": "OP",
+   "at": [
+    0.008,
+    0.022000000000000002
+   ]
+  },
+  {
+   "id": "A",
+   "body": "ACDNPQS",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ACDNPQS",
+   "at": [
+    0.06,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ACDNPQS",
+   "at": [
+    0.03,
+    0.032
+   ]
+  },
+  {
+   "id": "N",
+   "body": "ACDNPQS",
+   "at": [
+    0.035460000000000005,
+    0
+   ]
+  },
+  {
+   "id": "Q",
+   "body": "ACDNPQS",
+   "at": [
+    0.052000000000000005,
+    0.022000000000000002
+   ]
+  },
+  {
+   "id": "S",
+   "body": "ACDNPQS",
+   "at": [
+    0.024540000000000003,
+    0
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0.052000000000000005,
+    -0.008
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at S: stroke limits"
+ ]
+}

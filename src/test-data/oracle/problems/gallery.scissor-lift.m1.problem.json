@@ -1,0 +1,290 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.scissor-lift.m1",
+ "title": "Scissor lift, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.scissor-lift",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.08383522910491575,
+    0.011537039807714193
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.06212743748222294,
+    0.027030216773478166
+   ]
+  },
+  {
+   "id": "GDMK",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.057453333233923355,
+    0.048209070726490444
+   ]
+  },
+  {
+   "id": "SMT",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.06128355544951825,
+    0.05142300877492314
+   ]
+  },
+  {
+   "id": "TU",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.08128355544951824,
+    0.10284601754984628
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.1,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.0782922083773072,
+    0.015493176965763978
+   ],
+   "guide": "AB",
+   "linePoint": [
+    0.1,
+    0
+   ],
+   "axis": [
+    -0.8139531171231321,
+    0.580930566527134
+   ],
+   "riders": [
+    "CD"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.045962666587138684,
+    0.03856725658119236
+   ],
+   "bodies": [
+    "CD",
+    "GDMK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "GDMK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "M",
+   "kind": "pin",
+   "at": [
+    0.06128355544951825,
+    0.05142300877492314
+   ],
+   "bodies": [
+    "GDMK",
+    "SMT"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "K",
+   "kind": "slider",
+   "at": [
+    0.1225671108990365,
+    0.10284601754984628
+   ],
+   "guide": "TU",
+   "linePoint": [
+    0,
+    0.10284601754984628
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "GDMK"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.1225671108990365,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.1225671108990365,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "SMT"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "T",
+   "kind": "pin",
+   "at": [
+    0,
+    0.10284601754984628
+   ],
+   "bodies": [
+    "SMT",
+    "TU"
+   ],
+   "grounded": false,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "translation",
+  "speed": -0.01
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0.1,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.06767045820983147,
+    0.023074079615428386
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CD",
+   "at": [
+    0.0782922083773072,
+    0.015493176965763978
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    0.045962666587138684,
+    0.03856725658119236
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "M",
+   "body": "GDMK",
+   "at": [
+    0.06128355544951825,
+    0.05142300877492314
+   ]
+  },
+  {
+   "id": "K",
+   "body": "GDMK",
+   "at": [
+    0.1225671108990365,
+    0.10284601754984628
+   ]
+  },
+  {
+   "id": "S",
+   "body": "SMT",
+   "at": [
+    0.1225671108990365,
+    0
+   ]
+  },
+  {
+   "id": "T",
+   "body": "SMT",
+   "at": [
+    0,
+    0.10284601754984628
+   ]
+  },
+  {
+   "id": "U",
+   "body": "TU",
+   "at": [
+    0.16256711089903647,
+    0.10284601754984628
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "cylinder at C: stroke limits",
+  "floating slot K: slot-end limits"
+ ]
+}

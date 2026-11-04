@@ -1,0 +1,105 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.elliptical-trammel.m1",
+ "title": "Template Elliptical_Trammel, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.elliptical-trammel",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABT",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005555555555555555,
+    0.0044444444444444444
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "slider",
+   "at": [
+    0.01,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.01,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "ABT"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0,
+    0.01
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0,
+    0.01
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "ABT"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "translation",
+  "speed": -0.012
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ABT",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABT",
+   "at": [
+    0,
+    0.01
+   ]
+  },
+  {
+   "id": "T",
+   "body": "ABT",
+   "at": [
+    0.006666666666666665,
+    0.0033333333333333327
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

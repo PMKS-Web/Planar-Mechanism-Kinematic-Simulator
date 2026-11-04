@@ -1,0 +1,242 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "matlab.stephenson-iii-ex2",
+ "title": "MATLAB v1 Stephenson III Example 2 @ 10 RPM",
+ "source": {
+  "kind": "matlab-fixture",
+  "case": "matlab.stephenson-iii-ex2",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 5,
+   "inertia": 0.1,
+   "com": [
+    6,
+    10
+   ]
+  },
+  {
+   "id": "BCE",
+   "mass": 10,
+   "inertia": 0.2,
+   "com": [
+    16,
+    25.333333333333332
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 5,
+   "inertia": 0.1,
+   "com": [
+    24,
+    17.5
+   ]
+  },
+  {
+   "id": "EF",
+   "mass": 10,
+   "inertia": 0.2,
+   "com": [
+    30.5,
+    33.5
+   ]
+  },
+  {
+   "id": "FG",
+   "mass": 5,
+   "inertia": 0.1,
+   "com": [
+    44,
+    24.5
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    7,
+    4
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    5,
+    16
+   ],
+   "bodies": [
+    "AB",
+    "BCE"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    25,
+    25
+   ],
+   "bodies": [
+    "BCE",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    23,
+    10
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "E",
+   "kind": "pin",
+   "at": [
+    18,
+    35
+   ],
+   "bodies": [
+    "BCE",
+    "EF"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    43,
+    32
+   ],
+   "bodies": [
+    "EF",
+    "FG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    45,
+    17
+   ],
+   "bodies": [
+    "FG"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": 1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "FG",
+   "at": [
+    44,
+    24.5
+   ],
+   "vector": [
+    50,
+    0
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    7,
+    4
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    5,
+    16
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCE",
+   "at": [
+    25,
+    25
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    23,
+    10
+   ]
+  },
+  {
+   "id": "E",
+   "body": "BCE",
+   "at": [
+    18,
+    35
+   ]
+  },
+  {
+   "id": "F",
+   "body": "EF",
+   "at": [
+    43,
+    32
+   ]
+  },
+  {
+   "id": "G",
+   "body": "ground",
+   "at": [
+    45,
+    17
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

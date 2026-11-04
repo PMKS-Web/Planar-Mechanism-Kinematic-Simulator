@@ -1,0 +1,176 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.reciprocating-saw.m1",
+ "title": "Reciprocating saw, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.reciprocating-saw",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.005,
+    0
+   ]
+  },
+  {
+   "id": "CDE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.023333333333333334,
+    -0.007333333333333334
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.01,
+    0
+   ],
+   "guide": "CDE",
+   "linePoint": [
+    0.01,
+    -0.02
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "C",
+   "kind": "slider",
+   "at": [
+    0.01,
+    -0.02
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.01,
+    -0.02
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "CDE"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [
+  {
+   "id": "F1",
+   "body": "CDE",
+   "at": [
+    0.05,
+    -0.02
+   ],
+   "vector": [
+    -80,
+    9.797174393178826e-15
+   ],
+   "frame": "global"
+  },
+  {
+   "id": "F2",
+   "body": "CDE",
+   "at": [
+    0.03,
+    -0.02
+   ],
+   "vector": [
+    1.2246467991473533e-15,
+    -20
+   ],
+   "frame": "global"
+  }
+ ],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CDE",
+   "at": [
+    0.01,
+    -0.02
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CDE",
+   "at": [
+    0.01,
+    0.018000000000000002
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDE",
+   "at": [
+    0.05,
+    -0.02
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "floating slot B: slot-end limits"
+ ]
+}

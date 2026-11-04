@@ -1,0 +1,62 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.rocker-dropped-beside-the-coupler-pin.m2",
+ "title": "Rocker dropped beside the coupler pin, M2",
+ "source": {
+  "kind": "published",
+  "case": "gallery.rocker-dropped-beside-the-coupler-pin",
+  "machine": "M2"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "DE",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.0354,
+    0.0097
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.04,
+    0
+   ],
+   "bodies": [
+    "DE"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": null,
+ "loads": [],
+ "points": [
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.04,
+    0
+   ]
+  },
+  {
+   "id": "E",
+   "body": "DE",
+   "at": [
+    0.0308,
+    0.0194
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

@@ -1,0 +1,155 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.oscillating-fan.m1",
+ "title": "Template Oscillating_Fan, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.oscillating-fan",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ACN",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.030213672050459182,
+    -0.006666666666666665
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.03234883596664561,
+    -0.02444363702396159
+   ]
+  },
+  {
+   "id": "DB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.009740256907755802,
+    -0.020446661701291124
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "ACN"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.03464101615137755,
+    -0.019999999999999997
+   ],
+   "bodies": [
+    "ACN",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.030056655781913657,
+    -0.028887274047923184
+   ],
+   "bodies": [
+    "CD",
+    "DB"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.010576141966402053,
+    -0.012006049354659066
+   ],
+   "bodies": [
+    "DB"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "C",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ACN",
+   "CD"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "ACN",
+   "at": [
+    0.03464101615137755,
+    -0.019999999999999997
+   ]
+  },
+  {
+   "id": "N",
+   "body": "ACN",
+   "at": [
+    0.055999999999999994,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CD",
+   "at": [
+    0.030056655781913657,
+    -0.028887274047923184
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ground",
+   "at": [
+    -0.010576141966402053,
+    -0.012006049354659066
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": [
+  "input C drives one link against another"
+ ]
+}

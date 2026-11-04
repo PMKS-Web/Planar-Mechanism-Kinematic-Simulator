@@ -1,0 +1,279 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.gripper-with-the-redundancy-removed.m1",
+ "title": "Gripper with the redundancy removed, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.gripper-with-the-redundancy-removed",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AMBC",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.0083120525,
+    0.00002376000000000017
+   ]
+  },
+  {
+   "id": "BG",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.005615365,
+    0.015629185
+   ]
+  },
+  {
+   "id": "CI",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    -0.005615375000000001,
+    -0.015534140000000004
+   ]
+  },
+  {
+   "id": "FGK",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.00679502,
+    0.017645569999999996
+   ]
+  },
+  {
+   "id": "HIJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.00675966,
+    -0.016587323333333334
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "slider",
+   "at": [
+    -0.019247860000000002,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    -0.019247860000000002,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "AMBC"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "M",
+   "kind": "slider",
+   "at": [
+    0.00866655,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.00866655,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "AMBC"
+   ],
+   "rotates": true,
+   "blockMass": 0
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    -0.01133345,
+    0.01004752
+   ],
+   "bodies": [
+    "AMBC",
+    "BG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    -0.01133345,
+    -0.00995248
+   ],
+   "bodies": [
+    "AMBC",
+    "CI"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.00010271999999999998,
+    0.02121085
+   ],
+   "bodies": [
+    "BG",
+    "FGK"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "I",
+   "kind": "pin",
+   "at": [
+    0.0001027,
+    -0.0211158
+   ],
+   "bodies": [
+    "CI",
+    "HIJ"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "F",
+   "kind": "pin",
+   "at": [
+    -0.019897280000000003,
+    0.02121085
+   ],
+   "bodies": [
+    "FGK"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "H",
+   "kind": "pin",
+   "at": [
+    -0.019897300000000003,
+    -0.0211158
+   ],
+   "bodies": [
+    "HIJ"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "translation",
+  "speed": -0.05
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "AMBC",
+   "at": [
+    -0.019247860000000002,
+    0
+   ]
+  },
+  {
+   "id": "M",
+   "body": "AMBC",
+   "at": [
+    0.00866655,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AMBC",
+   "at": [
+    -0.01133345,
+    0.01004752
+   ]
+  },
+  {
+   "id": "C",
+   "body": "AMBC",
+   "at": [
+    -0.01133345,
+    -0.00995248
+   ]
+  },
+  {
+   "id": "G",
+   "body": "BG",
+   "at": [
+    0.00010271999999999998,
+    0.02121085
+   ]
+  },
+  {
+   "id": "I",
+   "body": "CI",
+   "at": [
+    0.0001027,
+    -0.0211158
+   ]
+  },
+  {
+   "id": "F",
+   "body": "ground",
+   "at": [
+    -0.019897280000000003,
+    0.02121085
+   ]
+  },
+  {
+   "id": "K",
+   "body": "FGK",
+   "at": [
+    0.04017962,
+    0.01051501
+   ]
+  },
+  {
+   "id": "H",
+   "body": "ground",
+   "at": [
+    -0.019897300000000003,
+    -0.0211158
+   ]
+  },
+  {
+   "id": "J",
+   "body": "HIJ",
+   "at": [
+    0.04007358,
+    -0.00753037
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.001,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}
