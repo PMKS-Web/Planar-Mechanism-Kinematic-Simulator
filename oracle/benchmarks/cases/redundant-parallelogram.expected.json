@@ -61,6 +61,27 @@
       "mode": "dynamic",
       "joint": "C",
       "body": "3"
+    },
+    {
+      "quantity": "point",
+      "value": 1.0148680304487812,
+      "kind": "derived",
+      "point": "C",
+      "component": "x",
+      "of": "acc",
+      "k": 90
+    },
+    {
+      "quantity": "effort",
+      "value": -0.24889638446756354,
+      "kind": "derived",
+      "mode": "dynamic",
+      "k": 90
+    },
+    {
+      "quantity": "closesAfterTurns",
+      "value": 1.0,
+      "kind": "derived"
     }
   ]
 }

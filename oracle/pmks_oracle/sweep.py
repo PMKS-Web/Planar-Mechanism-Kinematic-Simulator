@@ -27,6 +27,8 @@ from . import analysis
 from .exudyn_model import ExudynModel
 
 MAX_REVOLUTIONS = 3
+# A singular value this far below the largest is zero, for rank and for singularity alike.
+SINGULAR_RATIO = 1e-10
 
 
 @dataclass
@@ -121,8 +123,20 @@ def _refine_turning_point(model, q_a, t_a, h, direction_sign):
     return direction_sign * best
 
 
-def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, budget: int):
-    """Trace from q0 toward increasing (direction=+1) or decreasing d, collecting grid samples."""
+def regular_rank(model: ExudynModel, q) -> int:
+    """Rank of the undriven Jacobian, which a redundant support keeps below its row count."""
+    _, j = _undriven(model, q)
+    s = np.linalg.svd(j, compute_uv=False)
+    return int(np.sum(s > SINGULAR_RATIO * s[0])) if s.size and s[0] > 0 else 0
+
+
+def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, budget: int, rank: int):
+    """Trace from q0 toward increasing (direction=+1) or decreasing d, collecting grid samples.
+
+    `rank` is the undriven Jacobian's rank at the drawn pose. A singularity is
+    where it drops: a redundant support's zero singular value is there from the
+    start and is not one.
+    """
     q = q0.copy()
     t = direction * tangent(model, q0)
     d = d0
@@ -156,7 +170,7 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
             return Limit("toggle", extremum - d0)
         _, jc = _undriven(model, q_new)
         s = np.linalg.svd(jc, compute_uv=False)
-        if s[-1] < 1e-10 * s[0]:
+        if s[rank - 1] < SINGULAR_RATIO * s[0]:
             return Limit("singular", d_new - d0)
         while (d0 + k_next * step - d_new) * direction <= 0:
             target = d0 + k_next * step
@@ -194,9 +208,10 @@ def walk(model: ExudynModel) -> Walk:
     step = problem.sweep.step
     revolute = problem.driver.kind == "rotation"
     budget = problem.sweep.max_samples
-    high = _walk_one_way(model, q0, d0, step, +1, result, revolute, budget)
+    rank = regular_rank(model, q0)
+    high = _walk_one_way(model, q0, d0, step, +1, result, revolute, budget, rank)
     if high is None:
         return result
     result.high = high
-    result.low = _walk_one_way(model, q0, d0, step, -1, result, revolute, budget)
+    result.low = _walk_one_way(model, q0, d0, step, -1, result, revolute, budget, rank)
     return result

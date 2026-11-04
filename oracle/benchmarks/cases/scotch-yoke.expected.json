@@ -98,6 +98,11 @@
       "mode": "dynamic",
       "joint": "S",
       "body": "4"
+    },
+    {
+      "quantity": "closesAfterTurns",
+      "value": 1.0,
+      "kind": "derived"
     }
   ]
 }

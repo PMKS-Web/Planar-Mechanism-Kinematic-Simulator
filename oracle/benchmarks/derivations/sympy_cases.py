@@ -93,6 +93,7 @@ def scotch_yoke() -> None:
         derived("reaction", f12[1].subs(at0), mode="dynamic", joint="O2", body="2", component="y"),
         derived("effort", torque.subs(at0), mode="dynamic"),
         derived("identifiable", 1, mode="dynamic", joint="S", body="4"),
+        derived("closesAfterTurns", 1),
     ]
     write("scotch-yoke", problem, checks)
 
@@ -158,6 +159,7 @@ def redundant_parallelogram() -> None:
     # driven crank can carry the weight's component across the cranks.
     torque = m3 * G * r * c
     at0 = {t: 0}
+    quarter = {t: (math.pi / 2) / w}
     c0, s0 = math.cos(th0), math.sin(th0)
     A, B, C = [r * c0, r * s0], [L + r * c0, r * s0], [L / 2 + r * c0, r * s0]
     problem = {
@@ -191,6 +193,10 @@ def redundant_parallelogram() -> None:
         derived("effort", torque.subs(at0), mode="dynamic"),
         derived("identifiable", 0, mode="dynamic", joint="B", body="3"),
         derived("identifiable", 0, mode="dynamic", joint="C", body="3"),
+        # A quarter turn on, and the closure: the redundant crank must not read as a singularity.
+        derived("point", a_coupler[0].subs(quarter), point="C", component="x", of="acc", k=90),
+        derived("effort", torque.subs(quarter), mode="dynamic", k=90),
+        derived("closesAfterTurns", 1),
     ]
     write("redundant-parallelogram", problem, checks)
 

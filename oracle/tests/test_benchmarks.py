@@ -36,7 +36,7 @@ def reference(case: str) -> dict:
 def _value(check: dict, ref: dict, k: int) -> float:
     s = ref["sweep"]["samples"]
     i = s["k"].index(k)
-    if check["quantity"] in ("limit", "lastSample"):
+    if check["quantity"] in ("limit", "lastSample", "closesAfterTurns"):
         i = None
     comp = {"x": 0, "y": 1}
     q = check["quantity"]
@@ -59,6 +59,8 @@ def _value(check: dict, ref: dict, k: int) -> float:
         lim = ref["sweep"][check["end"]]
         assert lim["kind"] == "toggle", lim
         return lim["travel"]
+    if q == "closesAfterTurns":
+        return float(ref["sweep"]["closesAfterTurns"] or 0)
     if q == "lastSample":
         return float(ref["sweep"]["kMax" if check["end"] == "high" else "kMin"])
     if q in ("redundant", "freedoms"):
@@ -92,7 +94,7 @@ def _angle(check, ref, k):
 def test_benchmark(case, check):
     ref = reference(case)
     expected_file = json.loads((CASES / f"{case}.expected.json").read_text())
-    k = expected_file["at"]["k"]
+    k = check.get("k", expected_file["at"]["k"])
     if check["quantity"] == "lineAngle":
         actual = _angle(check, ref, k)
         target = float(check["value"])
