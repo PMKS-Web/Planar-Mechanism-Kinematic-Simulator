@@ -111,3 +111,11 @@ def test_benchmark(case, check):
         # A derived zero is compared against the scale of its neighbors: 1e-9 of a newton.
         tolerance = DERIVED_RELATIVE * max(abs(target), 1.0)
     assert abs(actual - target) <= tolerance, f"{case}: {check} gave {actual!r}, off by {actual - target:.3e} (allowed {tolerance:.1e})"
+
+
+def test_a_bounded_slot_is_refused_until_its_limits_are_walked():
+    raw = json.loads((CASES / "metu-double-slider.problem.json").read_text())
+    slider = next(joint for joint in raw["joints"] if joint["kind"] == "slider")
+    slider["limits"] = [0.1, 0.3]
+    with pytest.raises(NotImplementedError, match="slot limits"):
+        solve(load_problem(raw), {"oracle": "test"})

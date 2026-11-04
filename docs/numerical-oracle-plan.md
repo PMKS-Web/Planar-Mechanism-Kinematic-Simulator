@@ -319,10 +319,22 @@ A one-freedom mechanism's configuration curve is traced by pseudo-arclength cont
 drawn pose, which fixes the assembly branch. A travel limit is where the driver coordinate turns
 round, refined by golden-section search over the last two steps. A singular Jacobian and a solver
 failure are reported as such and never as a toggle. Grid samples sit at d₀ + k·step, keyed by k.
-A rotary cycle closes when the drawing returns to its start after at most three turns. Because
-PMKS+ reverses a rocking input at its last solvable sample and retraces the same branch, one
+A rotary cycle closes when the drawing returns to its start after at most three turns. A rocking
+pin input reverses at its last solvable sample and PMKS+ retraces the same branch, so for it one
 stored state per k serves both directions: velocities change sign on the return and accelerations
 and forces do not.
+
+**One state per k does not cover every reversal.** A slider input that reverses at a crank's dead
+center may carry on, in PMKS+, onto the other branch (the crank turning through on its momentum,
+`mechanism.ts` keeps the motion history for exactly that), and the return then passes through
+different poses at the same k. The oracle stops at the turning point and cannot represent that
+return. Such a machine fails on its positions rather than passing; none of the verified ones does,
+because each retraces. Storing the continuing branch as a second segment, keyed by segment as well
+as k, is Phase 3's, with the other return sweeps.
+
+**Slot limits are refused, not ignored.** The problem schema can carry a slider's travel limits,
+but the walk does not yet stop at them, so `solve` refuses a problem that sets any; the exporter
+marks such a slot unsupported instead of writing them. Phase 3 brackets and refines the crossings.
 
 A reference stores at most 72 states per cycle, plus the two grid points at each end of travel,
 rounded to 12 significant figures, in schema `pmks-oracle-reference/1`.

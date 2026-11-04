@@ -122,6 +122,11 @@ def _forces(model: ExudynModel, problem: Problem, state, joint_at, inertial: boo
 
 
 def solve(problem: Problem, generator: dict) -> dict:
+    bounded = [slider.id for slider in problem.sliders if slider.limits is not None]
+    if bounded:
+        # The walk does not stop at a slot's ends yet; a reference that ignored
+        # them would be wrong, not incomplete.
+        raise NotImplementedError(f"slot limits are not supported yet: {', '.join(bounded)}")
     model = ExudynModel(problem)
     q_start = analysis.newton(model, np.zeros(model.n), None)
     mob = mobility(model, q_start)
