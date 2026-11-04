@@ -119,3 +119,39 @@ def test_a_bounded_slot_is_refused_until_its_limits_are_walked():
     slider["limits"] = [0.1, 0.3]
     with pytest.raises(NotImplementedError, match="slot limits"):
         solve(load_problem(raw), {"oracle": "test"})
+
+
+def test_a_singular_pose_on_the_grid_stores_no_state():
+    # The parallelogram's three cranks lie along the frame at k = 110 and 290:
+    # the pose is fine, but its rates are not unique there.
+    ref = reference("redundant-parallelogram")
+    sweep = ref["sweep"]
+    assert sweep["singularPoses"] == [110, 290]
+    assert sweep["closesAfterTurns"] == 1
+    stored = sweep["samples"]["k"]
+    assert not set(stored) & {110, 290}
+    for k in stored:
+        assert sweep["samples"]["condition"][stored.index(k)] < 1e10, k
+
+
+def _scaled(raw: dict, factor: float) -> dict:
+    """The same machine drawn `factor` times larger: every length scaled, nothing else."""
+    out = json.loads(json.dumps(raw))
+    for body in out["bodies"]:
+        body["com"] = [c * factor for c in body["com"]]
+        body["inertia"] *= factor * factor
+    for part in out["joints"] + out["points"]:
+        part["at"] = [c * factor for c in part["at"]]
+    return out
+
+
+def test_angular_accelerations_do_not_depend_on_the_unit_of_length():
+    raw = json.loads((CASES / "norton-fourbar.problem.json").read_text())
+    small = solve(load_problem(raw), {"oracle": "test"})["sweep"]["samples"]
+    large = solve(load_problem(_scaled(raw, 100.0)), {"oracle": "test"})["sweep"]["samples"]
+    assert small["k"] == large["k"]
+    for body, motion in small["bodies"].items():
+        for a, b in zip(motion["alpha"], large["bodies"][body]["alpha"]):
+            # Two units in the twelfth stored digit. Before the step was made
+            # unit-free, a hundredfold scale moved alpha by 1e-8 relative.
+            assert abs(a - b) <= 1e-11 * max(abs(a), 1.0), (body, a, b)

@@ -17,7 +17,7 @@ from . import analysis
 from .exudyn_model import ExudynModel, block_id
 from .mobility import mobility
 from .problem import GROUND, Problem
-from .sweep import steps_per_turn, walk
+from .sweep import regular_rank, steps_per_turn, walk
 
 SCHEMA = "pmks-oracle-reference/1"
 STORED_PER_CYCLE = 36
@@ -148,7 +148,13 @@ def solve(problem: Problem, generator: dict, problem_sha256: str | None = None) 
     ks = sorted(w.samples)
     per_turn = steps_per_turn(problem.sweep.step) if problem.driver.kind == "rotation" else None
     per_cycle = (per_turn * (w.closes_after or 1)) if w.closes_after else len(ks)
-    keep = stored_indices(ks, per_cycle)
+    # A grid sample can land exactly on a singular pose the walk passes through
+    # on its own branch, as a parallelogram's cranks do where they lie along the
+    # frame. Its pose is fine; its rates are not unique, and minimum-norm ones
+    # are not physics, so no state is stored for it and its k is listed instead.
+    rank = regular_rank(model, w.samples[0])
+    singular = sorted(k for k in ks if regular_rank(model, w.samples[k]) < rank)
+    keep = [k for k in stored_indices(ks, per_cycle) if k not in singular]
     speed = abs(problem.driver.speed)
     accel = problem.driver.acceleration
 
@@ -231,6 +237,7 @@ def solve(problem: Problem, generator: dict, problem_sha256: str | None = None) 
         "high": limit(w.high),
         "low": limit(w.low),
         "initialDrift": _r(w.initial_drift),
+        "singularPoses": singular,
         "samples": columns,
     }
     return out

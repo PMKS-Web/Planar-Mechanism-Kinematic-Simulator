@@ -389,7 +389,10 @@ analysis itself, in the textbook form (Haug 1989, ch. 3 and 6), in `oracle/pmks_
 - accelerations: J q̈ = −γ + [0; d̈], where γ is a central difference of Exudyn's own velocity-level
   constraints Φ_q q̇ along q̇, extrapolated twice. A first difference of the velocity level keeps
   about 1×10⁻¹⁴ relative accuracy where a second difference of positions keeps only 1×10⁻⁸
-  (`oracle/spike/gamma_step.md` has the measurements);
+  (`oracle/spike/gamma_step.md` has the measurements). The step is a tenth of the machine's size
+  along q̇, with a turn rate counted as the speed it gives a point one machine size away, so the
+  same machine drawn a hundred times larger gets the same angular accelerations to the stored
+  digits;
 - forces: inverse dynamics, J^T λ = M q̈ − f for the dynamic case and −f for the static one, with
   M and f from Exudyn. Exudyn solves M q̈ = f + Φ_q^T λ, so Φ_q^T λ is the constraint force on
   each body. Whether a reaction is fixed by equilibrium is read off the null space of J^T.
@@ -417,6 +420,14 @@ return. Such a machine fails on its positions rather than passing; none of the v
 because each retraces. Storing the continuing branch as a second segment, keyed by segment as well
 as k, is Phase 3's, with the other return sweeps.
 
+**A singular pose on the grid stores no state.** The walk carries on through a singular pose on
+the branch it is on, as a parallelogram's does where its cranks lie along the frame: the pose is
+well defined there, but its rates are not unique, and the minimum-norm ones least squares returns
+are not physics (one acceleration comes out at 10⁹ m/s²). Every grid sample is therefore checked
+for rank against the drawn pose; one that has lost rank is listed by k in `singularPoses`, and no
+state is stored for it. Its neighbors are stored as usual, with the condition numbers that say
+how close they are.
+
 **Slot limits are refused, not ignored.** The problem schema can carry a slider's travel limits,
 but the walk does not yet stop at them, so `solve` refuses a problem that sets any; the exporter
 marks such a slot unsupported instead of writing them. Phase 3 brackets and refines the crossings.
@@ -441,7 +452,10 @@ units) and the values it must reproduce. `cd oracle && uv run pytest` checks all
 | `non-grashof-rocker` | SymPy | Toggles at both ends, refined |
 
 A published value is compared to half a unit in its last printed place plus 0.2%. A derived value
-is compared to 1×10⁻⁹. The TTU and METU cases matched every printed digit.
+is compared to 1×10⁻⁹. The Norton and TTU cases matched every printed digit. METU rounds its
+intermediate results and agrees within that allowance, not to every digit: α₃ = 8.3131 against its
+8.312 rad/s², the driving force 7.5586 against its 7.555 N, and one reaction 25.978 against its
+25.97 N, each within 0.05%.
 
 ### The non-solving builder
 

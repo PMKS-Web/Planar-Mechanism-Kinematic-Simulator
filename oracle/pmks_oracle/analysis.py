@@ -65,6 +65,14 @@ def _central(model: ExudynModel, q, qd, h: float) -> np.ndarray:
     return (velocity_constraints_at(model, q + h * qd, qd) - velocity_constraints_at(model, q - h * qd, qd)) / (2 * h)
 
 
+def _speed(model: ExudynModel, qd) -> float:
+    """|q'| with every rotation coordinate weighted by the machine's size: a speed, in m/s."""
+    weighted = np.array(qd, dtype=float)
+    for body in model.bodies.values():
+        weighted[body.columns[2]] *= model.length_scale
+    return float(np.linalg.norm(weighted))
+
+
 def gamma(model: ExudynModel, q, qd) -> tuple[np.ndarray, float]:
     """(Phi_q q')_q q' for every row, and an estimate of its error.
 
@@ -73,8 +81,13 @@ def gamma(model: ExudynModel, q, qd) -> tuple[np.ndarray, float]:
     mechanism a tenth of its size along q': at that step the Norton four-bar's
     accelerations agree with the closed form to 1e-14 relative, where smaller
     steps lose digits to rounding (spike/gamma_step.md).
+
+    q' holds speeds in m/s and turn rates in rad/s, so its plain norm would
+    make the step depend on the units of length. `_speed` counts a turn rate
+    as the speed it gives a point one machine size from the center, which makes
+    the step the same fraction of the motion for the same machine at any size.
     """
-    speed = np.linalg.norm(qd)
+    speed = _speed(model, qd)
     if speed == 0:
         return np.zeros(model.m), 0.0
     h = 0.1 * model.length_scale / speed
