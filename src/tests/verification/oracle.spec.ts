@@ -162,16 +162,27 @@ describe('numerical oracle', () => {
             comparison.range.oracle
           );
         }
+        // Nothing passes by not being compared: every stored sample is reached,
+        // every part the oracle reports is reported back, and every quantity
+        // the oracle has at a sample PMKS+ has too, unless the manifest leaves
+        // it out.
+        const leftOut = (quantity: string, part: string): boolean =>
+          exclusions.some(
+            (e) =>
+              e.what !== 'runs' &&
+              e.what.quantities.includes(quantity as never) &&
+              (!e.what.parts || e.what.parts.includes(part))
+          );
+        expect(comparison.unvisited, 'oracle samples PMKS+ never reached').toEqual([]);
+        expect(comparison.unreported, 'parts PMKS+ never reports').toEqual([]);
+        const missing = comparison.missing
+          .filter((m) => !leftOut(m.quantity, m.part))
+          .map((m) => `${m.quantity} of ${m.part} at k=${m.k}`);
+        expect(missing.slice(0, 10), 'quantities PMKS+ left blank').toEqual([]);
         const ends = sweep.closesAfterTurns ? undefined : [sweep.kMin, sweep.kMax];
         const failures: string[] = [];
         for (const d of comparison.deviations) {
-          const left = exclusions.some(
-            (e) =>
-              e.what !== 'runs' &&
-              e.what.quantities.includes(d.quantity) &&
-              (!e.what.parts || e.what.parts.includes(d.part))
-          );
-          if (left) {
+          if (leftOut(d.quantity, d.part)) {
             excludedSamples++;
             continue;
           }

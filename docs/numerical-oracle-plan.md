@@ -337,8 +337,8 @@ and the comparison about 10.
 ### What is compared, and how
 
 - **Published cases.** Every `FIXTURE_GALLERY` entry, as `npm run fixture-urls` links it, and
-  every template as the library dialog stores it: 157 drawings, 202 machines. Each machine is
-  exported from its decoded URL by `src/test-utils/oracle/export-problem.ts`, which reads the start
+  every template as the library dialog stores it: 167 drawings (122 gallery entries and 45
+  templates), 202 machines. Each machine is exported from its decoded URL by `src/test-utils/oracle/export-problem.ts`, which reads the start
   pose only. Units come from its own table (`si-units.ts`), not the app's.
 - **PMKS+ is sampled at whole degrees** (`'degree'`), and each frame is placed on the oracle's grid
   by its driver coordinate. Adaptive sampling adds frames between grid points and agrees with
@@ -354,6 +354,10 @@ and the comparison about 10.
   δ².
 - **Differenced rates** (what PMKS+ fills by `fillRatesByDifference`) are `undefined` at the last
   sample before a reversal, where the difference reaches across the turn.
+- **Nothing passes by not being compared.** Every stored oracle sample must be reached by a PMKS+
+  frame, every joint and body the oracle reports must be reported back, and every quantity the
+  oracle has at a sample PMKS+ must have too, unless the manifest leaves it out
+  (`oracle-compare.spec.ts` removes each in turn and sees the comparison say so).
 
 ### The budgets, from the measurement
 
@@ -387,8 +391,11 @@ first Linux run rewrote every reference that way. Two changes followed:
   committed reference: the grid, the limits, the mobility counts and which reactions are
   identifiable must be equal, and every number must agree to one hundredth of the budget PMKS+ is
   held to for it, on the same scales, plus a unit in its last stored digit. Rates and forces past
-  the conditioning limit are not compared, as PMKS+'s are not. `run.py` rewrites a reference only
-  when that check fails or its problem or generator changed.
+  the conditioning limit are not compared, as PMKS+'s are not. Because a condition number decides
+  that, it must itself reproduce to a thousandth of its size and fall on the same side of the
+  limit, so a changed one cannot excuse the rates it would hide; two poses past 10¹⁰ are both
+  singular and agree. `run.py` rewrites a reference only when that check fails or its problem or
+  generator changed.
 - **A toggle on a grid point is not stored.** The two cylinder booms stop exactly at their stroke
   ends, which fall on grid points; whether the refined toggle landed a hair before the last one or
   after it differed between the platforms. A grid point within 10⁻⁹ of a step of a toggle is the
@@ -449,7 +456,10 @@ analysis itself, in the textbook form (Haug 1989, ch. 3 and 6), in `oracle/pmks_
 - accelerations: J q̈ = −γ + [0; d̈], where γ is a central difference of Exudyn's own velocity-level
   constraints Φ_q q̇ along q̇, extrapolated twice. A first difference of the velocity level keeps
   about 1×10⁻¹⁴ relative accuracy where a second difference of positions keeps only 1×10⁻⁸
-  (`oracle/spike/gamma_step.md` has the measurements);
+  (`oracle/spike/gamma_step.md` has the measurements). The step is a tenth of the machine's size
+  along q̇, with a turn rate counted as the speed it gives a point one machine size away, so the
+  same machine drawn a hundred times larger gets the same angular accelerations to the stored
+  digits;
 - forces: inverse dynamics, J^T λ = M q̈ − f for the dynamic case and −f for the static one, with
   M and f from Exudyn. Exudyn solves M q̈ = f + Φ_q^T λ, so Φ_q^T λ is the constraint force on
   each body. Whether a reaction is fixed by equilibrium is read off the null space of J^T.
@@ -477,6 +487,14 @@ return. Such a machine fails on its positions rather than passing; none of the v
 because each retraces. Storing the continuing branch as a second segment, keyed by segment as well
 as k, is Phase 3's, with the other return sweeps.
 
+**A singular pose on the grid stores no state.** The walk carries on through a singular pose on
+the branch it is on, as a parallelogram's does where its cranks lie along the frame: the pose is
+well defined there, but its rates are not unique, and the minimum-norm ones least squares returns
+are not physics (one acceleration comes out at 10⁹ m/s²). Every grid sample is therefore checked
+for rank against the drawn pose; one that has lost rank is listed by k in `singularPoses`, and no
+state is stored for it. Its neighbors are stored as usual, with the condition numbers that say
+how close they are.
+
 **Slot limits are refused, not ignored.** The problem schema can carry a slider's travel limits,
 but the walk does not yet stop at them, so `solve` refuses a problem that sets any; the exporter
 marks such a slot unsupported instead of writing them. Phase 3 brackets and refines the crossings.
@@ -501,7 +519,10 @@ units) and the values it must reproduce. `cd oracle && uv run pytest` checks all
 | `non-grashof-rocker` | SymPy | Toggles at both ends, refined |
 
 A published value is compared to half a unit in its last printed place plus 0.2%. A derived value
-is compared to 1×10⁻⁹. The TTU and METU cases matched every printed digit.
+is compared to 1×10⁻⁹. The Norton and TTU cases matched every printed digit. METU rounds its
+intermediate results and agrees within that allowance, not to every digit: α₃ = 8.3131 against its
+8.312 rad/s², the driving force 7.5586 against its 7.555 N, and one reaction 25.978 against its
+25.97 N, each within 0.05%.
 
 ### The non-solving builder
 

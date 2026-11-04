@@ -31,6 +31,12 @@ REPRODUCE = {"position": 1e-9, "velocity": 1e-9, "acceleration": 1e-7, "force": 
 CONDITIONING_LIMIT = 1e3
 # A force scale below this is rounding in a machine nothing loads.
 FORCE_FLOOR = 1e-6
+# A condition number this large is a singular pose on either platform, and how
+# large is rounding (SINGULAR_RATIO in sweep.py).
+SINGULAR_CONDITION = 1e10
+# However near a toggle, a condition number must reproduce to this fraction of
+# itself, so that a changed one cannot excuse the rates it stops comparing.
+CONDITION_AT_MOST = 1e-3
 
 # The scale each stored column is measured against, and its order.
 _COLUMN = {
@@ -116,6 +122,20 @@ def _series(where: str, x: list, y: list, scale: float, order: str, conditions: 
         _close(f"{where}[{i}]", u, v, REPRODUCE[order] * scale)
 
 
+def _condition(where: str, u: float, v: float) -> None:
+    """Two condition numbers for one pose, which decide which of its numbers are compared."""
+    if min(u, v) > SINGULAR_CONDITION:
+        return
+    # A condition number is a ratio of singular values; near a toggle the
+    # small one is itself rounding-sized, so the ratio is known only to about
+    # its own size times the rounding, and never looser than CONDITION_AT_MOST.
+    tolerance = min(max(u, v) ** 2 * 1e-14, CONDITION_AT_MOST * min(u, v))
+    if abs(u - v) > tolerance:
+        raise Disagreement(f"{where}: {u!r} against {v!r}, more than {tolerance:.1e} apart")
+    if (u > CONDITIONING_LIMIT) != (v > CONDITIONING_LIMIT):
+        raise Disagreement(f"{where}: {u!r} against {v!r}, either side of {CONDITIONING_LIMIT:.0e}")
+
+
 def check(problem: dict, a: dict, b: dict) -> None:
     """Raise Disagreement unless reference `b` reproduces reference `a` for `problem`."""
     for key in ("schema", "problem", "problemSha256", "generator"):
@@ -132,7 +152,7 @@ def check(problem: dict, a: dict, b: dict) -> None:
         return
     sa, sb = a["sweep"], b["sweep"]
     scales = _scales(problem, a, b)
-    for key in ("driver", "step", "kMin", "kMax", "closesAfterTurns"):
+    for key in ("driver", "step", "kMin", "kMax", "closesAfterTurns", "singularPoses"):
         _same(key, sa[key], sb[key])
     for end in ("high", "low"):
         _same(f"{end} limit", sa[end] is None, sb[end] is None)
@@ -149,10 +169,7 @@ def check(problem: dict, a: dict, b: dict) -> None:
     _same("gammaError samples", len(xa["gammaError"]), len(xb["gammaError"]))
     conditions = [max(u, v) for u, v in zip(xa["condition"], xb["condition"])]
     for i, (u, v) in enumerate(zip(xa["condition"], xb["condition"])):
-        # A condition number is a ratio of singular values; near a toggle the
-        # small one is itself rounding-sized, so the ratio is known only to
-        # about its own size times the rounding.
-        _close(f"condition[{i}]", u, v, max(u, v) * max(u, v) * 1e-14)
+        _condition(f"condition[{i}]", u, v)
     _series("driverTravel", xa["driverTravel"], xb["driverTravel"], scales["travel"], "position", conditions)
     for group in ("points", "bodies", "sliders"):
         _same(f"{group} ids", sorted(xa[group]), sorted(xb[group]))

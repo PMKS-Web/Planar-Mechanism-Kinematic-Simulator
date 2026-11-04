@@ -56,6 +56,8 @@ export interface OracleReference {
     high: OracleLimit | null;
     low: OracleLimit | null;
     initialDrift: number;
+    /** Grid samples that land on a singular pose: no state is stored for them. */
+    singularPoses: number[];
     samples: {
       k: number[];
       driverTravel: number[];
