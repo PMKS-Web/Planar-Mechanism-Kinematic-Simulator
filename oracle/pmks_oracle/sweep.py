@@ -29,6 +29,8 @@ from .exudyn_model import ExudynModel
 MAX_REVOLUTIONS = 3
 # A singular value this far below the largest is zero, for rank and for singularity alike.
 SINGULAR_RATIO = 1e-10
+# How far inside a toggle, in steps, a grid point must lie to be stored.
+TOGGLE_CLEARANCE = 1e-9
 
 
 @dataclass
@@ -165,7 +167,10 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
             q_back, t_back, h_back = previous
             try:
                 extremum = _refine_turning_point(model, q_back, t_back, h_back + 2 * h, direction)
-                while (d0 + k_next * step - extremum) * direction <= 0:
+                # A grid point on the toggle itself is the dead point, where no
+                # rate is defined, and whether rounding puts the refined toggle
+                # a hair before or after it differs between platforms.
+                while (d0 + k_next * step - extremum) * direction < -TOGGLE_CLEARANCE * step:
                     walk.samples[k_next] = analysis.newton(model, q_back, d0 + k_next * step)
                     k_next += direction
             except analysis.SolveFailed:

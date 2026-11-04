@@ -20,8 +20,9 @@ cd oracle && uv run pytest   # the oracle's own raw benchmarks
 ```
 
 `npm run oracle` needs [uv](https://docs.astral.sh/uv/). Do not run the oracle's Python with `-I`.
-Commit what it writes under `src/test-data/oracle/`; CI regenerates on Linux and fails on any
-difference.
+Commit what it writes under `src/test-data/oracle/`. A regeneration leaves alone every reference
+it reproduces to within rounding (`pmks_oracle/agree.py`), so a reference written on macOS passes
+CI's Linux regeneration; a `changed` line in its output says what moved and why.
 
 ## When a spec fails
 
