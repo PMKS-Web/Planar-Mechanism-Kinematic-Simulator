@@ -2422,7 +2422,7 @@ A slider block is a part, not a meeting point: splitting one leaves it unmoved o
 
 A weld is no reason to refuse; the service lets it go through `unWeldJoint` first, inside one `batched` edit -- at the start pose a posed edit holds no saves, so without the batch the unweld wrote an undo entry of its own. That means counting bodies *before* it happens: a weld fuses the links at it into one compound, so `joint.links` shows one body. The count is the weld components the compound leaves without this joint, so two leaves welded together again elsewhere are still one body, and a corner of a triangle welded at every corner is refused as one link. A Prismatic block with two riders is the same case -- the block carries `isWelded` -- and unwelding it sets `rotates`, so the service sets it back.
 
-Where the pins go is `placeSplitPins`. One body keeps the point: the link that ends a slot or is a cylinder member, or else the one that keeps the joint's letter. Every other pin takes the cheapest placement that leaves no pin on another bar and no bar over another pin, searched along each direction toward its own body's other joints, with a sideways step charged double because it turns the link rather than shortening it. Spreading the pins evenly around the point instead moved a slot's end out from under its slider -- splitting D in the Shaper fixture left B 16.9 model units off its slot, because `dragJoint(..., false)` skips the rebuild that would reseat it -- and left two plain links lying across each other's pins. Only what happens at the pins counts: a scissor's arms cross by design, and a check on whole bars found nothing that cleared and left the center pin where it was. A bar that ran on through the split point is not held to keep off the kept pin either, since only a bend could change that. Toward the *average* of a body's other joints is no direction at all for a pin in the middle of a straight bar, which is why each joint is a direction of its own. When a lock or hold keeps the pin chosen to move exactly where it was, it becomes the one that stays. Only when two slot ends meet at one pin, and one has to move, does the split call `reseatFloatingSliders()` -- calling it every time nudged blocks the split never touched, since Slider Crank Inversions loads with G and K a hair off their slots. Steps are measured in joint sizes, so a split spec built at raw fixture coordinates has every link shorter than one step and quietly checks the fallback instead: build split fixtures through `inModelUnits`.
+Where the pins go is `placeSplitPins`. One body keeps the point: the link that ends a slot or is a cylinder member, or else the one that keeps the joint's letter -- unless that leaves some pin with no clear place, when `chooseStayingPin` takes the first body in drawing order whose staying clears them all. The Steam Locomotive's crosshead J needed it: the piston rod's slide pin K is nearer J than one clearance, so the piston rod's bar to K passes J within reach wherever its pin goes, and only the piston rod staying (the main rod's pin steps along the main rod) clears. Every other pin takes the cheapest placement that leaves no pin on another bar and no bar over another pin, searched along each direction toward its own body's other joints, with a sideways step charged double because it turns the link rather than shortening it. Spreading the pins evenly around the point instead moved a slot's end out from under its slider -- splitting D in the Shaper fixture left B 16.9 model units off its slot, because `dragJoint(..., false)` skips the rebuild that would reseat it -- and left two plain links lying across each other's pins. Only what happens at the pins counts: a scissor's arms cross by design, and a check on whole bars found nothing that cleared and left the center pin where it was. A bar that ran on through the split point is not held to keep off the kept pin either, since only a bend could change that. Toward the *average* of a body's other joints is no direction at all for a pin in the middle of a straight bar, which is why each joint is a direction of its own. When a lock or hold keeps the pin chosen to move exactly where it was, it becomes the one that stays. Only when two slot ends meet at one pin, and one has to move, does the split call `reseatFloatingSliders()` -- calling it every time nudged blocks the split never touched, since Slider Crank Inversions loads with G and K a hair off their slots. Steps are measured in joint sizes, so a split spec built at raw fixture coordinates has every link shorter than one step and quietly checks the fallback instead: build split fixtures through `inModelUnits`.
 
 ### A forced click on the right-click card has to wait for the card to stop growing
 
@@ -2769,6 +2769,52 @@ apostrophe in a typed name, and the URL carries one, but a template's payload si
 in `template-linkages.ts`, where one would end the string, and `e2e/template-payloads.mjs` reads
 the payloads back with `'([^']*)'`. So it is "Watt linkage". Commas and periods are the codec's separators and are out everywhere.
 `template-machine-names.spec.ts` reads every name back off its payload.
+
+### A cylinder card is solved at the size it is published at
+
+A cylinder's head travel is measured in R, and R comes from the Object Size, so the same fixture has
+a different stroke at a different size. `buildMechanism` in a spec solves at size 1 in user units,
+which is not what a reader opens: build a cylinder card with
+`buildMechanismAtScale(inModelUnits(fixture), objectScale)` and the gallery entry's own
+`objectScale`, or a spec passes on a stroke the app never shows. `cylinderSpanning` in
+`library-card-fixtures.ts` works backwards from that rule: give it the two ends, the shortest and
+longest span, and the size, and it places the barrel end and the seal so the part reaches both.
+The Locking Pliers and the Double-Wishbone Suspension use it for a hand and a shock absorber.
+
+### A disc is as big as its farthest joint, so a wheel needs a pin at its rim
+
+A link drawn as a disc (`circle`, one revolute ground pin, no subset) reaches the outermost joint's
+end cap: its radius is that joint's distance from the ground pin plus `barHalfWidth` at the
+document's Object Size. A wheel that carries only an axle and a crank pin is therefore drawn the
+size of its crank. The Steam Locomotive gives each wheel a third joint one wheel radius less a bar
+half-width from the axle, opposite the crank pin where a real wheel carries its counterweight, so
+each wheel is drawn 1.4 m across. The radius is read at the drawing scale too, so Fine, Schematic
+and a zoom near a size limit draw the disc a little larger or smaller; the document's geometry does
+not change. `test-setup.ts` resets the Object Size before every test, so a spec that measures a disc
+reads the size straight after decoding the card.
+
+### A card can be framed on its picture rather than on its mechanism
+
+`template-thumbnails.mjs` and `template-animations.mjs` crop a card's art to the mechanism's holders.
+A Real-Life card whose picture is much larger than its linkage (the locomotive’s running gear fills
+only the bottom quarter of its picture) would show a strip of wheels with the rest of the engine
+cut away. List it in `FRAMED_BY_PICTURE` in `e2e/card-frame.mjs`, and both scripts crop to the
+backdrop image instead, with no padding; draw the picture at the card's own aspect so nothing is
+lost.
+`pictureBox` throws when the picture is not on the grid, which happens when the dev server rebuilds
+mid-run. Run it again once the rebuild is done.
+
+### Write a Slide's riders as the compound the app makes of them
+
+Two links riding one slider whose riders cannot turn (a Slide) are one rigid body, and the app stores
+them as a compound: `reconcileAssemblyWelds` builds it on load when a URL lists the riders as two
+separate links. A fixture that writes them separately still opens and solves, but the compound that
+load builds is not the one Split Joint asks about. The locomotive's crosshead and piston rod ride
+the slide pin K, and with the two written separately, splitting the union link's pin T measured
+clearance against the crosshead triangle alone. The sweep in `split-joint-templates.spec.ts`
+measured against every joint of the fused body, and the two disagreed. Declaring the compound in
+the fixture (`subset`, with the Slide's pin in `welds`) gives the payload the app itself would save,
+and both then measure the same body.
 ### A stack follows shared code; unrelated features start at staging
 
 Library browsing, numerical corrections and small UI fixes had accumulated in one chain, so

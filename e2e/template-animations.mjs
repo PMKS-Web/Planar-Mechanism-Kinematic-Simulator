@@ -29,6 +29,7 @@ const { default: GIFEncoder } = await import(
 );
 const { PNG } = await import(PLAYWRIGHT + '/node_modules/pngjs/lib/png.js');
 import { waitForReady } from './app-ready.mjs';
+import { FRAMED_BY_PICTURE, pictureBox } from './card-frame.mjs';
 import { onGrid } from './in-angular.mjs';
 import { TEMPLATE_LINKAGES, assertTemplatesParsed } from './template-payloads.mjs';
 
@@ -176,7 +177,11 @@ for (const { id, name } of wanted()) {
     box.bottom = Math.max(box.bottom, frame.bottom);
   }
 
-  const pad = 0.1 * Math.max(box.right - box.left, box.bottom - box.top);
+  // A card framed on its picture is clipped to the picture, as its still is;
+  // see card-frame.mjs.
+  const framedByPicture = FRAMED_BY_PICTURE.has(id);
+  if (framedByPicture) Object.assign(box, await pictureBox(page, id));
+  const pad = framedByPicture ? 0 : 0.1 * Math.max(box.right - box.left, box.bottom - box.top);
   const cx = (box.left + box.right) / 2;
   const cy = (box.top + box.bottom) / 2;
   let width = box.right - box.left + 2 * pad;

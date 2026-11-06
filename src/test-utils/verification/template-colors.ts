@@ -119,6 +119,24 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['HI', 'IJ', 'JK'],
     ],
   },
+  // As the drawing was finished in the app: both arms navy, the shock's barrel
+  // and rod one teal part, and the wheel the pale teal, so the tire reads as a
+  // broad body behind the arms rather than as one more bar.
+  Double_Wishbone: {
+    same: [
+      ['ABM', 'CD'],
+      ['KN', 'MS'],
+    ],
+    fixed: { ABM: 2, KN: 4, BCTUVWX: 3 },
+  },
+  // The three coupled wheels are one part made three times, and so are the two
+  // coupling rods, which meet on the driving wheel's crank pin and should match.
+  Steam_Locomotive: {
+    same: [
+      ['ABC', 'DEFM', 'GHI'],
+      ['BE', 'EH'],
+    ],
+  },
   // Two legs of one gait: same linkage, half a cycle apart. Identical colors
   // are what make it read as one animal rather than two mechanisms.
   Walking_Pair: {

@@ -235,6 +235,57 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       opacity: 0.8,
     },
   },
+  // These two are generated from fixtures rather than drawn by hand, and their
+  // pictures were drawn around the fixtures' pins (each SVG says how).
+  {
+    id: 'Locking_Pliers',
+    name: 'Locking Pliers',
+    category: 'realworld',
+    description:
+      'Squeeze, and the jaws stop closing as the toggle link comes into line, then lock just past it. A cylinder plays your hand.',
+    thumbnail: 'assets/gifs/locking-pliers.png',
+    animation: 'assets/gifs/locking-pliers.gif',
+    // Drawn in inches: 11.6 in wide, centered at (5.2, -0.2) in.
+    backdrop: {
+      src: 'assets/backdrops/locking-pliers.svg',
+      width: 29.464,
+      centerX: 13.208,
+      centerY: -0.508,
+      opacity: 0.8,
+    },
+  },
+  {
+    id: 'Double_Wishbone',
+    name: 'Double-Wishbone Suspension',
+    category: 'realworld',
+    description:
+      'Two arms of unequal length carry a front wheel: as it rises it leans into the turn, and the tire hardly slides. Drawn at full size.',
+    thumbnail: 'assets/gifs/double-wishbone.png',
+    animation: 'assets/gifs/double-wishbone.gif',
+    backdrop: {
+      src: 'assets/backdrops/double-wishbone.svg',
+      width: 104,
+      centerX: 30,
+      centerY: 36,
+      opacity: 0.8,
+    },
+  },
+  {
+    id: 'Steam_Locomotive',
+    name: 'Steam Locomotive',
+    category: 'realworld',
+    description:
+      'A main rod and coupling rods link the piston to all three wheels, and valve gear slides the valve that lets steam in and out.',
+    thumbnail: 'assets/gifs/steam-locomotive.png',
+    animation: 'assets/gifs/steam-locomotive.gif',
+    backdrop: {
+      src: 'assets/backdrops/steam-locomotive.svg',
+      width: 1060,
+      centerX: 235,
+      centerY: 186.5,
+      opacity: 0.8,
+    },
+  },
 
   // Back-and-Forth Motion
   {
@@ -290,15 +341,6 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'An oil-field pump: a turning crank rocks the walking beam, which lifts the pump rod straight up and down out of the well.',
     thumbnail: 'assets/gifs/pumpjack.png',
     animation: 'assets/gifs/pumpjack.gif',
-  },
-  {
-    id: 'Pedaling_Leg',
-    name: 'Pedaling Leg',
-    category: 'backforth',
-    description:
-      'A leg pushing a bicycle crank from the knee: one leg alone can only rock the crank about half a turn.',
-    thumbnail: 'assets/gifs/pedaling-leg.png',
-    animation: 'assets/gifs/pedaling-leg.gif',
   },
 
   // Swing, Lift and Grip
@@ -375,15 +417,6 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'The first mechanism found to draw a perfectly straight line using only pins and links, with no guide to slide on.',
     thumbnail: 'assets/gifs/peaucellier.png',
     animation: 'assets/gifs/peaucellier.gif',
-  },
-  {
-    id: 'Straight_Line_Pair',
-    name: 'Approximate and Exact',
-    category: 'paths',
-    description:
-      'Chebyshev’s line beside Peaucellier’s: one bows very slightly, the other is perfectly straight.',
-    thumbnail: 'assets/gifs/straight-line-pair.png',
-    animation: 'assets/gifs/straight-line-pair.gif',
   },
   {
     id: 'Elliptical_Trammel',
@@ -551,6 +584,15 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Three pumpjacks at slightly different speeds drift in and out of step, each on its own animation row.',
     thumbnail: 'assets/gifs/pumping-field.png',
     animation: 'assets/gifs/pumping-field.gif',
+  },
+  {
+    id: 'Straight_Line_Pair',
+    name: 'Approximate and Exact',
+    category: 'machines',
+    description:
+      'Chebyshev’s line beside Peaucellier’s: one bows very slightly, the other is perfectly straight.',
+    thumbnail: 'assets/gifs/straight-line-pair.png',
+    animation: 'assets/gifs/straight-line-pair.gif',
   },
 ];
 

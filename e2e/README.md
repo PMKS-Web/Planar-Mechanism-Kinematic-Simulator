@@ -123,6 +123,9 @@ Not suites — import them from one.
   `template-linkages.ts` and `dev-templates.ts`: `TEMPLATE_IDS`, `TEMPLATE_LINKAGES`,
   `ALL_LINKAGES` (with the dev drawings) and `assertTemplatesParsed()` for anything that sweeps.
   Never re-parse the source yourself.
+- `card-frame.mjs` — `FRAMED_BY_PICTURE`, the library cards whose still and loop are cropped to
+  their backdrop picture rather than to the mechanism, and `pictureBox(page, id)`, which measures
+  that picture on the grid. `template-thumbnails.mjs` and `template-animations.mjs` both read it.
 - `filmstrip.mjs` — `filmstrip(page, dir, clip)` captures numbered frames (`shot(tag)`, or
   `during(everyMs, count, tag, work)` across an animation); `contactSheet(pattern, out)` tiles
   them into one image. Anything that animates or responds to a drag needs a filmstrip, not a

@@ -5,7 +5,7 @@
  * A traced template ships the picture it was drawn over; the card's name in
  * the address fragment puts it up in a new tab, and opening the card in place
  * puts it up here. Checked on what a reader sees: the section heading, the
- * four cards, the picture standing behind the mechanism once a card is
+ * cards, the picture standing behind the mechanism once a card is
  * opened, and the grid ruled over it in transparent black rather than a
  * baked-in gray.
  *
@@ -66,6 +66,28 @@ record(
     steering.drawn,
   steering
 );
+
+// The three drawings this repository made itself: an SVG each, and the pliers
+// open in inches, so their 29.464 cm is 11.6 in on the grid.
+for (const [id, src, width, unit] of [
+  ['Locking_Pliers', 'assets/backdrops/locking-pliers.svg', 11.6, 'in'],
+  ['Double_Wishbone', 'assets/backdrops/double-wishbone.svg', 104, 'cm'],
+  ['Steam_Locomotive', 'assets/backdrops/steam-locomotive.svg', 10.6, 'm'],
+]) {
+  await page.goto(`${BASE}/?${payloads[id]}#backdrop=${id}`, { waitUntil: 'domcontentloaded' });
+  await waitForReady(page);
+  await page.waitForFunction(
+    () => !!ng.getComponent(document.querySelector('app-new-grid')).bgImage.image(),
+    undefined,
+    { timeout: 5000 }
+  );
+  const picture = await backdrop();
+  record(
+    `the ${id} card stands on its own drawing, ${width} ${unit} wide`,
+    !!picture && picture.src === src && Math.abs(picture.width - width * 200) < 1 && picture.drawn,
+    picture
+  );
+}
 
 // --- the grid over it is transparent black --------------------------------------
 const ink = await page.evaluate(() => {

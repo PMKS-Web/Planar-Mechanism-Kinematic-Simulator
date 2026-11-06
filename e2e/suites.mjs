@@ -225,6 +225,10 @@ export const NOT_RUN = [
   { name: 'quiet-start', why: 'A helper: seeds `localStorage` so no dialog covers the canvas.' },
   { name: 'template-payloads', why: 'A helper: the one reader of `template-linkages.ts`.' },
   {
+    name: 'card-frame',
+    why: 'A helper: which library cards the art scripts crop to their picture.',
+  },
+  {
     name: 'drag-perf-harness',
     why: 'A helper: the drag scenarios and the machinery two scripts share.',
   },

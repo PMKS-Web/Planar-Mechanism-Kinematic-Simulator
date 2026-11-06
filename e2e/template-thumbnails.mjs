@@ -22,6 +22,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { FRAMED_BY_PICTURE, pictureBox } from './card-frame.mjs';
 import {
   TEMPLATE_LINKAGES,
   TEMPLATE_LINKAGES as payloads,
@@ -66,7 +67,6 @@ const FILENAMES = {
   Backhoe_Bucket: 'backhoe-bucket',
   Scissor_Lift: 'scissor-lift',
   Shaper_Quick_Return: 'shaper-quick-return',
-  Pedaling_Leg: 'pedaling-leg',
   Oscillating_Fan: 'oscillating-fan',
   Pumpjack: 'pumpjack',
   Punch_Press: 'punch-press',
@@ -91,6 +91,9 @@ const FILENAMES = {
   Parallelogram: 'parallelogram',
   Watt_Straight_Line: 'watt-straight-line',
   Dwell_Six_Bar: 'dwell-six-bar',
+  Locking_Pliers: 'locking-pliers',
+  Double_Wishbone: 'double-wishbone',
+  Steam_Locomotive: 'steam-locomotive',
 };
 
 // The three dev drawings are not here on purpose. Their payloads were written
@@ -183,6 +186,15 @@ for (const { id, payload } of libraryTemplates()) {
     ng.getComponent(document.querySelector('app-new-grid')).svgGrid.scaleToFitLinkage()
   );
   await page.waitForTimeout(800);
+  // A card framed on its picture needs the whole picture on screen, and the
+  // fit only made room for the mechanism.
+  const framedByPicture = FRAMED_BY_PICTURE.has(id);
+  if (framedByPicture) {
+    await page.evaluate(() =>
+      ng.getComponent(document.querySelector('app-new-grid')).svgGrid.panZoomObject.zoomBy(0.7)
+    );
+    await page.waitForTimeout(300);
+  }
 
   // Ruling and axes off: at card size the ruling reads as noise and the
   // mechanism is the subject. Hidden as elements rather than through the
@@ -235,9 +247,15 @@ for (const { id, payload } of libraryTemplates()) {
     };
   });
 
+  // A card framed on its picture is clipped to the picture, which carries its
+  // own margin; see card-frame.mjs.
+  if (framedByPicture) Object.assign(drawn, await pictureBox(page, id));
+
   // A margin off the longer side, then grown to the card's aspect so sips only
   // has to scale and never crops something back off.
-  const pad = 0.14 * Math.max(drawn.right - drawn.left, drawn.bottom - drawn.top);
+  const pad = framedByPicture
+    ? 0
+    : 0.14 * Math.max(drawn.right - drawn.left, drawn.bottom - drawn.top);
   const cx = (drawn.left + drawn.right) / 2;
   const cy = (drawn.top + drawn.bottom) / 2;
   let width = drawn.right - drawn.left + 2 * pad;

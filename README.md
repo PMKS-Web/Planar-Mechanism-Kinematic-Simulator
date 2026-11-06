@@ -292,7 +292,7 @@ to be shown one particular linkage.
 
 ## Mechanism library
 
-**45 mechanisms**, in eight sections, each one a mechanism the verification suite already covers.
+**47 mechanisms**, in eight sections, each one a mechanism the verification suite already covers.
 The library filters by section and by name; opening one on an empty grid loads it in place, and
 opening one over existing work offers a new tab, a replace (which is undoable), or a cancel.
 
@@ -358,13 +358,13 @@ it.*
 | Section | Mechanisms |
 | --- | --- |
 | **Start Here** | Four-Bar · Slider-Crank · Cylinder-Driven Boom · Parallelogram · Four-Bar with Fixed Lengths · Four-Bar Inversions · Slider-Crank Inversions |
-| **Real-Life Use Cases** | Aircraft Landing Gear · Car Hood Hinge · Excavator Bucket · Car Steering |
-| **Back-and-Forth Motion** | Scotch Yoke · Engine with a Flywheel · Radial Engine · Whitworth Quick-Return · Shaper Quick-Return · Pumpjack · Pedaling Leg |
+| **Real-Life Use Cases** | Aircraft Landing Gear · Car Hood Hinge · Excavator Bucket · Car Steering · Locking Pliers · Double-Wishbone Suspension · Steam Locomotive |
+| **Back-and-Forth Motion** | Scotch Yoke · Engine with a Flywheel · Radial Engine · Whitworth Quick-Return · Shaper Quick-Return · Pumpjack |
 | **Swing, Lift and Grip** | Windshield Wiper · Oscillating Fan · Parallel Gripper · Scissor Lift · Bracketed Hatch |
-| **Drawing a Path** | Chebyshev Straight-Line · Watt’s Straight-Line · Peaucellier-Lipkin · Approximate and Exact · Elliptical Trammel · Pantograph · Jansen Leg |
+| **Drawing a Path** | Chebyshev Straight-Line · Watt’s Straight-Line · Peaucellier-Lipkin · Elliptical Trammel · Pantograph · Jansen Leg |
 | **Forces** | Punch Press · Toggle Clamp (in inches) · Crane with Two Loads · Offset Load Rocker · Reciprocating Saw · Slotted Tool Drive |
 | **Six-Bars and Beyond** | Bell Crank · Six-Bar with a Dwell · Watt I · Watt II · Stephenson III · Elliptical Crank · Double Butterfly |
-| **Multiple Mechanisms** | Walking Pair · Pumping Field |
+| **Multiple Mechanisms** | Walking Pair · Pumping Field · Approximate and Exact |
 
 </details>
 

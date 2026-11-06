@@ -2,12 +2,18 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
 import { LengthUnit } from '../../app/model/unit-enums';
 import type { GalleryEntry } from './fixture-gallery';
 import {
+  LOCOMOTIVE_OBJECT_SCALE,
+  PLIERS_OBJECT_SCALE,
+  SUSPENSION_OBJECT_SCALE,
   crankDrivenPumpjackFixture,
+  doubleWishboneFixture,
   dwellSixBarFixture,
   fixedLengthFourBarFixture,
   fourBarCardFixture,
+  lockingPliersFixture,
   parallelogramFixture,
   scotchYokeOnRodFixture,
+  steamLocomotiveFixture,
   toggleClampInInchesFixture,
   wattStraightLineFixture,
 } from './library-card-fixtures';
@@ -98,5 +104,44 @@ export const LIBRARY_CARD_GALLERY: GalleryEntry[] = [
     speed: { rpm: LIBRARY_RPM },
     lengthUnit: LengthUnit.INCH,
     fixture: toggleClampInInchesFixture(),
+  },
+  {
+    name: 'Locking pliers',
+    purpose:
+      'A cylinder plays the hand: the jaw stops as the toggle link comes into line, and locks just past it',
+    spec: 'library-cards.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    objectScale: PLIERS_OBJECT_SCALE,
+    // 1.63 in of squeeze each way, so 6.5 s a cycle: slow enough to see the jaw
+    // stop while the handle is still moving.
+    speed: { unitsPerSecond: 0.5 },
+    lengthUnit: LengthUnit.INCH,
+    fixture: lockingPliersFixture(),
+  },
+  {
+    name: 'Double-wishbone suspension',
+    purpose:
+      'Unequal arms tilt the wheel into the turn as it rises, and the tire hardly moves sideways',
+    spec: 'library-cards.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    objectScale: SUSPENSION_OBJECT_SCALE,
+    // 11.5 cm of shock travel each way: 5.75 s from full droop to full bump
+    // and back.
+    speed: { unitsPerSecond: 4 },
+    fixture: doubleWishboneFixture(),
+  },
+  {
+    name: 'Steam locomotive',
+    purpose:
+      'Three coupled wheels drawn as discs, and Walschaerts valve gear working a piston valve from the driving wheel',
+    spec: 'library-cards.spec.ts',
+    floatingSlot: false,
+    slide: true,
+    objectScale: LOCOMOTIVE_OBJECT_SCALE,
+    speed: { rpm: LIBRARY_RPM },
+    lengthUnit: LengthUnit.METER,
+    fixture: steamLocomotiveFixture(),
   },
 ];

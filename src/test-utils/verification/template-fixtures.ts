@@ -33,7 +33,6 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Offset_Mount_Hatch: 'Offset-mount hatch',
   Scissor_Lift: 'Scissor lift',
   Shaper_Quick_Return: "Shaper's quick-return drive",
-  Pedaling_Leg: 'Leg on a bicycle crank',
   Oscillating_Fan: 'Oscillating fan',
   Pumpjack: 'Pumpjack, driven at the crank',
   Punch_Press: 'Punch press',
@@ -55,6 +54,9 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Slotted_Tool_Drive: 'Slotted tool drive',
   Four_Bar_Inversions: 'Four-bar inversions',
   Slider_Crank_Inversions: 'Slider-crank inversions',
+  Locking_Pliers: 'Locking pliers',
+  Double_Wishbone: 'Double-wishbone suspension',
+  Steam_Locomotive: 'Steam locomotive',
 };
 
 /**
@@ -170,7 +172,6 @@ export const LIBRARY_TEMPLATE_NAMES: Record<LibraryTemplateID, Record<string, st
   Offset_Mount_Hatch: { S: 'Bracketed hatch' },
   Scissor_Lift: { C: 'Scissor lift' },
   Shaper_Quick_Return: { A: 'Shaper drive' },
-  Pedaling_Leg: { K: 'Pedaling leg' },
   Oscillating_Fan: { C: 'Oscillating fan' },
   Pumpjack: { A: 'Pumpjack' },
   Punch_Press: { A: 'Punch press' },
@@ -202,6 +203,9 @@ export const LIBRARY_TEMPLATE_NAMES: Record<LibraryTemplateID, Record<string, st
     J: 'Oscillating cylinder (L3 grounded)',
     P: 'Pendulum pump (L4 grounded)',
   },
+  Locking_Pliers: { A: 'Locking pliers' },
+  Double_Wishbone: { A: 'Double wishbone' },
+  Steam_Locomotive: { D: 'Steam locomotive' },
 };
 
 export function libraryTemplateMasses(id: LibraryTemplateID): PublishedMasses {
