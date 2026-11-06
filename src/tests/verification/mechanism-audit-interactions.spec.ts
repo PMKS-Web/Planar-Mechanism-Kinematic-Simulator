@@ -1,7 +1,11 @@
 import './mechanism-audit-support';
 import { TestBed } from '@angular/core/testing';
+import { AnalysisGraphComponent } from '../../app/component/analysis-graph/analysis-graph.component';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { UrlGenerationService } from '../../app/services/url-generation.service';
+import { ExportFlowService } from '../../app/services/export/export-flow.service';
+import { ExportTableService } from '../../app/services/export/export-table.service';
+import { toCsv } from '../../app/services/export/csv-writer';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { bodiesUnder } from '../../app/model/link';
 import { machineFacts } from '../../app/model/machine-facts/machine-facts';
@@ -9,7 +13,63 @@ import { jansenLegFixture } from '../../test-utils/verification/library-fixtures
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import { openAuditFinding, openAuditPayload } from './mechanism-audit-support';
 
+type Point = { x: number; y: number | null };
+function graph(property: string, part: string) {
+  const component = TestBed.runInInjectionContext(() => new AnalysisGraphComponent());
+  component.analysis = 'kinematic';
+  component.analysisType = 'loop';
+  component.mechProp = property;
+  component.mechPart = part;
+  component.ngOnInit();
+  return component;
+}
+
 describe('the audit through editing, graph and export commands', () => {
+  it('finding #61: reversed elapsed time agrees in playback, graph marker and actual CSV', () => {
+    const opened = openAuditFinding(61);
+    opened.service.seekMechanism(0, 1.8);
+    const before = opened.service.joints.find((joint) => joint.id === 'B')!;
+    const pose = [before.x, before.y];
+    const component = graph('Linear Joint Pos', 'B');
+    expect(opened.service.reverseDrive(0)).toBe(true);
+    expect(opened.service.secondsOf(0)).toBeCloseTo(4.2, 10);
+    const after = opened.service.joints.find((joint) => joint.id === 'B')!;
+    expect(after.x).toBeCloseTo(pose[0], 9);
+    expect(after.y).toBeCloseTo(pose[1], 9);
+    component.updateChartData();
+    opened.service.seekMechanism(0, 4.2);
+    const curves = component.chartOptions.series!.map((series) => series.data as Point[]);
+    const row = curves[0].findIndex((point) => Math.abs(point.x - 4.2) < 1e-8);
+    expect(row).toBeGreaterThan(0);
+    expect(curves[0][row].y).toBeCloseTo(after.x / MODEL_SCALE, 9);
+    expect(curves[1][row].y).toBeCloseTo(after.y / MODEL_SCALE, 9);
+    expect(Number(component.chartOptions.annotations!.xaxis![0].x)).toBeCloseTo(4.2, 9);
+
+    const flow = TestBed.inject(ExportFlowService);
+    flow.reset();
+    flow.uniformRows = false;
+    const part = flow.partGroups()[0].parts.find((one) => one.kind === 'joint' && one.id === 'B')!;
+    flow.setParts([part], true);
+    flow.setColumns(flow.allColumns(), false);
+    flow.setColumns(
+      flow.allColumns().filter((column) => column.key === 'j:pos'),
+      true
+    );
+    const table = TestBed.inject(ExportTableService).tables()[0];
+    expect(table.times.every((time, index) => index === 0 || time >= table.times[index - 1])).toBe(
+      true
+    );
+    const csv = toCsv(table, 'full').trim().split('\n');
+    const csvRow = csv
+      .slice(1)
+      .map((line) => line.split(',').map(Number))
+      .find((cells) => Math.abs(cells[0] - 4.2) < 1e-8)!;
+    expect(csvRow).toBeDefined();
+    expect(csvRow[1]).toBeCloseTo(after.x / MODEL_SCALE, 9);
+    expect(csvRow[2]).toBeCloseTo(after.y / MODEL_SCALE, 9);
+    component.ngOnDestroy();
+  });
+
   it('finding #59: a member force immediately loads and follows its root, and survives unwelding', () => {
     const opened = openAuditFinding(59);
     const service = opened.service;
