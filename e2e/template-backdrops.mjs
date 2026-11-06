@@ -1,5 +1,5 @@
 /**
- * The real-life section of the library, and the picture each of its cards
+ * The Real Machines section of the library, and the picture each of its cards
  * opens on.
  *
  * A traced template ships the picture it was drawn over; the card's name in
@@ -119,8 +119,8 @@ const section = await page.evaluate(() => {
   return { headings, cards };
 });
 record(
-  'the library heads a Real-Life Use Cases section',
-  section.headings.includes('Real-Life Use Cases'),
+  'the library heads a Real Machines section',
+  section.headings.includes('Real Machines'),
   section
 );
 const opened = await page.evaluate(() => {

@@ -96,9 +96,7 @@
         }
       }
       @if (groups().length === 0) {
-        <p class="empty">
-          Nothing here has been solved yet. A mechanism has to run before it has numbers to give.
-        </p>
+        <p class="empty">Nothing to export yet. A mechanism’s results appear here once it runs.</p>
       }
     }
 
@@ -136,7 +134,7 @@
           {{
             flow.step === 'forces'
               ? 'None of the chosen objects carries a reaction this analysis can solve.'
-              : 'Choose an object on the first step to see what it has to give.'
+              : 'Choose an object on the first step to see what you can export for it.'
           }}
         </p>
       }

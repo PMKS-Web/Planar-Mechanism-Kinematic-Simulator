@@ -109,14 +109,14 @@ export class HelpPanelComponent {
     {
       term: 'Fixed length, fixed angle',
       meaning:
-        'A constraint on one bar: it keeps that value while its joints still move on the line or ' +
-        'the arc the value leaves them. Released from the padlock in the panel.',
+        'Keeps a link’s length or angle the same while you edit it. Turn it off with the ' +
+        'padlock beside the field.',
     },
     {
       term: 'Lock',
       meaning:
-        'A mark on a joint, link or force that refuses to let it move at all. Different from a ' +
-        'fixed length or angle, which allows the motions that keep the value true.',
+        'Keeps a joint, link or force where it is while you edit. Unlike a fixed length or ' +
+        'angle, it allows no movement at all.',
     },
     {
       term: 'Toggle',

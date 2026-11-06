@@ -27,7 +27,7 @@ export const TEMPLATE_CATEGORIES = [
   // looking. The dialog only offers this category in a development build.
   { id: 'dev', name: 'For Development' },
   { id: 'start', name: 'Start Here' },
-  { id: 'realworld', name: 'Real-Life Use Cases' },
+  { id: 'realworld', name: 'Real Machines' },
   { id: 'backforth', name: 'Back-and-Forth Motion' },
   { id: 'swing', name: 'Swing, Lift and Grip' },
   { id: 'paths', name: 'Drawing a Path' },
@@ -108,7 +108,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Four-Bar',
     category: 'start',
     description:
-      'The mechanism most others grow from: the short crank turns all the way round, the opposite link only swings, and the coupler draws a curve.',
+      'The short crank turns all the way round, the opposite link only swings, and a point on the coupler draws a curve.',
     thumbnail: 'assets/gifs/four-bar.png',
     animation: 'assets/gifs/four-bar.gif',
   },
@@ -166,7 +166,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/slider-crank-inversions.gif',
   },
 
-  // Real-Life Use Cases: each traced by hand over a picture of the machine,
+  // Real Machines: each traced by hand over a picture of the machine,
   // and each card opens on that picture. The placements are the ones the
   // drawings were made at, in centimeters, which the backdrop service
   // converts into whatever unit the payload opens in.
@@ -242,7 +242,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Locking Pliers',
     category: 'realworld',
     description:
-      'Squeeze, and the jaws stop closing as the toggle link comes into line, then lock just past it. A cylinder plays your hand.',
+      'A cylinder squeezes the handles. The jaws stop closing as the toggle link comes into line, then lock just past it.',
     thumbnail: 'assets/gifs/locking-pliers.png',
     animation: 'assets/gifs/locking-pliers.gif',
     // Drawn in inches: 11.6 in wide, centered at (5.2, -0.2) in.
@@ -259,7 +259,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Double-Wishbone Suspension',
     category: 'realworld',
     description:
-      'Two arms of unequal length carry a front wheel: as it rises it leans into the turn, and the tire hardly slides. Drawn at full size.',
+      'Two unequal arms guide a front wheel. As it rises, its top tilts toward the car and the tire barely moves sideways. Drawn at full size.',
     thumbnail: 'assets/gifs/double-wishbone.png',
     animation: 'assets/gifs/double-wishbone.gif',
     backdrop: {
@@ -293,7 +293,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Scotch Yoke',
     category: 'backforth',
     description:
-      'A pin on a turning disc slides in the yoke’s slot and pushes the rod back and forth through its bearings in perfectly smooth strokes.',
+      'A pin on a turning disc slides in the yoke’s slot and pushes the rod back and forth through its bearings.',
     thumbnail: 'assets/gifs/scotch-yoke.png',
     animation: 'assets/gifs/scotch-yoke.gif',
   },
@@ -301,8 +301,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     id: 'Flywheel_Engine',
     name: 'Engine with a Flywheel',
     category: 'backforth',
-    description:
-      'The crank drawn as the flywheel it really is, driving a piston up and down its guide.',
+    description: 'A crank drawn as a flywheel drives a piston up and down its guide.',
     thumbnail: 'assets/gifs/flywheel-engine.png',
     animation: 'assets/gifs/flywheel-engine.gif',
   },
@@ -329,7 +328,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Shaper Quick-Return',
     category: 'backforth',
     description:
-      'A metal shaper’s drive: the tool slides forward slowly to cut and comes back fast, saving time on every stroke.',
+      'A metal shaper’s drive: the tool slides forward slowly to cut and comes back fast.',
     thumbnail: 'assets/gifs/shaper-quick-return.png',
     animation: 'assets/gifs/shaper-quick-return.gif',
   },
@@ -451,7 +450,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Punch Press',
     category: 'forces',
     description:
-      'Watch the torque the crank needs climb as the punch meets its load, then fall away on the way back up.',
+      'The crank torque rises as the punch meets its load and falls as the punch returns.',
     thumbnail: 'assets/gifs/punch-press.png',
     animation: 'assets/gifs/punch-press.gif',
   },
@@ -460,7 +459,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Toggle Clamp',
     category: 'forces',
     description:
-      'Why a clamp holds so hard: as two links line up, a small push on the handle becomes a huge clamping force. Drawn in inches.',
+      'As two links come into line, a small push on the handle makes a much larger clamping force. Drawn in inches.',
     thumbnail: 'assets/gifs/toggle-clamp.png',
     animation: 'assets/gifs/toggle-clamp.gif',
   },
@@ -552,7 +551,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Elliptical Crank',
     category: 'sixbar',
     description:
-      'A turning crank and a sliding block steer one long link, so its far end draws a neat ellipse.',
+      'A turning crank and a sliding block steer one long link, so its far end draws an ellipse.',
     thumbnail: 'assets/gifs/elliptical-crank.png',
     animation: 'assets/gifs/elliptical-crank.gif',
   },
@@ -560,8 +559,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     id: 'Double_Butterfly',
     name: 'Double Butterfly',
     category: 'sixbar',
-    description:
-      'Eight links with no simple four-bar anywhere inside, yet one crank still drives every one of them smoothly.',
+    description: 'Eight links and no four-bar loop anywhere inside, all driven by one crank.',
     thumbnail: 'assets/gifs/double-butterfly.png',
     animation: 'assets/gifs/double-butterfly.gif',
   },
@@ -572,7 +570,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Walking Pair',
     category: 'machines',
     description:
-      'Two Jansen legs half a cycle apart: one foot stays planted while the other swings forward, the way you walk.',
+      'Two Jansen legs half a cycle apart: one foot stays planted while the other swings forward.',
     thumbnail: 'assets/gifs/walking-pair.png',
     animation: 'assets/gifs/walking-pair.gif',
   },

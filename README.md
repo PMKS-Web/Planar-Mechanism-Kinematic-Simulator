@@ -358,7 +358,7 @@ it.*
 | Section | Mechanisms |
 | --- | --- |
 | **Start Here** | Four-Bar · Slider-Crank · Cylinder-Driven Boom · Parallelogram · Four-Bar with Fixed Lengths · Four-Bar Inversions · Slider-Crank Inversions |
-| **Real-Life Use Cases** | Aircraft Landing Gear · Car Hood Hinge · Excavator Bucket · Car Steering · Locking Pliers · Double-Wishbone Suspension · Steam Locomotive |
+| **Real Machines** | Aircraft Landing Gear · Car Hood Hinge · Excavator Bucket · Car Steering · Locking Pliers · Double-Wishbone Suspension · Steam Locomotive |
 | **Back-and-Forth Motion** | Scotch Yoke · Engine with a Flywheel · Radial Engine · Whitworth Quick-Return · Shaper Quick-Return · Pumpjack |
 | **Swing, Lift and Grip** | Windshield Wiper · Oscillating Fan · Parallel Gripper · Scissor Lift · Bracketed Hatch |
 | **Drawing a Path** | Chebyshev Straight-Line · Watt’s Straight-Line · Peaucellier-Lipkin · Elliptical Trammel · Pantograph · Jansen Leg |

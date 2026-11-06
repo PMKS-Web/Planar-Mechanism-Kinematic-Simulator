@@ -234,7 +234,7 @@ function linkMenu(): ContextMenuModel {
 function cylinderSealMenu(): ContextMenuModel {
   const inside: MenuRefusal = {
     short: 'inside a cylinder',
-    long: 'This joint is inside a cylinder, which places it rather than solving for it, so a third body arriving here would have nothing holding it. Attach at one of the joints at its ends instead.',
+    long: 'This joint is inside a cylinder. Attach to one of the joints at its ends.',
   };
   return {
     header: { title: 'Joint B', subtitle: 'Slider · Cylinder AC', crossing },
@@ -252,7 +252,7 @@ function cylinderSealMenu(): ContextMenuModel {
                 short: inside.short,
                 long:
                   index === 3
-                    ? 'This joint is inside a cylinder, and its sliding is what the part is. Delete the cylinder instead.'
+                    ? 'This joint is the cylinder’s sliding joint. Delete the cylinder to remove it.'
                     : 'This weld is what holds a cylinder together as one part, so it cannot be undone. Delete the cylinder instead.',
               },
       })),

@@ -435,7 +435,7 @@ faint shadow on a photograph.
 
 ### A traced template ships its picture, and the card's art shows it
 
-"Real-Life Use Cases" (`realworld`) holds mechanisms drawn by hand over a picture of the machine.
+"Real Machines" (`realworld`) holds mechanisms drawn by hand over a picture of the machine.
 The picture cannot ride the URL, so the card names it: a `backdrop` row on the card
 (`TemplateBackdrop`), in centimeters whatever unit the payload opens in -- the steering linkage is
 drawn in meters, so its 2.26 m width is written as 226. `placeTemplateBackdrop` puts it up when the
@@ -2796,7 +2796,7 @@ reads the size straight after decoding the card.
 ### A card can be framed on its picture rather than on its mechanism
 
 `template-thumbnails.mjs` and `template-animations.mjs` crop a card's art to the mechanism's holders.
-A Real-Life card whose picture is much larger than its linkage (the locomotive’s running gear fills
+A Real Machines card whose picture is much larger than its linkage (the locomotive’s running gear fills
 only the bottom quarter of its picture) would show a strip of wheels with the rest of the engine
 cut away. List it in `FRAMED_BY_PICTURE` in `e2e/card-frame.mjs`, and both scripts crop to the
 backdrop image instead, with no padding; draw the picture at the card's own aspect so nothing is

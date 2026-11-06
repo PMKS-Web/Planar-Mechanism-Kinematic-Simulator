@@ -51,7 +51,7 @@ describe('template catalog', () => {
       expect(card.backdrop.width).toBeGreaterThan(0);
       expect(card.backdrop.opacity ?? 0.5).toBeGreaterThan(0);
     }
-    // The real-life section is the one built on pictures: every card in it has one.
+    // The Real Machines section is the one built on pictures: every card in it has one.
     const traced = TEMPLATE_CARDS.filter((card) => card.category === 'realworld');
     expect(traced.length).toBeGreaterThanOrEqual(4);
     expect(traced.every((card) => !!card.backdrop)).toBe(true);
@@ -127,7 +127,7 @@ describe('library dialog', () => {
       shown.length
     );
     expect(fixture.nativeElement.textContent).toContain('Four-Bar');
-    expect(fixture.nativeElement.textContent).toContain('the short crank turns all the way round');
+    expect(fixture.nativeElement.textContent).toContain('short crank turns all the way round');
   });
 
   it('heads each family it has cards for, and stays quiet about the ones it does not', () => {
@@ -174,7 +174,7 @@ describe('library dialog', () => {
     expect(cards(fixture).sort()).toEqual(['Jansen_Leg', 'Walking_Pair']);
 
     // The words are in the description, not the name.
-    search(fixture, 'smooth strokes');
+    search(fixture, 'through its bearings');
     fixture.detectChanges();
     expect(cards(fixture)).toEqual(['Scotch_Yoke_Rod']);
 
@@ -188,12 +188,12 @@ describe('library dialog', () => {
     expect(cards(fixture).length).toBeGreaterThan(0);
   });
 
-  it('says where the list ends, and offers the one that is missing from there', () => {
+  it('offers the one that is missing after the last card', () => {
     const fixture = open();
     chip(fixture, 'Drawing a Path').click();
     fixture.detectChanges();
     const end = fixture.nativeElement.querySelector('.endLine') as HTMLElement;
-    expect(end.textContent).toContain('That is everything in Drawing a Path.');
+    expect(end.textContent?.trim()).toContain('Suggest one that belongs here');
 
     (end.querySelector('button') as HTMLButtonElement).click();
     fixture.detectChanges();

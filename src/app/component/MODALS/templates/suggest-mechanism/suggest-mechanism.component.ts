@@ -268,7 +268,7 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
             : 'The link you pasted',
       },
       { label: 'Section', value: section ?? 'Not sure', none: !section },
-      { label: 'Reply to', value: email || 'No email, so no reply', none: !email },
+      { label: 'Reply to', value: email || 'No email given', none: !email },
       { label: 'Version', value: 'PMKS+ version and browser, to open it as you drew it' },
     ];
   }

@@ -28,7 +28,7 @@ export const BUILT_IN_TEMPLATE_IDS = [
   // carrying a load on each jaw. Kept as the string that was shared, since
   // the loads and the colors are choices no fixture regenerates.
   'Cylinder_Gripper',
-  // Real-life use cases, drawn by hand over a picture of the machine on 7 Sep
+  // Real machines, drawn by hand over a picture of the machine on 7 Sep
   // 2026 and pasted in as the URLs the app produced. Each card ships the
   // picture it was traced over as its backdrop (template-catalog.ts).
   //
@@ -110,7 +110,7 @@ export const LIBRARY_TEMPLATE_IDS = [
   'Parallelogram',
   'Watt_Straight_Line',
   'Dwell_Six_Bar',
-  // Real-life cards over a drawing of the thing, like the four built-in ones,
+  // Real Machines cards over a drawing of the thing, like the four built-in ones,
   // but generated from fixtures: the two the review asked for, and a steam
   // locomotive whose wheels are drawn as discs.
   'Locking_Pliers',

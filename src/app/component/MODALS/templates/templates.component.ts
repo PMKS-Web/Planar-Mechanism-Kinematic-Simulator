@@ -295,17 +295,6 @@ export class TemplatesComponent {
     this.closeCategorySheet();
   }
 
-  /** The line after the last card: this is all there is, and where to send what is not. */
-  get endLine(): string {
-    const query = this.query.trim();
-    if (this.category === 'all') {
-      return query ? `That is everything that matches “${query}”.` : 'That is the whole library.';
-    }
-    return query
-      ? `That is everything in ${this.categoryName} that matches “${query}”.`
-      : `That is everything in ${this.categoryName}.`;
-  }
-
   /** How many cards the pressed category holds right now, for the phone's Category button. */
   get categoryCount(): number {
     return this.chips.find((chip) => chip.id === this.category)?.count ?? 0;

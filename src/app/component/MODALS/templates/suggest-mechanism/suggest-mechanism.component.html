@@ -12,7 +12,7 @@
     <fieldset class="suggestFields" [disabled]="sending">
       @if (!viewport.isPhone()) {
         <p class="intro">
-          Send a mechanism you think belongs in the library. The ones we add carry your name.
+          Suggest a mechanism for the library. Fill in Credit As if you want your name on its card.
         </p>
       }
 
@@ -218,12 +218,7 @@
           aria-describedby="suggest-title-hint"
         />
         <div id="suggest-title-hint" class="hintRow" [class.bad]="!!error('title')">
-          <span>{{
-            error('title') ||
-              (viewport.isPhone()
-                ? 'Short, like Four-Bar or Scotch Yoke.'
-                : 'Short, like the library’s own: Four-Bar, Scotch Yoke.')
-          }}</span>
+          <span>{{ error('title') || 'A short title, such as Four-Bar or Scotch Yoke.' }}</span>
           <span class="counter" [class.over]="over('title', titleLimit)"
             >{{ form().controls.title.value.length }} / {{ titleLimit }}</span
           >
@@ -245,7 +240,7 @@
           <mat-icon aria-hidden="true">expand_more</mat-icon>
         </div>
         @if (!viewport.isPhone()) {
-          <div class="hintRow"><span>A guess is fine. We may move it.</span></div>
+          <div class="hintRow"><span>Pick the closest, or leave it as Not Sure.</span></div>
         }
       </div>
     </ng-template>

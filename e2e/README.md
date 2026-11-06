@@ -466,7 +466,7 @@ Not suites — import them from one.
 
 - `template-open.mjs` — a template loads in place on an empty grid, and offers new tab / replace /
   cancel over existing work, with replace undoable.
-- `template-backdrops.mjs` — the real-life library section and the picture each card opens on.
+- `template-backdrops.mjs` — the Real Machines library section and the picture each card opens on.
 - `suggest-mechanism.mjs` — the library's side rail and end-of-section line, and Suggest a
   Mechanism end to end: what Send refuses and where the focus goes, a message drawn over the
   dialog, a failed and a good send (the key function and EmailJS are answered by the suite, so no

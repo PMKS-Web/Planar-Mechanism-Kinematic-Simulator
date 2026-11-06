@@ -53,7 +53,7 @@
               <span class="suggestIcon" aria-hidden="true"><mat-icon>lightbulb</mat-icon></span>
               <div>
                 <div class="suggestTitle">Missing one?</div>
-                <div class="suggestSub">If we add yours, your name goes on its card.</div>
+                <div class="suggestSub">Suggest it for the library, with credit if you want.</div>
               </div>
             </div>
             <button class="btnOutlined wide" type="button" (click)="suggest()">
@@ -88,10 +88,9 @@
         }
 
         @if (shown > 0) {
-          <!-- After the last card in every filter: this is all there is, and
-               where to send the one that is missing. -->
+          <!-- After the last card in every filter: where to send the one that
+               is missing. -->
           <div class="endLine">
-            <span>{{ endLine }}</span>
             <button class="btnText" type="button" (click)="suggest(category)">
               <mat-icon aria-hidden="true">add_circle</mat-icon>
               {{ category === 'all' ? 'Suggest a Mechanism' : 'Suggest one that belongs here' }}
@@ -110,9 +109,7 @@
                 <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest a Mechanism
               </button>
             </div>
-            <span class="emptyNote"
-              >Know the one you are looking for? Suggest it, and we will look at adding it.</span
-            >
+            <span class="emptyNote">Can’t find a mechanism? Suggest one.</span>
           </div>
         }
       </div>
@@ -147,7 +144,7 @@
           <span class="suggestIcon" aria-hidden="true"><mat-icon>lightbulb</mat-icon></span>
           <div class="suggestText">
             <div class="suggestTitle">Missing one?</div>
-            <div class="suggestSub">Your name goes on its card.</div>
+            <div class="suggestSub">Suggest it for the library.</div>
           </div>
           <button
             class="btnOutlined"

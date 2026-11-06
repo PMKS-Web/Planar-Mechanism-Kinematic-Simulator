@@ -106,9 +106,8 @@ await page.locator('.rail .category', { hasText: 'Drawing a Path' }).click();
 await page.waitForTimeout(300);
 const endLine = (await page.locator('.endLine').innerText()).replace(/\s+/g, ' ');
 check(
-  'the last card is followed by the end of the section and a way to add to it',
-  endLine.includes('That is everything in Drawing a Path.') &&
-    endLine.includes('Suggest one that belongs here'),
+  'the last card is followed by a way to add to the section',
+  endLine.includes('Suggest one that belongs here'),
   endLine
 );
 await page.locator('.endLine button').click();
