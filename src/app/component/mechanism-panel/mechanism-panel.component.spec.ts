@@ -58,7 +58,8 @@ describe('MechanismPanelComponent', () => {
     expect(text(fixture, '.mechTitle')).toEqual(['All mechanisms']);
     const rows = text(fixture, '.machineRow');
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toContain('Mechanism 1');
+    // By the name the library gives it; the family PMKS+ recognized beside it.
+    expect(rows[0]).toContain('Chebyshev (approximate)');
     expect(rows[0]).toContain('Chebyshev straight-line linkage');
     expect(rows[1]).toContain('Peaucellier-Lipkin straight-line linkage');
     fixture.destroy();
@@ -70,7 +71,7 @@ describe('MechanismPanelComponent', () => {
     fixture.detectChanges();
     expect(data.active.objType).toBe('Mechanism');
     expect(data.active.selectedMechanismIndex).toBe(1);
-    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism 2']);
+    expect(text(fixture, '.mechTitle')).toEqual(['Peaucellier (exact)']);
     expect(text(fixture, '.familyFact')[0]).toContain('Peaucellier-Lipkin straight-line linkage');
 
     (fixture.nativeElement.querySelector('.backLink') as HTMLElement).click();

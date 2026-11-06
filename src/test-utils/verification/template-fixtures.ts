@@ -135,6 +135,75 @@ const FORCE_STUDY_BODIES: Record<string, Partial<PublishedLoading>> = {
   Crane_Two_Loads: { keepMoi: ['OCT'] },
 };
 
+/**
+ * What each template's machines are called, each name keyed by one of that
+ * machine's own joints (its input, here).
+ *
+ * Unnamed, a template's machine is "Mechanism 1" in the panel and "M1" on its
+ * playback row, which says nothing a reader can use; and a card holding four
+ * machines is four codes to match against four drawings by eye. So each is
+ * named the way an author would name it: the machine itself for one, and what
+ * tells the machines apart for several -- the inversions say which bar is
+ * grounded, because that is the lesson.
+ *
+ * A name has no comma, period or apostrophe: the first two are the URL's
+ * separators, and the payload sits in single quotes in template-linkages.ts.
+ * So it is "Watt linkage", not "Watt's". `template-machine-names.spec.ts` holds
+ * every name to the rule a typed one meets.
+ */
+export const LIBRARY_TEMPLATE_NAMES: Record<LibraryTemplateID, Record<string, string>> = {
+  Whitworth_Quick_Return: { A: 'Whitworth quick return' },
+  Scotch_Yoke: { A: 'Scotch yoke' },
+  Scotch_Yoke_Rod: { A: 'Scotch yoke' },
+  Four_Bar: { A: 'Four-bar' },
+  Locked_Four_Bar: { A: 'Four-bar' },
+  Parallelogram: { A: 'Parallelogram' },
+  Watt_Straight_Line: { A: 'Watt linkage' },
+  Dwell_Six_Bar: { A: 'Dwell six-bar' },
+  Cylinder_Boom: { P: 'Boom' },
+  Radial_Engine: { O: 'Radial engine' },
+  Chebyshev_Straight_Line: { G: 'Chebyshev linkage' },
+  Windshield_Wiper: { O: 'Windshield wiper' },
+  Elliptical_Crank: { A: 'Elliptical crank' },
+  Jansen_Leg: { O: 'Jansen leg' },
+  Hydraulic_Crosshead: { S: 'Hydraulic crosshead' },
+  Offset_Mount_Hatch: { S: 'Bracketed hatch' },
+  Scissor_Lift: { C: 'Scissor lift' },
+  Shaper_Quick_Return: { A: 'Shaper drive' },
+  Pedaling_Leg: { K: 'Pedaling leg' },
+  Oscillating_Fan: { C: 'Oscillating fan' },
+  Pumpjack: { A: 'Pumpjack' },
+  Punch_Press: { A: 'Punch press' },
+  Derrick_Crane: { G: 'Derrick crane' },
+  Toggle_Clamp: { H: 'Toggle clamp' },
+  Offset_Load_Rocker: { A: 'Loaded rocker' },
+  Bell_Crank: { A: 'Bell crank' },
+  Flywheel_Engine: { A: 'Engine' },
+  Elliptical_Trammel: { A: 'Elliptical trammel' },
+  Peaucellier: { C: 'Peaucellier linkage' },
+  Pantograph: { G: 'Pantograph' },
+  Double_Butterfly: { A: 'Double butterfly' },
+  Crane_Two_Loads: { G: 'Crane' },
+  Three_Machines: { A: 'Drag link', E: 'Slider-crank', H: 'Crank-rocker' },
+  Walking_Pair: { A: 'Left leg', I: 'Right leg' },
+  Straight_Line_Pair: { A: 'Chebyshev (approximate)', H: 'Peaucellier (exact)' },
+  Pumping_Field: { A: 'Pumpjack 1', H: 'Pumpjack 2', O: 'Pumpjack 3' },
+  Reciprocating_Saw: { A: 'Reciprocating saw' },
+  Slotted_Tool_Drive: { A: 'Slotted tool drive' },
+  Four_Bar_Inversions: {
+    A: 'Crank-rocker (L4 grounded)',
+    E: 'Crank-rocker (L2 grounded)',
+    I: 'Double crank (L1 grounded)',
+    M: 'Double rocker (L3 grounded)',
+  },
+  Slider_Crank_Inversions: {
+    A: 'Engine (L1 grounded)',
+    F: 'Quick return (L2 grounded)',
+    J: 'Oscillating cylinder (L3 grounded)',
+    P: 'Pendulum pump (L4 grounded)',
+  },
+};
+
 export function libraryTemplateMasses(id: LibraryTemplateID): PublishedMasses {
   if (!FORCE_STUDY_TEMPLATES.includes(id)) return 'zeroed';
   return { ...FORCE_STUDY_SCALING, ...(FORCE_STUDY_BODIES[id] ?? {}) };

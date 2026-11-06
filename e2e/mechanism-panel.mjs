@@ -241,9 +241,11 @@ record('pointing at a row lights its machine', lit === 1, lit);
 await page.locator('.machineRow').nth(1).click();
 await page.waitForTimeout(400);
 text = await panelText();
+// By the name the library gives it: an unnamed second machine would read
+// `Edit Mechanism 2`.
 record(
   'picking a row shows that machine',
-  text.includes('Edit Mechanism 2') && text.includes('All mechanisms'),
+  text.includes('Edit Peaucellier (exact)') && text.includes('All mechanisms'),
   text
 );
 const faded = await muted();

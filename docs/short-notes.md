@@ -2758,6 +2758,17 @@ grams and newtons. The inch Toggle Clamp therefore states its pounds in its own 
 the scaling to 1 in `FORCE_STUDY_BODIES`. To compare Static against In-motion, read the numbers
 from the running app: a `Mechanism` built in a spec straight from the payload skips the inertia
 the app derives for each body, and gave an in-motion peak twenty times the static one.
+
+### A library machine's name is keyed by a joint, and has no apostrophe
+
+`LIBRARY_TEMPLATE_NAMES` in `template-fixtures.ts` keys each name by one of the machine's own
+joints, because a machine is worked out from the drawing and not stored: `fixturePayload` asks
+the partition which machine owns that joint and writes the name to its holder
+(`writeMechanismName`). A key no machine owns throws while the generator runs. The panel accepts an
+apostrophe in a typed name, and the URL carries one, but a template's payload sits in single quotes
+in `template-linkages.ts`, where one would end the string, and `e2e/template-payloads.mjs` reads
+the payloads back with `'([^']*)'`. So it is "Watt linkage". Commas and periods are the codec's separators and are out everywhere.
+`template-machine-names.spec.ts` reads every name back off its payload.
 ### A stack follows shared code; unrelated features start at staging
 
 Library browsing, numerical corrections and small UI fixes had accumulated in one chain, so

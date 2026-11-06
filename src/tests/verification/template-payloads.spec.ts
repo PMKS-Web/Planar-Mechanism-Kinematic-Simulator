@@ -11,6 +11,7 @@ import {
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import {
   FORCE_STUDY_TEMPLATES,
+  LIBRARY_TEMPLATE_NAMES,
   libraryTemplateEntry,
   libraryTemplateMasses,
 } from '../../test-utils/verification/template-fixtures';
@@ -54,7 +55,10 @@ function generatedBlock(): string {
       // Color is the other thing the library decides for itself: a gallery
       // link is a mechanism to check, a template is a mechanism to read.
       libraryTemplateFills(id, entry.fixture),
-      entry.lengthUnit
+      entry.lengthUnit,
+      // And what the machines are called: a gallery link opens M1, a
+      // template opens a pumpjack.
+      LIBRARY_TEMPLATE_NAMES[id]
     );
     return `  ${id}:\n    '${payload}',`;
   });
