@@ -2686,3 +2686,13 @@ pins. `parallel-guide-headings.ts` supplies that consequence to position and dif
 constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### A native GitHub stack locks its members' base branches
+
+Rewriting branches does not change their native stack membership. GitHub rejects a PR base change
+with 422 while the PR belongs to a stack. Snapshot the membership, POST to
+`/repos/{owner}/{repo}/stacks/{number}/unstack`, retarget the open PRs, then POST the new ordered
+`pull_requests` arrays to `/repos/{owner}/{repo}/stacks`. Unstacking leaves merged historical
+entries in place. This is a metadata operation separate from rebasing the branches; recreating
+the groups does not replace the code checks. The [Stacks API](https://docs.github.com/en/rest/pulls/stacks)
+describes the endpoints.
