@@ -68,10 +68,10 @@ function replaceBlock(source: string, block: string): string {
 }
 
 /**
- * The six templates that predate the generator, kept to the same color rule.
+ * The five templates that predate the generator, kept to the same color rule.
  *
  * Their geometry is hand-authored and stays that way — there is no fixture to
- * regenerate them from. But color is not geometry, and six cards colored by
+ * regenerate them from. But color is not geometry, and five cards colored by
  * whatever order somebody drew them in, sitting in a dialog beside thirty-four
  * colored from their structure, is the inconsistency this rule exists to
  * remove. So the payload is decoded, repainted and re-encoded.
@@ -86,14 +86,7 @@ function replaceBlock(source: string, block: string): string {
  * what proves the fold loses nothing. Anything *else* coming back different
  * is a bug in the codec, not a repaint.
  */
-const HAND_AUTHORED = [
-  '4-Bar',
-  'Watt_I',
-  'Watt_II',
-  'Stephenson_III',
-  'Slider_Crank',
-  'Locked_Four_Bar',
-] as const;
+const HAND_AUTHORED = ['4-Bar', 'Watt_I', 'Watt_II', 'Stephenson_III', 'Slider_Crank'] as const;
 
 function recolored(id: string, payload: string): string {
   const { service, settings } = buildMechanismFixture(payload);
@@ -146,7 +139,7 @@ function replaceHandAuthored(source: string, announce: boolean): string {
     const found = text.match(row);
     if (!found) throw new Error(`template-linkages.ts has lost its ${id} row`);
     const rewritten = recolored(id, found[2]);
-    // These six have no fixture to regenerate them from, so a rewrite here is
+    // These five have no fixture to regenerate them from, so a rewrite here is
     // the only copy of that mechanism changing. Said out loud on the way past:
     // the read path's fixed-point check below is a real guard, but the write
     // path a developer actually runs had nothing to say, so the next codec

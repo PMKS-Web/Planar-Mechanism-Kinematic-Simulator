@@ -104,11 +104,11 @@ export interface TemplateCard {
 export const TEMPLATE_CARDS: readonly TemplateCard[] = [
   // Start Here
   {
-    id: '4-Bar',
+    id: 'Four_Bar',
     name: 'Four-Bar',
     category: 'start',
     description:
-      'The mechanism most others grow from: the short crank turns all the way round while the link opposite it only swings.',
+      'The mechanism most others grow from: the short crank turns all the way round, the opposite link only swings, and the coupler draws a curve.',
     thumbnail: 'assets/gifs/four-bar.png',
     animation: 'assets/gifs/four-bar.gif',
   },
@@ -229,11 +229,11 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
 
   // Back-and-Forth Motion
   {
-    id: 'Scotch_Yoke',
+    id: 'Scotch_Yoke_Rod',
     name: 'Scotch Yoke',
     category: 'backforth',
     description:
-      'A pin on a turning crank slides in a slot and pushes the yoke back and forth in perfectly smooth strokes.',
+      'A pin on a turning disc slides in the yoke’s slot and pushes the rod back and forth through its bearings in perfectly smooth strokes.',
     thumbnail: 'assets/gifs/scotch-yoke.png',
     animation: 'assets/gifs/scotch-yoke.gif',
   },
@@ -278,7 +278,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Pumpjack',
     category: 'backforth',
     description:
-      'An oil-field pump: the walking beam nods and lifts the pump rod straight up and down out of the well.',
+      'An oil-field pump: a turning crank rocks the walking beam, which lifts the pump rod straight up and down out of the well.',
     thumbnail: 'assets/gifs/pumpjack.png',
     animation: 'assets/gifs/pumpjack.gif',
   },
@@ -372,7 +372,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Elliptical Trammel',
     category: 'paths',
     description:
-      'Two blocks slide on crossed guides and swing a bar between them, so points on the bar draw ellipses.',
+      'Two blocks slide on crossed guides and swing a bar between them, so the traced point on the bar runs along an ellipse.',
     thumbnail: 'assets/gifs/elliptical-trammel.png',
     animation: 'assets/gifs/elliptical-trammel.gif',
   },
@@ -562,6 +562,26 @@ export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
       "Ross McSweeney's Running Horse Automata, from MotionGen: forty-five joints on one " +
       'degree of freedom, tracing both hooves.',
     thumbnail: 'assets/gifs/dev-render-stress.png',
+  },
+  // Redrawn in the 2026-11 review: the library's Four-Bar and Scotch Yoke cards
+  // open new drawings now, and these are the old ones under their old ids.
+  {
+    id: '4-Bar',
+    name: 'Four-Bar, First Drawing',
+    category: 'dev',
+    description:
+      'The first four-bar drawing, with no traced point. Specs and e2e suites open it; the library’s Four-Bar adds a coupler point.',
+    thumbnail: 'assets/gifs/four-bar-plain.png',
+    animation: 'assets/gifs/four-bar-plain.gif',
+  },
+  {
+    id: 'Scotch_Yoke',
+    name: 'Scotch Yoke on One Guide',
+    category: 'dev',
+    description:
+      'The yoke on a single guide under its slot. Specs and e2e suites open it; the library draws the yoke on a rod through two bearings.',
+    thumbnail: 'assets/gifs/scotch-yoke-one-guide.png',
+    animation: 'assets/gifs/scotch-yoke-one-guide.gif',
   },
   // Retired from the published library in the 2026-11 review
   // (PMKS-Web/PMKSWeb issue 247): the crosshead tested welds rather than

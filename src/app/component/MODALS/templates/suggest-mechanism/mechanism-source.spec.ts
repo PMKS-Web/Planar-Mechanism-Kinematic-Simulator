@@ -7,7 +7,7 @@ import { fiveCranksFixture } from '../../../../../test-utils/verification/mobili
 
 describe('a pasted link', () => {
   const here = 'localhost';
-  const fourBar = `https://app.pmksplus.com/?${TEMPLATE_LINKAGES['4-Bar']}`;
+  const fourBar = `https://app.pmksplus.com/?${TEMPLATE_LINKAGES['Four_Bar']}`;
 
   it('accepts production, either Netlify site and a local server, and nothing else', () => {
     expect(isPmksHost('app.pmksplus.com', here)).toBe(true);

@@ -17,6 +17,9 @@ import {
 export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Whitworth_Quick_Return: 'Whitworth proportions',
   Scotch_Yoke: 'Scotch yoke',
+  Scotch_Yoke_Rod: 'Scotch yoke on a guided rod',
+  Four_Bar: 'Four-bar with a coupler point',
+  Locked_Four_Bar: 'Four-bar with fixed lengths',
   Cylinder_Boom: 'Cylinder-driven boom',
   Radial_Engine: 'Radial engine, five cylinders',
   Chebyshev_Straight_Line: 'Chebyshev straight-line linkage',
@@ -29,7 +32,7 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Shaper_Quick_Return: "Shaper's quick-return drive",
   Pedaling_Leg: 'Leg on a bicycle crank',
   Oscillating_Fan: 'Oscillating fan',
-  Pumpjack: 'Walking-beam pumping unit',
+  Pumpjack: 'Pumpjack, driven at the crank',
   Punch_Press: 'Punch press',
   Derrick_Crane: 'Derrick crane',
   Toggle_Clamp: 'Toggle clamp',

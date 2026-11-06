@@ -413,8 +413,9 @@ export function ellipticalTrammelFixture(
       { id: 'A', x: 1 * scale, y: 0 },
       { id: 'B', x: 0, y: 1 * scale },
       // A third of the way along the bar from A, so its ellipse has distinct
-      // axes rather than being the circle the midpoint traces.
-      ...(driven ? [{ id: 'T', x: (2 / 3) * scale, y: (1 / 3) * scale }] : []),
+      // axes rather than being the circle the midpoint traces. Traced, because
+      // that ellipse is what a reader opens the trammel to see.
+      ...(driven ? [{ id: 'T', x: (2 / 3) * scale, y: (1 / 3) * scale, trace: true }] : []),
     ],
     links: [{ joints: driven ? 'ABT' : 'AB' }],
     sliders: [

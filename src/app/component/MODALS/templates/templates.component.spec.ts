@@ -176,7 +176,7 @@ describe('library dialog', () => {
     // The words are in the description, not the name.
     search(fixture, 'smooth strokes');
     fixture.detectChanges();
-    expect(cards(fixture)).toEqual(['Scotch_Yoke']);
+    expect(cards(fixture)).toEqual(['Scotch_Yoke_Rod']);
 
     search(fixture, 'gearbox');
     fixture.detectChanges();

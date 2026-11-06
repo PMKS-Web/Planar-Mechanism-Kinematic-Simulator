@@ -300,13 +300,13 @@ check(
   'somebody else’s link is not a PMKS+ link',
   (await hint()).startsWith('That is not a PMKS+ link.')
 );
-await page.fill('#suggest-link', `https://app.pmksplus.com/?${payloads['4-Bar'].slice(0, 40)}`);
+await page.fill('#suggest-link', `https://app.pmksplus.com/?${payloads.Four_Bar.slice(0, 40)}`);
 await page.waitForTimeout(500);
 check(
   'a link that will not decode is cut short',
   (await hint()).startsWith('That link is cut short')
 );
-await page.fill('#suggest-link', `https://app.pmksplus.com/?${payloads['4-Bar']}`);
+await page.fill('#suggest-link', `https://app.pmksplus.com/?${payloads.Four_Bar}`);
 await page.waitForTimeout(80);
 check('reading a link says so while it does', (await hint()) === 'Opening the link…');
 await page.waitForTimeout(600);

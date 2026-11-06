@@ -455,6 +455,29 @@ like any other copy — "Car Steering", never "Steering Linkage" — but `e2e/ui
 open the library, so nothing checks a card name for you. The animation script's `pngjs` and
 `gif-encoder` live in the Playwright install (see [Environment](environment.md#environment)) and vanish with it.
 
+### A template that specs open by id is redrawn under a new id
+
+Changing what a library card shows is not the same as changing its payload. Some ids are opened
+by name all over the suite -- `'4-Bar'` by about seventy files, `'Scotch_Yoke'` by more than a
+dozen -- so the 2026-11 review gave the redrawn Four-Bar and Scotch Yoke new ids (`Four_Bar`,
+`Scotch_Yoke_Rod`) and moved the old ones to For Development, where a development build still
+shows them and the CI e2e gate (a development build too) can still click them. A card the specs
+do not lean on is redrawn in place, as the pumps and the trammel were. Either way three things
+follow: `legacy-payloads.spec.ts` compares a shipped payload against the drawing it was, so a
+redrawn one goes in its `REDRAWN_TEMPLATES`; a test that pastes "the library's own Four-Bar"
+has to paste the new one; and a card's old images move with its old id, so the regenerated
+pictures can take the card's file names.
+
+### `template-animations.mjs` seeks inside the zone, or every frame is the same
+
+The script steps a template through its cycle with `mechanismSrv.animate(step, false)` and
+screenshots each pose. Called from `page.evaluate`, that moves the model and redraws nothing:
+the top bar's per-frame change-detection loop used to paint it anyway, and since that loop went
+(see `e2e/in-angular.mjs`) a GIF came out as fourteen copies of the first pose. One of the six
+captured in the same run (the Four-Bar) did animate, for no reason anyone pinned down, which
+hid it. The seeks go through `onGrid` now. Check a GIF's frames differ rather than trusting the
+exit code.
+
 ### "A part of this mechanism is tied to nothing" is the geometry's second opinion on a dead position
 
 Gruebler's count is believed whenever it reads one or more, and the geometry rescue only runs
