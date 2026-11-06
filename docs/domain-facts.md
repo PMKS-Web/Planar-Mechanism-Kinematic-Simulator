@@ -382,6 +382,13 @@ Old payloads retain their old meaning. Old readers reject unknown precision tags
 silently substitute default speed for a tiny nonzero value. Data already rounded away in an old
 URL requires an original source drawing to restore.
 
+### A welded leaf's force belongs to its root, and remembers the leaf
+
+A welded leaf is selected and saved by member identity, but its force belongs to the physical root
+body. `anchoredTo` retains the member so unwelding can restore the load to it. During compound
+replacement, pass the new owner explicitly: the service's old graph still contains the compound.
+Paused tracer attachment uses `indexOfMechanismSolving`, including leaves and shared frame parts.
+
 ### A link pinned to ground twice is frame, and the force solver treats it so
 
 A bar with two distinct ground pins cannot move. The position solver never minded one (it holds
