@@ -2686,3 +2686,12 @@ pins. `parallel-guide-headings.ts` supplies that consequence to position and dif
 constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### A panel's fold kept on the component reopens at every mode switch
+
+The left card mounts a new panel each time its mode is entered -- the Edit panel in Edit, the
+analysis panel in either analysis -- so anything a panel remembers in a field of its own is gone
+on the way back. Folds were kept that way, and a reader who closed a joint's Basic Settings or its
+Position graph found it open again after one trip to the other mode. Keep a session choice in a
+root service instead: `MechanismPanelStateService` holds the machine panel's folds, and
+`PanelFoldStateService` holds the part panels' (`e2e/panel-folds.mjs` guards both trips).
