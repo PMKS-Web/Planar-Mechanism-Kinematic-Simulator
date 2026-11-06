@@ -2686,3 +2686,10 @@ pins. `parallel-guide-headings.ts` supplies that consequence to position and dif
 constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### A grayed menu row's reason opens beside the menu, not over it
+
+`Move the start here` in the playback bar's `.startMenu` is grayed when `startMoveRefusal` names a
+fixed angle, and is `aria-disabled` for the reason the shut mode tab is (above). Its `matTooltip`
+opened `above` lay over `Back to the start`, the row above it, and took that row's click; `after`
+keeps it clear of the menu. Any row in a stacked menu wants its tooltip to the side.
