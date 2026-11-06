@@ -98,7 +98,7 @@ describe('library dialog', () => {
 
   function chip(fixture: { nativeElement: HTMLElement }, name: string): HTMLButtonElement {
     const found = Array.from(
-      fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.chip')
+      fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.rail .category')
     ).find((button) => (button.textContent ?? '').includes(name));
     expect(found).toBeTruthy();
     return found!;

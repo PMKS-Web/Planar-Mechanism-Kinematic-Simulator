@@ -1,11 +1,14 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  DestroyRef,
+  ElementRef,
   isDevMode,
   TemplateRef,
   inject,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   MatDialog,
   MatDialogRef,
@@ -33,8 +36,12 @@ import {
 } from './template-catalog';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
-import { CdkScrollable } from '@angular/cdk/scrolling';
+import { NgTemplateOutlet } from '@angular/common';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { CloseButtonComponent } from '../../BLOCKS/close-button/close-button.component';
+import { ViewportService } from 'src/app/services/viewport.service';
+import { TemplateCardComponent } from './template-card/template-card.component';
+import { FocusAcrossLayouts } from './focus-across-layouts';
 
 /** A filter chip: a category, or the `all` one that stands for every category. */
 export interface CategoryChip {
@@ -56,15 +63,24 @@ export interface TemplateGroup {
   templateUrl: './templates.component.html',
   styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
+  host: {
+    '(focusin)': 'focusKeeper.note($event)',
+    '(input)': 'focusKeeper.note($event)',
+    '(keyup)': 'focusKeeper.note($event)',
+    '(mouseup)': 'focusKeeper.note($event)',
+    '(select)': 'focusKeeper.note($event)',
+  },
   imports: [
     MatDialogClose,
     MatIcon,
-    CdkScrollable,
     MatDialogContent,
     MatButton,
     MatDialogTitle,
     MatDialogActions,
+    NgTemplateOutlet,
+    CdkTrapFocus,
     CloseButtonComponent,
+    TemplateCardComponent,
   ],
 })
 export class TemplatesComponent {
@@ -76,9 +92,22 @@ export class TemplatesComponent {
    * own copy of the same dimensions. A library that is 90% of the window from
    * one door and something else from another is one paste away, and nothing
    * would fail.
+   *
+   * On a phone it is the whole window, which `.libraryDialog` says in the
+   * stylesheet: at 90% of 390px the side margins were scrim nobody could use,
+   * and a media query follows a phone turned on its side where a size set
+   * here once would not.
+   *
+   * Escape and the scrim close the category sheet first, then the library.
    */
   static openIn(dialog: MatDialog): MatDialogRef<TemplatesComponent> {
-    return dialog.open(TemplatesComponent, { height: '90%', width: '90%', autoFocus: false });
+    return dialog.open(TemplatesComponent, {
+      height: '90%',
+      width: '90%',
+      autoFocus: false,
+      disableClose: true,
+      panelClass: 'libraryDialog',
+    });
   }
 
   private dialogRef = inject<MatDialogRef<TemplatesComponent> | null>(
@@ -97,6 +126,13 @@ export class TemplatesComponent {
   private svgGrid = inject(SvgGridService);
   private backdrop = inject(BackgroundImageService);
   private design = inject(SynthesisBuilderService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  readonly viewport = inject(ViewportService);
+  /** The search being typed in, given back when a phone turns. */
+  readonly focusKeeper = new FocusAcrossLayouts(
+    () => this.host.nativeElement,
+    () => this.viewport.isPhone()
+  );
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
   readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
@@ -113,8 +149,62 @@ export class TemplatesComponent {
   chips: CategoryChip[] = [];
   groups: TemplateGroup[] = [];
 
+  /** "Search 45 mechanisms": the count is how many this build offers. */
+  readonly searchPlaceholder = `Search ${this.allCards.length} mechanisms`;
+
+  /** The phone's categories, raised from the Category button as a bottom sheet. */
+  categorySheetOpen = false;
+
   constructor() {
     this.refresh();
+    const destroyed = inject(DestroyRef);
+    this.dialogRef
+      ?.keydownEvents()
+      .pipe(takeUntilDestroyed(destroyed))
+      .subscribe((event) => {
+        if (event.key === 'Escape') this.leave();
+      });
+    this.dialogRef
+      ?.backdropClick()
+      .pipe(takeUntilDestroyed(destroyed))
+      .subscribe(() => this.leave());
+  }
+
+  /** Close the categories first, then the library itself. */
+  private leave(): void {
+    if (this.categorySheetOpen) this.closeCategorySheet();
+    else this.close();
+  }
+
+  // ---------- the phone's categories ----------
+
+  openCategorySheet(): void {
+    this.categorySheetOpen = true;
+  }
+
+  closeCategorySheet(): void {
+    this.categorySheetOpen = false;
+  }
+
+  chooseFromSheet(id: TemplateCategoryID | 'all'): void {
+    this.selectCategory(id);
+    this.closeCategorySheet();
+  }
+
+  /** The line after the last card in the current section or search. */
+  get endLine(): string {
+    const query = this.query.trim();
+    if (this.category === 'all') {
+      return query ? `That is everything that matches “${query}”.` : 'That is the whole library.';
+    }
+    return query
+      ? `That is everything in ${this.categoryName} that matches “${query}”.`
+      : `That is everything in ${this.categoryName}.`;
+  }
+
+  /** How many cards the pressed category holds right now, for the phone's Category button. */
+  get categoryCount(): number {
+    return this.chips.find((chip) => chip.id === this.category)?.count ?? 0;
   }
 
   selectCategory(id: TemplateCategoryID | 'all') {

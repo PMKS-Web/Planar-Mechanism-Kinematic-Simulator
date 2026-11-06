@@ -2686,3 +2686,15 @@ pins. `parallel-guide-headings.ts` supplies that consequence to position and dif
 constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### A stack follows shared code; unrelated features start at staging
+
+Library browsing, numerical corrections and small UI fixes had accumulated in one chain, so
+holding a force-solver review also held every later feature. Split the chain by applying each
+PR's own diff to its actual prerequisite; changing the GitHub base alone leaves the inherited
+commits in the review. Snapshot remote heads first, rebuild on temporary refs in a separate
+worktree, and push with an explicit lease for every rewritten branch. Several feature branches
+are checked out in other worktrees, so replacing those local branches would disturb another
+session. Keep the numerical oracle independent, and run its comparisons with the proposed solver
+fixes applied; passing against staging alone does not verify a correction. A combined tree check
+against the old stack catches lost changes after the split.
