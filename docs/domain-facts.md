@@ -355,13 +355,15 @@ Dragging an existing force's handle remains exact.
 walk uses. A mechanism the position solver had to settle all at once (§2.7a of `docs/joint-types-plan.md`: the gripper on rails,
 whose carriage, four links and two jaws no two known joints locate) solves its poses and then has
 no rates at all, and every velocity graph was a row of gaps over a mechanism that visibly moved.
-`AnalysisSampleService` now fills the blanks from the solved positions
-(`model/mechanism/finite-difference-kinematics.ts`): a central difference for velocity, and for
-acceleration the derivative of that velocity series rather than a second difference of positions
--- a settled pose carries the solver's tolerance as a zigzag of a hair between neighbors, invisible
-to a first difference and a spike of several units to a second. Only blanks are filled; where the
-analytic answer exists it stands. `slide-gripper.spec.ts` pins it, and `e2e/template-graphs.mjs`
-checks every plotted rate against a difference quotient of its source.
+`AnalysisSampleService` fills missing or singular rates from the full-precision solved positions
+(`model/mechanism/finite-difference-kinematics.ts`). Polynomial differences use the actual sample
+clock and stay on one input-direction branch, becoming one-sided near travel stops. Too few branch
+samples leave a gap. A commanded abrupt reversal does not define a finite instantaneous
+acceleration; neighboring samples represent branch limits. Welded leaf rates come from the root's
+rigid-body motion, and cylinder interiors from mount/axis geometry. Angular positions use degrees;
+angular velocities and accelerations use radians. Display angle conversion must preserve the data.
+`slide-gripper.spec.ts` and `mechanism-audit.spec.ts` cover these contracts; `e2e/template-graphs.mjs`
+checks plotted rates against their positions.
 
 ### Solved poses keep full precision
 
