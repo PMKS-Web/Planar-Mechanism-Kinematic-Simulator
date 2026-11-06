@@ -196,7 +196,7 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 | Canvas (full bleed, behind everything) | `app-new-grid` | grid, right-click context menus, drag |
 | Bottom center | `app-playback-bar` | transport card (speed · play/pause · stop-to-start) and a scrub card with **one row per machine**. Present in Edit and both analyses, including over an empty grid; hidden only in Synthesis. **On a phone the two merge into one card** and the view controls join its transport line |
 | Bottom right | `app-view-controls` | center of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view. **On a phone all six collapse behind one `visibility` button** that raises a drawer of named rows |
-| Bottom strip | `app-bottombar` | mode name · status · cursor coords · units |
+| Bottom strip | `app-bottombar` | mode name · status · cursor coords · units (a button: opens Settings at the unit choices, through `SettingsFocusService`) |
 | Right drawer | `app-right-panel` | Settings, Help/Feedback, the two analysis setups, Export Data |
 
 The **modes are tabs in the top strip, not a left rail**, and there are four of them — Synthesis, Edit, Kinematic Analysis, Force Analysis (`TabID`) — not three. The left card is that mode's panel.
