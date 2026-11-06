@@ -102,12 +102,12 @@ await page.goto(`${BASE}?${payloads['Pantograph']}`, { waitUntil: 'domcontentloa
 await waitForReady(page);
 await page.waitForTimeout(1200);
 await openLibrary();
-await page.locator('.rail .category', { hasText: 'Paths and Curves' }).click();
+await page.locator('.rail .category', { hasText: 'Drawing a Path' }).click();
 await page.waitForTimeout(300);
 const endLine = (await page.locator('.endLine').innerText()).replace(/\s+/g, ' ');
 check(
   'the last card is followed by the end of the section and a way to add to it',
-  endLine.includes('That is everything in Paths and Curves.') &&
+  endLine.includes('That is everything in Drawing a Path.') &&
     endLine.includes('Suggest one that belongs here'),
   endLine
 );
@@ -246,7 +246,7 @@ const params = mailed?.template_params ?? {};
 check(
   'the email carries every field',
   params.title === 'Hoeken’s Straight-Line' &&
-    params.section === 'Paths and Curves' &&
+    params.section === 'Drawing a Path' &&
     params.credit === 'Pat Lee' &&
     params.email === 'pat@example.com' &&
     params.reply_to === 'pat@example.com' &&
@@ -267,7 +267,7 @@ check(
   sentView.includes('Suggestion sent') &&
     sentView.includes('Thank you, Pat Lee.') &&
     sentView.includes('we will write to pat@example.com') &&
-    sentView.includes('Waiting for review · Paths and Curves'),
+    sentView.includes('Waiting for review · Drawing a Path'),
   sentView
 );
 await page.screenshot({ path: `${OUT}/03-sent.png` });
@@ -331,7 +331,7 @@ const back = await page.evaluate(() => ({
 }));
 check(
   'back returns to the section that was open, with the focus where it left',
-  back.chosen === 'Paths and Curves' && back.focused === 'Suggest one that belongs here',
+  back.chosen === 'Drawing a Path' && back.focused === 'Suggest one that belongs here',
   back
 );
 

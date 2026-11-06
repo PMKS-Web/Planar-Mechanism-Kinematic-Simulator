@@ -292,11 +292,11 @@ to be shown one particular linkage.
 
 ## Mechanism library
 
-**42 mechanisms**, in eight families, each one a linkage the verification suite already covers.
-The library filters by family and by name; opening one on an empty grid loads it in place, and
+**42 mechanisms**, in eight sections, each one a mechanism the verification suite already covers.
+The library filters by section and by name; opening one on an empty grid loads it in place, and
 opening one over existing work offers a new tab, a replace (which is undoable), or a cancel.
 
-![The Mechanism Library dialog, filtered to the Start Here family](docs/images/readme/templates.png)
+![The Mechanism Library dialog, filtered to the Start Here section](docs/images/readme/templates.png)
 
 *The top row below is running; the rest are stills. In the app every card animates when you hover
 it.*
@@ -309,60 +309,62 @@ it.*
 <td align="center"><img src="docs/images/readme/library/jansen-leg.gif" width="190" alt="Jansen Leg"><br><b>Jansen Leg</b></td>
 </tr>
 <tr>
-<td align="center"><img src="src/assets/gifs/bell-crank.png" width="190" alt="Bell Crank"><br><b>Bell Crank</b></td>
-<td align="center"><img src="src/assets/gifs/locked-four-bar.png" width="190" alt="Locked Four-Bar"><br><b>Locked Four-Bar</b></td>
+<td align="center"><img src="src/assets/gifs/slider-crank-inversions.png" width="190" alt="Slider-Crank Inversions"><br><b>Slider-Crank Inversions</b></td>
+<td align="center"><img src="src/assets/gifs/four-bar-inversions.png" width="190" alt="Four-Bar Inversions"><br><b>Four-Bar Inversions</b></td>
+<td align="center"><img src="src/assets/gifs/cylinder-boom.png" width="190" alt="Cylinder-Driven Boom"><br><b>Cylinder-Driven Boom</b></td>
+<td align="center"><img src="src/assets/gifs/locked-four-bar.png" width="190" alt="Four-Bar with Fixed Lengths"><br><b>Four-Bar with Fixed Lengths</b></td>
 </tr>
 <tr>
-<td align="center"><img src="src/assets/gifs/watt-i.png" width="190" alt="Watt I"><br><b>Watt I</b></td>
-<td align="center"><img src="src/assets/gifs/watt-ii.png" width="190" alt="Watt II"><br><b>Watt II</b></td>
-<td align="center"><img src="src/assets/gifs/stephenson-iii.png" width="190" alt="Stephenson III"><br><b>Stephenson III</b></td>
-<td align="center"><img src="src/assets/gifs/double-butterfly.png" width="190" alt="Double Butterfly"><br><b>Double Butterfly</b></td>
+<td align="center"><img src="src/assets/gifs/aircraft-landing-gear.png" width="190" alt="Aircraft Landing Gear"><br><b>Aircraft Landing Gear</b></td>
+<td align="center"><img src="src/assets/gifs/hood-hinge.png" width="190" alt="Car Hood Hinge"><br><b>Car Hood Hinge</b></td>
+<td align="center"><img src="src/assets/gifs/excavator-bucket.png" width="190" alt="Excavator Bucket"><br><b>Excavator Bucket</b></td>
+<td align="center"><img src="src/assets/gifs/car-steering.png" width="190" alt="Car Steering"><br><b>Car Steering</b></td>
 </tr>
 <tr>
 <td align="center"><img src="src/assets/gifs/scotch-yoke.png" width="190" alt="Scotch Yoke"><br><b>Scotch Yoke</b></td>
 <td align="center"><img src="src/assets/gifs/radial-engine.png" width="190" alt="Radial Engine"><br><b>Radial Engine</b></td>
-<td align="center"><img src="src/assets/gifs/elliptical-trammel.png" width="190" alt="Elliptical Trammel"><br><b>Elliptical Trammel</b></td>
-<td align="center"><img src="src/assets/gifs/screw-jack.png" width="190" alt="Screw Jack"><br><b>Screw Jack</b></td>
+<td align="center"><img src="src/assets/gifs/shaper-quick-return.png" width="190" alt="Shaper Quick-Return"><br><b>Shaper Quick-Return</b></td>
+<td align="center"><img src="src/assets/gifs/pumpjack.png" width="190" alt="Pumpjack"><br><b>Pumpjack</b></td>
 </tr>
 <tr>
-<td align="center"><img src="src/assets/gifs/landing-gear.png" width="190" alt="Aircraft Landing Gear"><br><b>Aircraft Landing Gear</b></td>
-<td align="center"><img src="src/assets/gifs/cylinder-boom.png" width="190" alt="Cylinder-Driven Boom"><br><b>Cylinder-Driven Boom</b></td>
-<td align="center"><img src="src/assets/gifs/backhoe-bucket.png" width="190" alt="Backhoe Bucket"><br><b>Backhoe Bucket</b></td>
+<td align="center"><img src="src/assets/gifs/windshield-wiper.png" width="190" alt="Windshield Wiper"><br><b>Windshield Wiper</b></td>
+<td align="center"><img src="src/assets/gifs/oscillating-fan.png" width="190" alt="Oscillating Fan"><br><b>Oscillating Fan</b></td>
+<td align="center"><img src="src/assets/gifs/cylinder-gripper.png" width="190" alt="Parallel Gripper"><br><b>Parallel Gripper</b></td>
 <td align="center"><img src="src/assets/gifs/scissor-lift.png" width="190" alt="Scissor Lift"><br><b>Scissor Lift</b></td>
 </tr>
 <tr>
 <td align="center"><img src="src/assets/gifs/chebyshev.png" width="190" alt="Chebyshev Straight-Line"><br><b>Chebyshev Straight-Line</b></td>
-<td align="center"><img src="src/assets/gifs/peaucellier.png" width="190" alt="Peaucellier–Lipkin"><br><b>Peaucellier–Lipkin</b></td>
+<td align="center"><img src="src/assets/gifs/peaucellier.png" width="190" alt="Peaucellier-Lipkin"><br><b>Peaucellier-Lipkin</b></td>
+<td align="center"><img src="src/assets/gifs/elliptical-trammel.png" width="190" alt="Elliptical Trammel"><br><b>Elliptical Trammel</b></td>
 <td align="center"><img src="src/assets/gifs/pantograph.png" width="190" alt="Pantograph"><br><b>Pantograph</b></td>
-<td align="center"><img src="src/assets/gifs/windshield-wiper.png" width="190" alt="Windshield Wiper"><br><b>Windshield Wiper</b></td>
 </tr>
 <tr>
-<td align="center"><img src="src/assets/gifs/toggle-clamp.png" width="190" alt="Toggle Clamp"><br><b>Toggle Clamp</b></td>
 <td align="center"><img src="src/assets/gifs/punch-press.png" width="190" alt="Punch Press"><br><b>Punch Press</b></td>
-<td align="center"><img src="src/assets/gifs/derrick-crane.png" width="190" alt="Derrick Crane"><br><b>Derrick Crane</b></td>
+<td align="center"><img src="src/assets/gifs/toggle-clamp.png" width="190" alt="Toggle Clamp"><br><b>Toggle Clamp</b></td>
 <td align="center"><img src="src/assets/gifs/crane-two-loads.png" width="190" alt="Crane with Two Loads"><br><b>Crane with Two Loads</b></td>
+<td align="center"><img src="src/assets/gifs/offset-load-rocker.png" width="190" alt="Offset Load Rocker"><br><b>Offset Load Rocker</b></td>
 </tr>
 <tr>
-<td align="center"><img src="src/assets/gifs/pumpjack.png" width="190" alt="Pumpjack"><br><b>Pumpjack</b></td>
-<td align="center"><img src="src/assets/gifs/oscillating-fan.png" width="190" alt="Oscillating Fan"><br><b>Oscillating Fan</b></td>
-<td align="center"><img src="src/assets/gifs/pedaling-leg.png" width="190" alt="Pedaling Leg"><br><b>Pedaling Leg</b></td>
-<td align="center"><img src="src/assets/gifs/three-machines.png" width="190" alt="Three Machines"><br><b>Three Machines</b></td>
+<td align="center"><img src="src/assets/gifs/bell-crank.png" width="190" alt="Bell Crank"><br><b>Bell Crank</b></td>
+<td align="center"><img src="src/assets/gifs/watt-ii.png" width="190" alt="Watt II"><br><b>Watt II</b></td>
+<td align="center"><img src="src/assets/gifs/stephenson-iii.png" width="190" alt="Stephenson III"><br><b>Stephenson III</b></td>
+<td align="center"><img src="src/assets/gifs/double-butterfly.png" width="190" alt="Double Butterfly"><br><b>Double Butterfly</b></td>
 </tr>
 </table>
 
 <details>
-<summary><b>The full library, by family</b></summary>
+<summary><b>The full library, by section</b></summary>
 
-| Family | Mechanisms |
+| Section | Mechanisms |
 | --- | --- |
-| **Start Here** | Four-Bar · Slider-Crank · Bell Crank · Locked Four-Bar |
-| **Six-Bars and Harder** | Watt I · Watt II · Stephenson III · Double Butterfly |
-| **Slots and Sliders** | Whitworth Quick-Return · Shaper Quick-Return · Scotch Yoke · Radial Engine · Elliptical Crank · Engine with a Flywheel · Screw Jack · Elliptical Trammel · Parallel Gripper |
-| **Cylinders** | Cylinder-Driven Boom · Backhoe Bucket · Scissor Lift |
-| **Paths and Curves** | Chebyshev Straight-Line · Jansen Leg · Windshield Wiper · Peaucellier–Lipkin · Pantograph |
-| **Forces** | Punch Press · Derrick Crane · Toggle Clamp · Offset Load Rocker · Crane with Two Loads |
-| **Unusual Drives** | Oscillating Fan · Pumpjack · Pedaling Leg |
-| **Many Machines** | Three Machines · Walking Pair · Approximate and Exact · Pumping Field · Four-Bar Inversions · Slider-Crank Inversions |
+| **Start Here** | Four-Bar · Slider-Crank · Cylinder-Driven Boom · Four-Bar with Fixed Lengths · Four-Bar Inversions · Slider-Crank Inversions |
+| **Real-Life Use Cases** | Aircraft Landing Gear · Car Hood Hinge · Excavator Bucket · Car Steering |
+| **Back-and-Forth Motion** | Scotch Yoke · Engine with a Flywheel · Radial Engine · Whitworth Quick-Return · Shaper Quick-Return · Pumpjack · Pedaling Leg |
+| **Swing, Lift and Grip** | Windshield Wiper · Oscillating Fan · Parallel Gripper · Scissor Lift · Bracketed Hatch |
+| **Drawing a Path** | Chebyshev Straight-Line · Peaucellier-Lipkin · Approximate and Exact · Elliptical Trammel · Pantograph · Jansen Leg |
+| **Forces** | Punch Press · Toggle Clamp · Crane with Two Loads · Offset Load Rocker · Reciprocating Saw · Slotted Tool Drive |
+| **Six-Bars and Beyond** | Bell Crank · Watt I · Watt II · Stephenson III · Elliptical Crank · Double Butterfly |
+| **Multiple Mechanisms** | Walking Pair · Pumping Field |
 
 </details>
 
