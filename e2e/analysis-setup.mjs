@@ -15,6 +15,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { readFileSync } from 'node:fs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -172,9 +173,38 @@ const massLanding = await page.evaluate(() => {
   };
 });
 record(
-  'and pressing it selects that body in Edit',
+  'and pressing its mass-table name selects that body in Edit',
   massLanding.tab === 1 && massLanding.selected === lit,
   massLanding
+);
+
+// A mass link is an editing shortcut even after its section was folded shut.
+const massSection = page.locator('app-edit-panel collapsible-subsection', {
+  has: page.locator('.panel-header__toggle', { hasText: 'Mass Settings' }),
+});
+await massSection.locator('.panel-header__toggle').click();
+await tab('Force').click();
+const massFilm = filmstrip(page, 'artifacts/analysis-mass-links');
+await massFilm.during(90, 6, 'open-mass-settings', () => massNames.nth(1).press('Enter'));
+record(
+  'a mass-table link also opens Edit from the keyboard, with Mass Settings expanded',
+  (await page
+    .locator('app-edit-panel')
+    .getByRole('textbox', { name: 'Mass', exact: true })
+    .count()) > 0 &&
+    (await massSection
+      .locator('.panel-header__toggle mat-icon')
+      .evaluate((icon) => icon.classList.contains('rotate180'))),
+  await page.locator('app-edit-panel').innerText()
+);
+record(
+  'the Force setup drawer stays open beside the mass fields',
+  (await page.locator('app-analysis-setup').count()) === 1
+);
+await contactSheet(
+  'artifacts/analysis-mass-links/*.png',
+  'artifacts/analysis-mass-links-sheet.png',
+  3
 );
 
 // --- a mechanism with nothing driving it ------------------------------------
@@ -223,7 +253,7 @@ const landed = await page.evaluate(() => {
   };
 });
 record(
-  'and pressing it lands in Edit with that joint selected',
+  'a part link opens Edit when the analysis mode could not be entered',
   landed.tab === 1 && landed.selected === 'Joint' && label === `joint ${landed.id}`,
   { label, landed }
 );
@@ -293,6 +323,7 @@ const toD = partLink('joint D');
 record('and names the joint the fix is about as a link to it', (await toD.count()) === 1);
 await toD.click();
 await page.waitForTimeout(600);
+await tab('Edit').click();
 await page
   .locator('app-edit-panel toggle-block', { hasText: 'Grounded' })
   .getByRole('switch')
@@ -699,6 +730,7 @@ record(
 );
 await page.locator('app-analysis-setup li.issueFix').first().locator('part-link button').click();
 await page.waitForTimeout(600);
+await tab('Edit').click();
 await page.locator('app-edit-panel segmented-block button', { hasText: 'Welded' }).first().click();
 await page.waitForTimeout(700);
 machinesNow = await readinessNow();
@@ -720,6 +752,7 @@ record(
 );
 await page.locator('app-analysis-setup .issueFix').first().locator('part-link button').click();
 await page.waitForTimeout(600);
+await tab('Edit').click();
 await page
   .locator('app-edit-panel segmented-block button', { hasText: 'Prismatic' })
   .first()

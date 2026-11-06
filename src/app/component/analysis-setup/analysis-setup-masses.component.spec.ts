@@ -3,8 +3,9 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { createMechanismHarness } from '../../../test-utils/mechanism-harness';
 import { MechanismBuilder } from '../../services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../services/transcoding/string-transcoder';
-import { PART_LINK_TARGET } from '../BLOCKS/part-link/part-link-target';
+import { PART_LINK_TARGET, PartLinkIntent } from '../BLOCKS/part-link/part-link-target';
 import { TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
+import { PanelFoldStateService } from '../../services/panel-fold-state.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
@@ -35,7 +36,7 @@ async function createMasses(payload: string) {
         provide: PART_LINK_TARGET,
         useValue: {
           point: (part: unknown) => pointed.push(part),
-          open: (part: unknown) => opened.push(part),
+          open: (part: unknown, intent: PartLinkIntent) => opened.push({ part, intent }),
         },
       },
     ],
@@ -63,11 +64,14 @@ describe('AnalysisSetupComponent masses', () => {
     fixture.destroy();
   });
 
-  it('makes the name the row’s one way to its body, with no arrow beside it', async () => {
+  it('opens its body for editing, with no arrow beside the name', async () => {
     const { fixture, harness, opened } = await createMasses(TEMPLATE_LINKAGES['Slider_Crank']);
+    const folds = TestBed.inject(PanelFoldStateService);
+    folds.editSections['LMass'] = false;
     expect(all(fixture, '.massRow button:not(.partLink)')).toHaveLength(0);
     all(fixture, '.massRow:not(.head) part-link button')[0].click();
-    expect(opened).toEqual([harness.service.links[0]]);
+    expect(opened).toEqual([{ part: harness.service.links[0], intent: 'edit' }]);
+    expect(folds.editSections['LMass']).toBe(true);
     fixture.destroy();
   });
 

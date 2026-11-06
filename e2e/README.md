@@ -368,7 +368,8 @@ Not suites — import them from one.
 ### Analysis modes and machines
 
 - `analysis-setup.mjs` — pressing an analysis mode that cannot be entered opens a list naming the
-  mechanism at fault, the way out, and a button that goes to the part.
+  mechanism at fault, the way out, and a button that goes to the part; mass-table names open Edit
+  at Mass Settings, including from the keyboard and after the section was folded.
 - `analysis-drawing-switches.mjs` — the trace and vector switches under an analysis panel's
   graphs draw on the mechanism and gray in the menu's own words.
 - `analysis-audit.mjs` — every analysis panel on every template for every part: blank graphs,
@@ -381,7 +382,7 @@ Not suites — import them from one.
   across mode switches and selections.
 - `mechanism-panel.mjs` — the machines with nothing selected: the All mechanisms list, picking one
   (from a row, the setup drawer's name), the others fading, the drawer folding to it and opening
-  on arrival when a machine cannot run, a part link keeping the drawer open in Edit, and a
+  on arrival when a machine cannot run, part links keeping either analysis mode and playback, with the setup drawer staying open, and a
   rename riding the URL.
 - `two-mechanisms.mjs` — two machines in one drawing: a row each in the transport, a section each
   in the setup drawer, and a sync toggle that decouples them.
