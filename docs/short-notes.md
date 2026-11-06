@@ -2749,6 +2749,15 @@ constraints. MotionGen's exact right-angle rails exposed it: rounded saved angle
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
 
+### A fixture published in inches reads every number in inches, pounds and pounds-force
+
+A URL keeps a coordinate as the number the reader sees, so `lengthUnit: LengthUnit.INCH` on a
+gallery entry turns a 2 cm bar into a 2 in bar, and it turns a link mass of 150 into 150 lbm and a
+load of 1.8 into 1.8 lbf. `FORCE_STUDY_SCALING`'s hundredfold mass and hundredth load are tuned for
+grams and newtons. The inch Toggle Clamp therefore states its pounds in its own fixture and sets
+the scaling to 1 in `FORCE_STUDY_BODIES`. To compare Static against In-motion, read the numbers
+from the running app: a `Mechanism` built in a spec straight from the payload skips the inertia
+the app derives for each body, and gave an in-motion peak twenty times the static one.
 ### A stack follows shared code; unrelated features start at staging
 
 Library browsing, numerical corrections and small UI fixes had accumulated in one chain, so

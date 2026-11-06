@@ -6,6 +6,7 @@ import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { PrisJoint } from '../../app/model/joint';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { LengthUnit } from '../../app/model/unit-enums';
 
 /**
  * The linear input speed every published payload was written at before the
@@ -257,13 +258,19 @@ export interface PublishedSpeed {
  * something — a library template, where they are chosen from the structure
  * rather than handed out in build order. See template-colors.ts. The gallery
  * links published from here pass none and keep the cursor's own order.
+ *
+ * `lengthUnit` is what the fixture's numbers are read in. The URL keeps a
+ * coordinate as the number the reader sees, so the same fixture published in
+ * inches opens with the same numbers, each now an inch; its masses and loads
+ * are read in pounds and pounds-force with it.
  */
 export function fixturePayload(
   fixture: MechanismFixture,
   objectScale: number = DEFAULT_OBJECT_SCALE,
   speed: PublishedSpeed = {},
   masses: PublishedMasses = 'as-built',
-  fills?: Map<string, string>
+  fills?: Map<string, string>,
+  lengthUnit: LengthUnit = LengthUnit.CM
 ): string {
   const previousColors = ColorService.instance;
   const previousScale = SettingsService.objectScale;
@@ -279,6 +286,7 @@ export function fixturePayload(
     // so they are set on the service the encoder is about to read. A fresh one
     // per call, so nothing here leaks into the next mechanism's payload.
     const settings = new SettingsService();
+    settings.lengthUnit.next(lengthUnit);
     if (speed.rpm !== undefined) settings.inputSpeed.next(speed.rpm);
     // The speed the library and the gallery were published at, where a
     // fixture names none. The app's own default fell to one unit a second

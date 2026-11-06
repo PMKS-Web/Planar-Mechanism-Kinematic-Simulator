@@ -20,6 +20,9 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Scotch_Yoke_Rod: 'Scotch yoke on a guided rod',
   Four_Bar: 'Four-bar with a coupler point',
   Locked_Four_Bar: 'Four-bar with fixed lengths',
+  Parallelogram: 'Parallelogram',
+  Watt_Straight_Line: 'Watt straight-line mechanism',
+  Dwell_Six_Bar: 'Six-bar with a dwell',
   Cylinder_Boom: 'Cylinder-driven boom',
   Radial_Engine: 'Radial engine, five cylinders',
   Chebyshev_Straight_Line: 'Chebyshev straight-line linkage',
@@ -35,7 +38,7 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Pumpjack: 'Pumpjack, driven at the crank',
   Punch_Press: 'Punch press',
   Derrick_Crane: 'Derrick crane',
-  Toggle_Clamp: 'Toggle clamp',
+  Toggle_Clamp: 'Toggle clamp, in inches',
   Offset_Load_Rocker: 'Rocker with an offset load',
   Bell_Crank: 'Bell crank',
   Flywheel_Engine: 'Engine with a flywheel',
@@ -124,7 +127,10 @@ const FORCE_STUDY_SCALING = { mass: 100, load: 0.01 };
 const FORCE_STUDY_BODIES: Record<string, Partial<PublishedLoading>> = {
   Punch_Press: { offsetCom: { BC: { between: ['B', 'C'], at: 0.35 } } },
   Derrick_Crane: { offsetCom: { OCT: { between: ['O', 'T'], at: 0.4 } } },
-  Toggle_Clamp: { offsetCom: { HE: { between: ['H', 'E'], at: 0.35 } } },
+  // Drawn in inches, and its fixture already states pounds and pounds-force:
+  // the hundredfold and the hundredth are for the centimeter studies' grams
+  // and newtons, and its numbers are those, converted.
+  Toggle_Clamp: { mass: 1, load: 1, offsetCom: { HE: { between: ['H', 'E'], at: 0.35 } } },
   Offset_Load_Rocker: {},
   Crane_Two_Loads: { keepMoi: ['OCT'] },
 };

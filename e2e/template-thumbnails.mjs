@@ -88,6 +88,9 @@ const FILENAMES = {
   Landing_Gear: 'landing-gear',
   Four_Bar_Inversions: 'four-bar-inversions',
   Slider_Crank_Inversions: 'slider-crank-inversions',
+  Parallelogram: 'parallelogram',
+  Watt_Straight_Line: 'watt-straight-line',
+  Dwell_Six_Bar: 'dwell-six-bar',
 };
 
 // The three dev drawings are not here on purpose. Their payloads were written

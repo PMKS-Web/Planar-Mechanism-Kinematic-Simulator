@@ -94,6 +94,11 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['AQ', 'BQ'],
     ],
   },
+  // The two equal cranks, which are the whole of what makes it a
+  // parallelogram: matched, they read as one part made twice.
+  Parallelogram: { same: [['AB', 'CD']] },
+  // Watt's two arms: one part, turned end for end about the traced point.
+  Watt_Straight_Line: { same: [['AB', 'CD']] },
   // Opposite sides of the parallelogram. A pantograph is a parallelogram that
   // stays one while it moves, and matching the parallel pairs says so.
   Pantograph: {

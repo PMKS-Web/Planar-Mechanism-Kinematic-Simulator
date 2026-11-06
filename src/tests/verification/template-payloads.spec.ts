@@ -53,7 +53,8 @@ function generatedBlock(): string {
       libraryTemplateMasses(id),
       // Color is the other thing the library decides for itself: a gallery
       // link is a mechanism to check, a template is a mechanism to read.
-      libraryTemplateFills(id, entry.fixture)
+      libraryTemplateFills(id, entry.fixture),
+      entry.lengthUnit
     );
     return `  ${id}:\n    '${payload}',`;
   });

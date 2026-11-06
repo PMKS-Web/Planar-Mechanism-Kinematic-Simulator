@@ -1,11 +1,13 @@
 import { MechanismFixture } from './fixture';
+import { toggleClampFixture } from './force-fixtures';
 import { pumpjackFixture } from './library-fixtures';
 
-// Library cards drawn for a reader rather than for a spec. Each one replaced a
+// Library cards drawn for a reader rather than for a spec. Some replaced a
 // verification fixture that was right for the test it was written for and
 // wrong for a student opening the card: a pumpjack whose crank only rocked, a
 // four-bar whose coupler curve nobody could see, a yoke that looked like the
-// saw beside it. The fixtures those specs assert on are unchanged.
+// saw beside it. The fixtures those specs assert on are unchanged. The rest
+// are cards the library had no drawing for at all.
 
 /** One rad/s, matching the rest of the verification suite. */
 const INPUT_SPEED = 1;
@@ -161,6 +163,140 @@ export function scotchYokeOnRodFixture(): MechanismFixture {
     ],
     // The bearings are welded too: the rod slides through them without turning.
     welds: ['E', 'F', 'G'],
+    inputAngVel: INPUT_SPEED,
+  };
+}
+
+/** The parallelogram's two equal cranks, and the frame its coupler matches. */
+const PARALLELOGRAM = {
+  crank: { x: 1.2, y: 1.6 },
+  frame: 4,
+  /** How far above the coupler its traced point sits. */
+  lift: 1,
+} as const;
+
+/**
+ * A parallelogram: two equal cranks, and a coupler as long as the frame.
+ *
+ * Opposite sides stay equal, so the coupler never turns: it is carried round
+ * level, the way a desk lamp's arm carries its head. The coupler is a triangle
+ * so that its staying upright can be seen, and its top corner is traced: a
+ * body that only translates moves every point on it round the same circle as
+ * the crank pin.
+ *
+ * Twice a turn the cranks lie along the frame and every pin is on one line.
+ * That is the change point every parallelogram has, where it could carry on
+ * crossed instead. The solver stays on the parallelogram, and
+ * `library-cards.spec.ts` checks the coupler's angle at every sample.
+ */
+export function parallelogramFixture(): MechanismFixture {
+  const { crank, frame, lift } = PARALLELOGRAM;
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: crank.x, y: crank.y },
+      { id: 'C', x: crank.x + frame, y: crank.y },
+      { id: 'D', x: frame, y: 0, ground: true },
+      { id: 'T', x: crank.x + frame / 2, y: crank.y + lift, trace: true },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BCT' }, { joints: 'CD' }],
+    inputAngVel: INPUT_SPEED,
+  };
+}
+
+/** Watt's proportions: two equal arms, twice the length of the link between them. */
+const WATT = { arm: 3, coupler: 1.5 } as const;
+
+/**
+ * Watt's straight-line mechanism: two equal arms pointing at each other from
+ * opposite sides, joined by a short link whose midpoint is traced.
+ *
+ * Drawn at the middle of its travel, arms level and the short link upright,
+ * so the traced point starts on the straight stretch. Across about one and a
+ * half times the short link's length it strays less than 1% of that length
+ * from a vertical line; past that the arms run out of reach and the path
+ * curls back into the two loops of a figure eight.
+ *
+ * Not Grashof, so neither arm turns right round: the input rocks, and the
+ * cycle closes on a reversal.
+ */
+export function wattStraightLineFixture(): MechanismFixture {
+  const half = WATT.coupler / 2;
+  return {
+    joints: [
+      { id: 'A', x: -WATT.arm, y: half, ground: true, input: true },
+      { id: 'B', x: 0, y: half },
+      { id: 'C', x: 0, y: -half },
+      { id: 'D', x: WATT.arm, y: -half, ground: true },
+      // The point the mechanism is named for.
+      { id: 'M', x: 0, y: 0, trace: true },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BCM' }, { joints: 'CD' }],
+    inputAngVel: INPUT_SPEED,
+  };
+}
+
+/** The clamp's parts in pounds, and the load on its pad in pounds-force. */
+const CLAMP_IN_POUNDS = {
+  mass: { HE: 0.3, EP: 0.2, NP: 0.4 } as Record<string, number>,
+  load: 0.4,
+};
+
+/**
+ * The toggle clamp, drawn in inches.
+ *
+ * The same pins as `toggleClampFixture`, read as inches rather than
+ * centimeters, so the library has one card a reader in the United States can
+ * measure. Its masses are stated in pounds and its load in pounds-force here,
+ * rather than scaled from the centimeter fixture's grams and newtons: they are
+ * that fixture's published numbers converted and rounded, so the weight and the
+ * load keep the proportion that lets Static and In-motion differ.
+ */
+export function toggleClampInInchesFixture(): MechanismFixture {
+  const clamp = toggleClampFixture();
+  return {
+    ...clamp,
+    links: clamp.links.map((link) => ({ ...link, mass: CLAMP_IN_POUNDS.mass[link.joints] })),
+    load: { ...clamp.load!, vector: [0, CLAMP_IN_POUNDS.load] },
+  };
+}
+
+/**
+ * A six-bar whose output stops for a third of every turn while the crank keeps
+ * going: the usual reason to add two links to a four-bar.
+ *
+ * The four-bar ABCD is a crank-rocker whose coupler point P draws a curve with
+ * one stretch that is very nearly an arc of a circle. Q is pinned at that
+ * arc's center, and the link PQ is as long as its radius, so while P runs
+ * along the arc it only swings PQ about Q, and Q, with the output link OQ,
+ * stands still. Off the arc, P pulls Q away and the output swings through
+ * about 60 degrees and back.
+ *
+ * The four-bar's proportions came from a search over coupler curves for a
+ * long, nearly circular stretch, rounded to hundredths. Rounded, the output
+ * stays within half a degree for about 105 degrees of crank. The drawing
+ * starts in the pause.
+ */
+export function dwellSixBarFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 1.2, y: 1.6 },
+      { id: 'C', x: 5.62, y: 3.47 },
+      { id: 'D', x: 5.2, y: 0, ground: true },
+      // The coupler point, whose curve holds the arc.
+      { id: 'P', x: 2.79, y: 0.92, trace: true },
+      // The arc's center, where the output waits.
+      { id: 'Q', x: 1.68, y: -1.46 },
+      { id: 'O', x: 4.3, y: -2.3, ground: true },
+    ],
+    links: [
+      { joints: 'AB' },
+      { joints: 'BCP' },
+      { joints: 'CD' },
+      { joints: 'PQ' },
+      { joints: 'OQ' },
+    ],
     inputAngVel: INPUT_SPEED,
   };
 }

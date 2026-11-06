@@ -89,6 +89,7 @@ import { MOBILITY_GALLERY } from './mobility-fixtures';
 import { STUDENT_MISTAKE_GALLERY } from './student-mistake-fixtures';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import type { LengthUnit } from '../../app/model/unit-enums';
 
 /**
  * Every mechanism the verification suite asserts on, as something a reviewer
@@ -145,6 +146,8 @@ export interface GalleryEntry {
    * nothing at a speed nobody can follow.
    */
   speed?: PublishedSpeed;
+  /** What the fixture's numbers are read in. Omitted means centimeters. */
+  lengthUnit?: LengthUnit;
   fixture: MechanismFixture;
 }
 
@@ -827,7 +830,15 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
  */
 export function galleryMarkdown(baseUrl: string): string {
   const rows = FIXTURE_GALLERY.map((entry) => {
-    const link = `${baseUrl}/?${fixturePayload(entry.fixture, entry.objectScale, entry.speed)}`;
+    const payload = fixturePayload(
+      entry.fixture,
+      entry.objectScale,
+      entry.speed,
+      'as-built',
+      undefined,
+      entry.lengthUnit
+    );
+    const link = `${baseUrl}/?${payload}`;
     const slot = entry.floatingSlot ? 'yes' : '—';
     const slide = entry.slide ? 'yes' : '—';
     return `| [${entry.name}](${link}) | ${entry.purpose} | ${slot} | ${slide} | \`${entry.spec}\` |`;

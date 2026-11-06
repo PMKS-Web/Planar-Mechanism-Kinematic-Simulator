@@ -130,6 +130,15 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/cylinder-boom.gif',
   },
   {
+    id: 'Parallelogram',
+    name: 'Parallelogram',
+    category: 'start',
+    description:
+      'Opposite links are equal, so the coupler never tilts as the crank turns. A desk lamp’s arm uses this to keep its head level.',
+    thumbnail: 'assets/gifs/parallelogram.png',
+    animation: 'assets/gifs/parallelogram.gif',
+  },
+  {
     id: 'Locked_Four_Bar',
     name: 'Four-Bar with Fixed Lengths',
     category: 'start',
@@ -350,6 +359,15 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/chebyshev.gif',
   },
   {
+    id: 'Watt_Straight_Line',
+    name: 'Watt’s Straight-Line',
+    category: 'paths',
+    description:
+      'Two arms rock, and the middle of the short link between them runs up and down a nearly straight line. Cars use it to guide a rear axle.',
+    thumbnail: 'assets/gifs/watt-straight-line.png',
+    animation: 'assets/gifs/watt-straight-line.gif',
+  },
+  {
     id: 'Peaucellier',
     name: 'Peaucellier-Lipkin',
     category: 'paths',
@@ -409,7 +427,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Toggle Clamp',
     category: 'forces',
     description:
-      'Why a clamp holds so hard: as two links line up, a small push on the handle becomes a huge clamping force.',
+      'Why a clamp holds so hard: as two links line up, a small push on the handle becomes a huge clamping force. Drawn in inches.',
     thumbnail: 'assets/gifs/toggle-clamp.png',
     animation: 'assets/gifs/toggle-clamp.gif',
   },
@@ -459,6 +477,15 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'A crank drives an L-shaped lever, welded from two links, that passes the motion round a corner to a second rocker.',
     thumbnail: 'assets/gifs/bell-crank.png',
     animation: 'assets/gifs/bell-crank.gif',
+  },
+  {
+    id: 'Dwell_Six_Bar',
+    name: 'Six-Bar with a Dwell',
+    category: 'sixbar',
+    description:
+      'The output link swings out and back, then stands still for a third of every turn while the crank keeps going.',
+    thumbnail: 'assets/gifs/dwell-six-bar.png',
+    animation: 'assets/gifs/dwell-six-bar.gif',
   },
   {
     id: 'Watt_I',
