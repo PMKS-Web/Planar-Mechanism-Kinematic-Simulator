@@ -1066,12 +1066,13 @@ const screenOf = (id) =>
           bottom: Math.round(box.bottom),
           windowHeight: window.innerHeight,
           rows: document.querySelectorAll('.categorySheet .category').length,
+          suggest: !!document.querySelector('.categorySheet .suggestCard button'),
         }
       : null;
   });
   record(
-    'Category opens the sections as a sheet at the bottom',
-    !!sheet && Math.abs(sheet.bottom - sheet.windowHeight) <= 2 && sheet.rows > 2,
+    'Category opens the sections as a sheet at the bottom, with Suggest at its foot',
+    !!sheet && Math.abs(sheet.bottom - sheet.windowHeight) <= 2 && sheet.rows > 2 && sheet.suggest,
     sheet
   );
   await page.locator('.categorySheet .category').nth(2).click();

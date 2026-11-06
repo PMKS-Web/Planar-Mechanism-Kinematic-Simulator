@@ -4,18 +4,12 @@ import { HelpPanelComponent } from './help-panel.component';
 import { NotificationService } from '../../services/notification.service';
 
 /**
- * The feedback form's one dependency on the deployment: a key for the mail
- * service, fetched from a Netlify function.
+ * The feedback form, against a deploy that cannot send.
  *
- * There are two ways to have no key and they used to be told apart by whether
- * `fetch` threw, which is the wrong question. A site with the function deployed
- * and `EMAIL_JS_KEY` unset answers 200 with `{}` -- because
- * `JSON.stringify({apiKey: undefined})` drops the field -- so nothing threw,
- * EmailJS was initialized with `undefined`, and the reader was told the message
- * had failed to send and to try again later. It was never going to send, and
- * trying again was never going to help. That is the case this file exists for.
+ * How the key is found is `MailService`'s, and its spec says how; what this
+ * form owes the reader is the right sentence when there is none.
  */
-describe('HelpPanelComponent, finding the mail key', () => {
+describe('HelpPanelComponent, sending feedback', () => {
   let notifications: { id: string; text: string }[];
   let fetched: string[];
 
@@ -46,17 +40,6 @@ describe('HelpPanelComponent, finding the mail key', () => {
     });
   });
 
-  /** The component's own lookup, which is private because nothing else needs it. */
-  const mailKey = async (): Promise<string | undefined> => {
-    const component = TestBed.createComponent(HelpPanelComponent).componentInstance;
-    return (component as unknown as { mailKey: () => Promise<string | undefined> }).mailKey();
-  };
-
-  it('finds the key a configured deploy answers with', async () => {
-    answerWith({ apiKey: 'aBcDeFgHiJkLmNoPq' });
-    expect(await mailKey()).toBe('aBcDeFgHiJkLmNoPq');
-  });
-
   it('defines the shared terms used by editing and analysis', () => {
     answerWith({});
     const component = TestBed.createComponent(HelpPanelComponent).componentInstance;
@@ -69,28 +52,6 @@ describe('HelpPanelComponent, finding the mail key', () => {
     // allows motion, and a mark that allows none.
     expect(terms).toContain('Fixed length, fixed angle');
     expect(terms).toContain('Lock');
-  });
-
-  it('asks the function by its real path, with one slash', async () => {
-    answerWith({ apiKey: 'k' });
-    await mailKey();
-    expect(fetched).toEqual(['/.netlify/functions/getEmailJSKey']);
-  });
-
-  it('finds none where the deploy answers without one', async () => {
-    // Exactly what an unconfigured site returns: 200, and an empty object.
-    answerWith({});
-    expect(await mailKey()).toBeUndefined();
-  });
-
-  it('finds none where the key is there but empty', async () => {
-    answerWith({ apiKey: '' });
-    expect(await mailKey()).toBeUndefined();
-  });
-
-  it('finds none where there is no function at all, which is a dev server', async () => {
-    answerWith(undefined, false);
-    expect(await mailKey()).toBeUndefined();
   });
 
   it('tells the reader the build cannot send, rather than to try again', async () => {

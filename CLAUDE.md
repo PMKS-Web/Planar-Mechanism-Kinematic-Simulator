@@ -256,6 +256,14 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   `UrlProcessorService` recognizes it instead of handing it to the decoder, sets `wantsLibrary`,
   and strips it from the address bar. Every door into the library goes through
   `TemplatesComponent.openIn`.
+- **The library has three views** (`LibraryView`): browse, with the sections as a side rail (a
+  bottom sheet behind a Category button on a phone); **Suggest a Mechanism**
+  (`MODALS/templates/suggest-mechanism/`), a form beside the card it would become; and Sent. The
+  card is one component, `template-card`, so the grid and the preview cannot drift. A suggestion
+  is the open mechanism or a pasted link, read without touching the grid (`readPastedLink`), and
+  goes out by email through `MailService`, which the Help panel's feedback form uses too. Nothing
+  reaches the library until the team adds it to `template-catalog.ts`, where a row's `credit`
+  puts "Suggested by" on its card. `e2e/suggest-mechanism.mjs` is the guard.
 - **Loading indicators.** Decoding a URL solves every sample of the mechanism synchronously, so
   nothing can paint during it. Two covers answer that: the `#bootSplash` block in `index.html`,
   painted out of the HTML before the bundle runs and removed by `AppComponent`'s

@@ -13,6 +13,25 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### A dialog is in the browser's top layer, and no `z-index` reaches it
+
+Angular's CDK opens its overlays -- dialogs, menus, tooltips -- as `popover="manual"` elements in
+the browser's top layer, so `.cdk-overlay-container`'s `z-index: 1000` is not what puts a dialog
+on top and raising `--layer-toast` past it does nothing. The library's Suggest a Mechanism form
+was the first dialog to send a notification, and its refusal, its failure and its Try again all
+landed behind it. `NotificationComponent` makes the stack a manual popover as well and shows it
+again whenever a message arrives, because the top layer is ordered by who was shown last. Anything
+else that must paint over an open dialog needs the same: a popover, shown after the dialog.
+
+### A block's inner class names are not private to it
+
+`segmented-block` draws its pill as `.thumb` and its label row as `.row` and `.label`, and the
+library's stylesheet is a theme mixin scoped by `#templates`, not by component. A form there with
+its own `.row` grid and a card with its own 220px `.thumb` turned the Suggest form's source toggle
+into a 220px-tall white slab with its label cut to "Open Mec…". Inside a theme mixin, scope card
+and form rules under their own root (`.templateCard .thumb`) or name them for what they are
+(`.formRow`, `.fieldLabel`), and look at every block the form hosts.
+
 ### An e2e suite that launches the machine's own Chrome is not portable
 
 Eight suites read `PMKS_CHROME` and hand Playwright an `executablePath` rather than using the

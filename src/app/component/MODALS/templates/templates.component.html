@@ -1,5 +1,8 @@
 <div class="dialog_root" id="templates" [class.phone]="viewport.isPhone()">
-  <div class="browseView">
+  <!-- Hidden rather than taken down while the form is up, so the way back
+       finds the section, the search and the scroll exactly as they were, and
+       the button that opened the form is still there to take the focus. -->
+  <div class="browseView" [hidden]="view !== 'browse'">
     <!-- Title, search and categories stay put while the cards scroll: at
          forty-odd mechanisms the way to another section has to stay on screen. -->
     <div class="titleRow">
@@ -43,6 +46,20 @@
               ></ng-container>
             }
           </div>
+          <!-- Pinned to the foot of the rail, so it is on screen whatever is
+               chosen or scrolled. -->
+          <div class="suggestCard">
+            <div class="suggestTop">
+              <span class="suggestIcon" aria-hidden="true"><mat-icon>lightbulb</mat-icon></span>
+              <div>
+                <div class="suggestTitle">Missing one?</div>
+                <div class="suggestSub">If we add yours, your name goes on its card.</div>
+              </div>
+            </div>
+            <button class="btnOutlined wide" type="button" (click)="suggest()">
+              <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest a Mechanism
+            </button>
+          </div>
         </nav>
       }
 
@@ -71,9 +88,14 @@
         }
 
         @if (shown > 0) {
-          <!-- Mark the end of the current section or search. -->
+          <!-- After the last card in every filter: this is all there is, and
+               where to send the one that is missing. -->
           <div class="endLine">
             <span>{{ endLine }}</span>
+            <button class="btnText" type="button" (click)="suggest(category)">
+              <mat-icon aria-hidden="true">add_circle</mat-icon>
+              {{ category === 'all' ? 'Suggest a Mechanism' : 'Suggest one that belongs here' }}
+            </button>
           </div>
         } @else {
           <div class="emptyState">
@@ -84,7 +106,13 @@
             }
             <div class="emptyActions">
               <button mat-flat-button color="primary" (click)="showEverything()">Show All</button>
+              <button class="btnOutlined" type="button" (click)="suggest(category, query)">
+                <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest a Mechanism
+              </button>
             </div>
+            <span class="emptyNote"
+              >Know the one you are looking for? Suggest it, and we will look at adding it.</span
+            >
           </div>
         }
       </div>
@@ -115,9 +143,59 @@
             ></ng-container>
           }
         </div>
+        <div class="suggestCard row">
+          <span class="suggestIcon" aria-hidden="true"><mat-icon>lightbulb</mat-icon></span>
+          <div class="suggestText">
+            <div class="suggestTitle">Missing one?</div>
+            <div class="suggestSub">Your name goes on its card.</div>
+          </div>
+          <button
+            class="btnOutlined"
+            type="button"
+            aria-label="Suggest a Mechanism"
+            (click)="suggest()"
+          >
+            Suggest
+          </button>
+        </div>
       </div>
     }
   </div>
+
+  @if (view !== 'browse') {
+    <div class="suggestHead">
+      <button
+        class="iconButton"
+        type="button"
+        aria-label="Back to the library"
+        [disabled]="drafts.sending"
+        (click)="backToLibrary()"
+      >
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      </button>
+      <h1 id="suggestTitle" tabindex="-1">Suggest a Mechanism</h1>
+      <close-button
+        label="Close the library"
+        [disabled]="drafts.sending"
+        (pressed)="close()"
+      ></close-button>
+    </div>
+    @if (view === 'suggest') {
+      <app-suggest-mechanism
+        class="suggestView"
+        [form]="draft"
+        (back)="backToLibrary()"
+        (sent)="onSent($event)"
+      ></app-suggest-mechanism>
+    } @else if (lastSent; as sent) {
+      <app-suggestion-sent
+        class="sentPage"
+        [sent]="sent"
+        (another)="suggestAnother()"
+        (library)="backToLibrary()"
+      ></app-suggestion-sent>
+    }
+  }
 </div>
 
 <ng-template #searchBox>
