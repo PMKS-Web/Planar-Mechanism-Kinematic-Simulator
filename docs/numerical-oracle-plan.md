@@ -508,8 +508,12 @@ for rank against the drawn pose; one that has lost rank is listed by k in `singu
 state is stored for it. Rank is judged to the pose's own accuracy, not to rounding: Newton holds a
 pose along the direction a singularity frees only to about 1e-7 of the machine's size, so the
 singular value that should be zero is of that order, and which side of a rounding threshold it
-lands on differed between macOS and Linux. A sample whose singular value is below 1e-6 of the
-largest is singular; one that is not has a condition number past 1e6, which is never compared. Its neighbors are stored as usual, with the condition numbers that say
+lands on differed between macOS and Linux. The test is made on the Jacobian in the machine's own
+units (rotation columns divided by its size, angle rows multiplied by it), so it does not change
+with the unit of length: a sample whose singular value there is below 1e-5 of the largest is
+singular. On the redundant parallelogram at every size from a millimeter to a kilometer that is
+at most 1.1e-7 at a singular pose and 6.4e-4 half a degree from one, so a regular pose loses its
+state only within about a hundredth of a degree of a singularity. Its neighbors are stored as usual, with the condition numbers that say
 how close they are.
 
 **Slot limits are refused, not ignored.** The problem schema can carry a slider's travel limits,
