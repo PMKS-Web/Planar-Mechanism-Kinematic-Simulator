@@ -103,6 +103,7 @@ export function compareMachine(
   };
   const reported = new Set<string>();
   const visited = new Set<number>();
+  const absent: { id: string; quantities: readonly Quantity[]; k: number }[] = [];
   const note = (d: Deviation): void => {
     result.compared++;
     result.deviations.push(d);
@@ -173,7 +174,10 @@ export function compareMachine(
 
     for (const [id, oracle] of Object.entries(sweep.samples.points)) {
       const pmks = sample.points.get(id);
-      if (!pmks) continue;
+      if (!pmks) {
+        absent.push({ id, quantities: POINT_QUANTITIES, k });
+        continue;
+      }
       reported.add(id);
       vec('position', id, pmks.pos, oracle.pos[i], 'pose');
       vec('velocity', id, pmks.vel, signed(oracle.vel[i], s));
@@ -181,7 +185,10 @@ export function compareMachine(
     }
     for (const [id, oracle] of Object.entries(sweep.samples.bodies)) {
       const pmks = sample.bodies.get(id);
-      if (!pmks) continue;
+      if (!pmks) {
+        absent.push({ id, quantities: BODY_QUANTITIES, k });
+        continue;
+      }
       reported.add(id);
       vec('com', id, pmks.com, oracle.com[i], 'pose');
       vec('comVelocity', id, pmks.comVel, signed(oracle.comVel[i], s));
@@ -194,9 +201,24 @@ export function compareMachine(
     ...Object.keys(sweep.samples.points),
     ...Object.keys(sweep.samples.bodies),
   ].filter((id) => !reported.has(id));
+  // A part PMKS+ reports somewhere but not at one sample has every quantity
+  // missing there; one it never reports is `unreported`, said once.
+  for (const { id, quantities, k } of absent) {
+    if (!reported.has(id)) continue;
+    for (const quantity of quantities) result.missing.push({ quantity, part: id, k });
+  }
   result.unvisited = sweep.samples.k.filter((k) => !visited.has(k));
   return result;
 }
+
+const POINT_QUANTITIES: readonly Quantity[] = ['position', 'velocity', 'acceleration'];
+const BODY_QUANTITIES: readonly Quantity[] = [
+  'com',
+  'comVelocity',
+  'comAcceleration',
+  'omega',
+  'alpha',
+];
 
 /** Derivatives of the pose a quantity is: 0 for a position, 1 for a speed, 2 for an acceleration. */
 export const ORDER: Record<Quantity, 0 | 1 | 2> = {

@@ -296,8 +296,10 @@ and the comparison about 10.
   sample before a reversal, where the difference reaches across the turn.
 - **Nothing passes by not being compared.** Every stored oracle sample must be reached by a PMKS+
   frame, every joint and body the oracle reports must be reported back, and every quantity the
-  oracle has at a sample PMKS+ must have too, unless the manifest leaves it out
-  (`oracle-compare.spec.ts` removes each in turn and sees the comparison say so).
+  oracle has at a sample PMKS+ must have too, unless the manifest leaves it out. A part PMKS+
+  reports at some samples and not others is missing at each sample it skips, every quantity of
+  it; one it never reports is said once (`oracle-compare.spec.ts` removes each in turn and sees
+  the comparison say so).
 
 ### The budgets, from the measurement
 
@@ -328,8 +330,8 @@ Linux: their BLAS and LAPACK round differently, so a number that is physically z
 first Linux run rewrote every reference that way. Two changes followed:
 
 - **A regeneration keeps what it reproduces.** `pmks_oracle/agree.py` compares a new solve with the
-  committed reference: the grid, the limits, the mobility counts and which reactions are
-  identifiable must be equal, and every number must agree to one hundredth of the budget PMKS+ is
+  committed reference: the grid, the limits, the mobility counts, which reactions are
+  identifiable, and which parts, columns and force modes it holds must be equal, and every number must agree to one hundredth of the budget PMKS+ is
   held to for it, on the same scales, plus a unit in its last stored digit. Rates and forces past
   the conditioning limit are not compared, as PMKS+'s are not. Because a condition number decides
   that, it must itself reproduce to a thousandth of its size and fall on the same side of the

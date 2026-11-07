@@ -174,9 +174,11 @@ def check(problem: dict, a: dict, b: dict) -> None:
     for group in ("points", "bodies", "sliders"):
         _same(f"{group} ids", sorted(xa[group]), sorted(xb[group]))
         for part, columns in xa[group].items():
+            _same(f"{group} {part} columns", sorted(columns), sorted(xb[group][part]))
             for column, series in columns.items():
                 scale, order = _COLUMN[(group, column)]
                 _series(f"{group} {part} {column}", series, xb[group][part][column], scales[scale], order, conditions)
+    _same("force modes", sorted(xa["forces"]), sorted(xb["forces"]))
     for mode, fa in xa["forces"].items():
         fb = xb["forces"][mode]
         _same(f"{mode} force columns", sorted(fa), sorted(fb))
