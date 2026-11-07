@@ -1,0 +1,189 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.scotch-yoke-rod.m1",
+ "title": "Template Scotch_Yoke_Rod, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.scotch-yoke-rod",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.005,
+    0
+   ]
+  },
+  {
+   "id": "CDEFG",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.00736,
+    -0.00039999999999999996
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0,
+    0
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "slider",
+   "at": [
+    0.01,
+    0
+   ],
+   "guide": "CDEFG",
+   "linePoint": [
+    0.01,
+    -0.02
+   ],
+   "axis": [
+    6.123233995736766e-17,
+    1
+   ],
+   "riders": [
+    "AB"
+   ],
+   "rotates": true,
+   "blockMass": 0,
+   "limits": [
+    0.0028640000000000015,
+    0.035136
+   ]
+  },
+  {
+   "id": "F",
+   "kind": "slider",
+   "at": [
+    -0.02664,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    -0.02664,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "CDEFG"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  },
+  {
+   "id": "G",
+   "kind": "slider",
+   "at": [
+    0.03344,
+    0
+   ],
+   "guide": "ground",
+   "linePoint": [
+    0.03344,
+    0
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "riders": [
+    "CDEFG"
+   ],
+   "rotates": false,
+   "blockMass": 0
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -1.0471975511965976,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "C",
+   "body": "CDEFG",
+   "at": [
+    0.01,
+    -0.02
+   ]
+  },
+  {
+   "id": "D",
+   "body": "CDEFG",
+   "at": [
+    0.01,
+    0.018000000000000002
+   ]
+  },
+  {
+   "id": "E",
+   "body": "CDEFG",
+   "at": [
+    0.01,
+    0
+   ]
+  },
+  {
+   "id": "F",
+   "body": "CDEFG",
+   "at": [
+    -0.02664,
+    0
+   ]
+  },
+  {
+   "id": "G",
+   "body": "CDEFG",
+   "at": [
+    0.03344,
+    0
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

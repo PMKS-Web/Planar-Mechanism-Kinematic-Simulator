@@ -1,0 +1,153 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "template.watt-straight-line.m1",
+ "title": "Template Watt_Straight_Line, M1",
+ "source": {
+  "kind": "published",
+  "case": "template.watt-straight-line",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "AB",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    -0.015,
+    0.0075
+   ]
+  },
+  {
+   "id": "BCM",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0,
+   "inertia": 0,
+   "com": [
+    0.015,
+    -0.0075
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    -0.03,
+    0.0075
+   ],
+   "bodies": [
+    "AB"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0,
+    0.0075
+   ],
+   "bodies": [
+    "AB",
+    "BCM"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0,
+    -0.0075
+   ],
+   "bodies": [
+    "BCM",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.03,
+    -0.0075
+   ],
+   "bodies": [
+    "CD"
+   ],
+   "grounded": true,
+   "welded": false
+  }
+ ],
+ "driver": {
+  "joint": "A",
+  "kind": "rotation",
+  "speed": -0.41887902047863906,
+  "bodies": [
+   "ground",
+   "AB"
+  ]
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    -0.03,
+    0.0075
+   ]
+  },
+  {
+   "id": "B",
+   "body": "AB",
+   "at": [
+    0,
+    0.0075
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCM",
+   "at": [
+    0,
+    -0.0075
+   ]
+  },
+  {
+   "id": "M",
+   "body": "BCM",
+   "at": [
+    0,
+    0
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.03,
+    -0.0075
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.017453292519943295,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

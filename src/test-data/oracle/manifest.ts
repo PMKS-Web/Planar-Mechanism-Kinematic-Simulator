@@ -186,15 +186,6 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
     review: 'When the issue is closed, delete this entry.',
   },
   {
-    problem: 'template.pedaling-leg.m1',
-    kind: 'disagreement',
-    what: { quantities: ['omega'], parts: ['BP'], samples: [-39] },
-    reason:
-      "PMKS+ solves the pose at k = -39 twenty times looser than its neighbors (2.2e-9 of scale), and at a condition number of 557 the analytic angular velocity of BP carries that out to 1.29e-7, just outside the budget.",
-    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/82',
-    review: 'When the issue is closed, delete this entry.',
-  },
-  {
     problem: 'gallery.leg-on-a-bicycle-crank.m1',
     kind: 'disagreement',
     what: { quantities: ['reaction', 'effort'] },
@@ -202,6 +193,22 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
       "PMKS+ applies a floating pin's motor torque to one body only, so the frame supplies the reaction couple from outside: every reaction and the effort differ, while the body totals, which a couple does not change, agree.",
     issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/81',
     review: 'When the issue is closed, delete this entry.',
+  },
+  {
+    problem: 'gallery.scotch-yoke-on-a-guided-rod.m1',
+    kind: 'by-design',
+    what: { quantities: ['reaction', 'bodyTotal', 'couple', 'effort'] },
+    reason:
+      "The rod runs through two bearings, a redundant support, and PMKS+ refuses the force analysis and says so (unsupported-topology). Its motion is verified.",
+    review: 'If PMKS+ starts reporting resultants for a redundant support.',
+  },
+  {
+    problem: 'template.scotch-yoke-rod.m1',
+    kind: 'by-design',
+    what: { quantities: ['reaction', 'bodyTotal', 'couple', 'effort'] },
+    reason:
+      "The rod runs through two bearings, a redundant support, and PMKS+ refuses the force analysis and says so (unsupported-topology). Its motion is verified.",
+    review: 'If PMKS+ starts reporting resultants for a redundant support.',
   },
   {
     problem: 'gallery.scotch-yoke-on-two-guides.m1',
