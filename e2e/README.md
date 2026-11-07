@@ -251,6 +251,9 @@ Not suites — import them from one.
 
 ### Links, holds, locks and labels
 
+- `link-mass-fields.mjs` — a link's Mass Settings: `CoM measured from` with its help mark after
+  "from", choices that name a point, picking a joint re-describing rather than moving the point,
+  and `Inertia` on one line.
 - `link-holds.mjs` — holding a bar's length or angle: the menu rows, the chip, the padlocks, the
   joint riding its arc, a joint two holds pin down refusing with a Release button, and undo
   taking the hold off. The same for a cylinder's mounts.
