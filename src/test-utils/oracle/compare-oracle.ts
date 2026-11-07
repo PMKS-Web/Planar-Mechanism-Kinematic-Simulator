@@ -1,3 +1,4 @@
+import { ORACLE_FRAME_EXCLUSIONS } from '../../test-data/oracle/manifest';
 import { OracleProblem } from './export-problem';
 import { OracleReference } from './reference';
 import { PmksSample, RateMethod } from './pmks-samples';
@@ -286,9 +287,13 @@ export function judge(
   return d.error <= BUDGETS[d.method][order] ? 'pass' : 'fail';
 }
 
-/** Whether PMKS+ differences this frame one-sided: its first or its last (#84). */
+/**
+ * Whether PMKS+ differences this frame one-sided, its first or its last, and
+ * the manifest leaves those frames out (`ORACLE_FRAME_EXCLUSIONS`, #84).
+ */
 export function oneSided(frame: number, lastFrame: number): boolean {
-  return frame === 0 || frame === lastFrame;
+  const leftOut = ORACLE_FRAME_EXCLUSIONS.some((e) => e.frames === 'first-and-last');
+  return leftOut && (frame === 0 || frame === lastFrame);
 }
 
 /**
