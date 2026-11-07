@@ -277,7 +277,8 @@ mass, local versus global loads, and every unit and speed conversion.
 Measured on 2026-11-04. Every published machine is now exported in full: none is left out as
 unsupported. Of 202 machines, **154 are verified** (twelve of them in part) and **43 agree they
 do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,126
-force samples pass, and none fails.
+force samples pass, and none fails. Forces are compared in 295 machine-modes, 151 that carry a
+force and 144 that carry none; the manifest leaves 13 more out entirely.
 
 ### What the exporter now writes down
 
