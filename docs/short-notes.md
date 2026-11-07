@@ -795,6 +795,15 @@ matrix is sized by the unknowns: `B_matrix[rowIndex]` was undefined and the Kine
 panel threw on the three-crank parallelogram. The extra rows repeat what the others said, so the
 least-squares answer is the exact one. `redundant-parallel-crank.spec.ts` asserts the rates.
 
+### Swapping an SVG `<image>` for another file blanks it for a few frames
+
+The canvas draws its marks from asset files, and a mark with two looks -- an input turning either
+way -- was written as two `@if` branches or one bound `href`. Either way the new file is decoded
+asynchronously, so the first time it is shown nothing is painted until it arrives: flipping a
+grounded input dropped the whole motor mark for 11 frames, about 180 ms. Keep every look mounted
+and toggle `visibility`, as the input marks in `new-grid.component.html` now do. A screenshot will
+not catch this; a screencast filmstrip of the frames after the change will.
+
 ### A slotted carrier's joints are carried from a grounded pin first
 
 `KinematicsSolver.knownCarrierSeed` prefers a grounded member of the carrier, then the slot's
@@ -2695,3 +2704,13 @@ on the way back. Folds were kept that way, and a reader who closed a joint's Bas
 Position graph found it open again after one trip to the other mode. Keep a session choice in a
 root service instead: `MechanismPanelStateService` holds the machine panel's folds, and
 `PanelFoldStateService` holds the part panels' (`e2e/panel-folds.mjs` guards both trips).
+
+### A native GitHub stack locks its members' base branches
+
+Rewriting branches does not change their native stack membership. GitHub rejects a PR base change
+with 422 while the PR belongs to a stack. Snapshot the membership, POST to
+`/repos/{owner}/{repo}/stacks/{number}/unstack`, retarget the open PRs, then POST the new ordered
+`pull_requests` arrays to `/repos/{owner}/{repo}/stacks`. Unstacking leaves merged historical
+entries in place. This is a metadata operation separate from rebasing the branches; recreating
+the groups does not replace the code checks. The [Stacks API](https://docs.github.com/en/rest/pulls/stacks)
+describes the endpoints.
