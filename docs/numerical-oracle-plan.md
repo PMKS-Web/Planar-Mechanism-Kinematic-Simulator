@@ -375,7 +375,9 @@ travel. Where a slot end and a toggle fall in one step, the step is walked again
 and a slot end is the limit only if the driver is still advancing where the block reaches it,
 read off the rate of the driver along the curve at the crossing: on a 50 mm grid the passive
 block stops at x = √0.2499 m, a hair short of the toggle at 0.5 m in the same step, and an end
-just past that toggle is never reached. The
+just past that toggle is never reached, whether the step that crosses the turn ends behind or
+ahead of where it began. An end exactly on the toggle is reported as the toggle: there the rate
+is zero and its sign is rounding, so below 10⁻⁹ of the driver's gradient the two coincide. The
 refusal of slot limits that Phase 0 added is gone.
 
 ### In the comparison

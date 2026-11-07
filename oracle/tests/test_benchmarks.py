@@ -114,11 +114,13 @@ def test_benchmark(case, check):
 
 
 
-def _bounded(limits: dict[str, list[float]], step: float | None = None) -> dict:
+def _bounded(limits: dict[str, list[float]], step: float | None = None, reversed_drive: bool = False) -> dict:
     raw = json.loads((CASES / "metu-double-slider.problem.json").read_text())
     if step is not None:
         raw["sweep"]["step"] = step
     for joint in raw["joints"]:
+        if reversed_drive and joint["id"] == "A":
+            joint["axis"] = [-joint["axis"][0], -joint["axis"][1]]
         if joint["id"] in limits:
             joint["limits"] = limits[joint["id"]]
     return solve(load_problem(raw), {"oracle": "test"})["sweep"]
@@ -155,13 +157,41 @@ def test_a_slot_end_in_the_same_step_as_a_toggle_is_the_limit():
     assert sweep["high"]["travel"] == pytest.approx(math.sqrt(0.25 - 0.01**2) - 0.2, abs=1e-9)
 
 
-def test_a_slot_end_just_past_a_toggle_in_the_same_step_is_never_reached():
+@pytest.mark.parametrize("step", [0.05, 0.01])
+def test_a_slot_end_just_past_a_toggle_in_the_same_step_is_never_reached(step):
     # The opposite order: B's end at y = -0.001 m lies just past the toggle at
-    # x = 0.5 m, where y = 0, within the same 50 mm step. The driver turns
-    # before B gets there, so the toggle is the limit.
-    sweep = _bounded({"B": [-0.001, 0.49]}, step=0.05)
+    # x = 0.5 m, where y = 0. The driver turns before B gets there, so the
+    # toggle is the limit. On the 50 mm grid the step that crosses the turn
+    # ends behind where it began; on the 10 mm grid it ends ahead, and the
+    # crossing is met on the ordinary slot-end path.
+    sweep = _bounded({"B": [-0.001, 0.49]}, step=step)
     assert sweep["high"]["kind"] == "toggle"
     assert sweep["high"]["travel"] == pytest.approx(0.3, abs=1e-9)
+
+
+@pytest.mark.parametrize("step", [0.05, 0.06])
+def test_a_slot_end_on_the_toggle_is_reported_as_the_toggle(step):
+    # B's end at y = 0 is the toggle itself; which side of it rounding puts the
+    # crossing must not decide what the limit is called.
+    sweep = _bounded({"B": [0, 0.49]}, step=step)
+    assert sweep["high"]["kind"] == "toggle"
+    assert sweep["high"]["travel"] == pytest.approx(0.3, abs=1e-9)
+
+
+@pytest.mark.parametrize(
+    "end, step, kind, travel",
+    [
+        (-0.001, 0.01, "toggle", -0.3),
+        (-0.001, 0.05, "toggle", -0.3),
+        (0.0, 0.06, "toggle", -0.3),
+        (0.01, 0.05, "slot-end", -(math.sqrt(0.25 - 0.01**2) - 0.2)),
+    ],
+)
+def test_the_order_of_a_slot_end_and_a_toggle_holds_driving_the_other_way(end, step, kind, travel):
+    # A's axis reversed: the same limits, met at the low end of the travel.
+    sweep = _bounded({"B": [end, 0.49]}, step=step, reversed_drive=True)
+    assert sweep["low"]["kind"] == kind
+    assert sweep["low"]["travel"] == pytest.approx(travel, abs=1e-9)
 
 
 def test_a_singular_pose_on_the_grid_stores_no_state():
