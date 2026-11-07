@@ -83,3 +83,20 @@ def test_two_singular_poses_agree_however_singular(case):
     a["sweep"]["samples"]["condition"][0] = 1e12
     b["sweep"]["samples"]["condition"][0] = 1e16
     agree.check(problem, a, b)
+
+
+@pytest.mark.parametrize("which", ["first", "second"])
+def test_a_column_or_force_mode_left_out_is_a_change(case, which):
+    # Either argument may be the incomplete one: a regeneration that drops a
+    # column must not be kept as reproduced, nor one that adds it back.
+    problem, reference = case
+
+    def cut(edit):
+        other = copy.deepcopy(reference)
+        edit(other["sweep"]["samples"])
+        return (other, reference) if which == "first" else (reference, other)
+
+    with pytest.raises(agree.Disagreement, match="points B columns"):
+        agree.check(problem, *cut(lambda s: s["points"]["B"].pop("vel")))
+    with pytest.raises(agree.Disagreement, match="force modes"):
+        agree.check(problem, *cut(lambda s: s["forces"].pop("dynamic")))

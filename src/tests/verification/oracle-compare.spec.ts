@@ -44,6 +44,30 @@ describe('the oracle comparison', () => {
     );
   });
 
+  it('reports a part PMKS+ leaves out of some samples, at each of them', () => {
+    const gappy = samples.map((sample) =>
+      sample.k === 0
+        ? sample
+        : {
+            ...sample,
+            points: new Map([...sample.points].filter(([id]) => id !== 'B')),
+            bodies: new Map([...sample.bodies].filter(([id]) => id !== 'AB')),
+          }
+    );
+    const comparison = compareMachine(problem, reference, gappy);
+    expect(comparison.unreported).toEqual([]);
+    const at = (part: string) =>
+      new Set(comparison.missing.filter((m) => m.part === part).map((m) => m.quantity));
+    expect([...at('B')].sort()).toEqual(['acceleration', 'position', 'velocity']);
+    expect([...at('AB')].sort()).toEqual(
+      ['alpha', 'com', 'comAcceleration', 'comVelocity', 'omega'].sort()
+    );
+    // Every stored sample, k = 0 included: the frame that closes the turn
+    // lands on it again, and that frame left both parts out.
+    const ks = [...new Set(comparison.missing.map((m) => m.k))].sort((a, b) => a - b);
+    expect(ks).toEqual(reference.sweep!.samples.k);
+  });
+
   it('reports every stored sample no frame reached', () => {
     const comparison = compareMachine(problem, reference, []);
     expect(comparison.unvisited).toEqual(reference.sweep!.samples.k);
