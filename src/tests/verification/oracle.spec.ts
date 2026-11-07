@@ -72,7 +72,9 @@ const failed = new Map<string, string[]>();
 const tally: Record<Verdict, number> = { pass: 0, fail: 0, 'ill-conditioned': 0, undefined: 0 };
 const forceTally = { pass: 0, fail: 0, 'ill-conditioned': 0 };
 /** Machine-modes compared on their forces, split by whether the oracle finds any force at all. */
-const forceCoverage = { loaded: 0, unloaded: 0 };
+// Machine-modes whose forces were compared, by whether they carry any, and
+// those the manifest leaves out entirely, which are not counted as compared.
+const forceCoverage = { loaded: 0, unloaded: 0, excluded: 0 };
 let excludedSamples = 0;
 /** The largest error that passed, per method and order: the measurement the budgets rest on. */
 const worstPassing = new Map<string, { error: number; problem: string; part: string; k: number }>();
@@ -211,7 +213,6 @@ describe('numerical oracle', () => {
         const forceFailures: string[] = [];
         for (const mode of ['static', 'dynamic'] as const) {
           const forces = compareForces(problem, reference, mechanism, samples, mode);
-          forceCoverage[forces.forceScale === 0 ? 'unloaded' : 'loaded']++;
           const leftOut = (quantity: string, part?: string): boolean =>
             exclusions.some(
               (e) =>
@@ -222,8 +223,10 @@ describe('numerical oracle', () => {
             );
           if (leftOut('reaction') && leftOut('bodyTotal') && leftOut('effort')) {
             excludedSamples += forces.deviations.length;
+            forceCoverage.excluded++;
             continue;
           }
+          forceCoverage[forces.forceScale === 0 ? 'unloaded' : 'loaded']++;
           // A singular pose is PMKS+'s to refuse; a well-conditioned one is not.
           for (const frame of forces.unsolved) {
             if (frame.condition > CONDITIONING_LIMIT) continue;

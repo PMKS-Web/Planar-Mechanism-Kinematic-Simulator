@@ -307,9 +307,9 @@ force modes: `static`, the loads and gravity alone, and `dynamic`, with the iner
 | Static | 1.9×10⁻⁹ (a reaction on the elliptical crank) | 1×10⁻⁸ |
 | Dynamic | 4.6×10⁻¹⁰ (a reaction on the slider-crank with a tracer) | 1×10⁻⁸ |
 
-100,434 force samples pass and none fails; 10,910 are past the conditioning limit. Of the 194
-machine-modes compared, 88 carry a force and 106 carry none, so the worst errors above all come
-from the 88.
+100,434 force samples pass and none fails; 10,910 are past the conditioning limit. Of the 189
+machine-modes compared, 85 carry a force and 104 carry none, so the worst errors above all come
+from the 85; five more the manifest leaves out entirely and are not counted as compared.
 
 ### Inside the oracle, and against MATLAB
 
