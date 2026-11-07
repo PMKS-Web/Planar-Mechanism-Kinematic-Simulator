@@ -313,8 +313,10 @@ in either direction. Two benchmarks check it against closed forms. A driven bloc
 ±100.5 mm from the start on a 1 mm grid. A passive block stops the driver where the bar holding it
 reaches its end, at x = 0.4 m and x = √0.0099 m, short of the toggles that would otherwise end the
 travel. Where a slot end and a toggle fall in one step, the step is walked again in short steps,
-and a slot end reached while the driver is still advancing is the limit: on a 50 mm grid the
-passive block stops at x = √0.2499 m, a hair short of the toggle at 0.5 m in the same step. The
+and a slot end is the limit only if the driver is still advancing where the block reaches it,
+read off the rate of the driver along the curve at the crossing: on a 50 mm grid the passive
+block stops at x = √0.2499 m, a hair short of the toggle at 0.5 m in the same step, and an end
+just past that toggle is never reached. The
 refusal of slot limits that Phase 0 added is gone.
 
 ### In the comparison

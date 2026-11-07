@@ -127,6 +127,16 @@ describe('numerical oracle', () => {
       const { problem } = machine;
       it(problem.id, () => {
         const exclusions = exclusionsFor(problem.id);
+        // A part an entry names is matched against joints and bodies alike,
+        // so a name that is both would leave out more than the entry means.
+        const jointIds = new Set(problem.joints.map((joint) => joint.id));
+        const bodyIds = new Set(problem.bodies.map((body) => body.id));
+        const ambiguous = exclusions.flatMap((e) =>
+          e.what === 'runs' || !e.what.parts
+            ? []
+            : e.what.parts.filter((part) => jointIds.has(part) && bodyIds.has(part))
+        );
+        expect(ambiguous, 'manifest parts that name both a joint and a body').toEqual([]);
         if (exclusions.some((e) => e.what === 'runs')) {
           outcome.set(problem.id, `excluded: ${exclusions.find((e) => e.what === 'runs')!.kind}`);
           return;

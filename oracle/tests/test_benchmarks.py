@@ -155,6 +155,15 @@ def test_a_slot_end_in_the_same_step_as_a_toggle_is_the_limit():
     assert sweep["high"]["travel"] == pytest.approx(math.sqrt(0.25 - 0.01**2) - 0.2, abs=1e-9)
 
 
+def test_a_slot_end_just_past_a_toggle_in_the_same_step_is_never_reached():
+    # The opposite order: B's end at y = -0.001 m lies just past the toggle at
+    # x = 0.5 m, where y = 0, within the same 50 mm step. The driver turns
+    # before B gets there, so the toggle is the limit.
+    sweep = _bounded({"B": [-0.001, 0.49]}, step=0.05)
+    assert sweep["high"]["kind"] == "toggle"
+    assert sweep["high"]["travel"] == pytest.approx(0.3, abs=1e-9)
+
+
 def test_a_singular_pose_on_the_grid_stores_no_state():
     # The parallelogram's three cranks lie along the frame at k = 110 and 290:
     # the pose is fine, but its rates are not unique there.

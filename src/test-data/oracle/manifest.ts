@@ -29,7 +29,9 @@ export interface Exclusion {
    * What is left out. `'runs'` is the question of whether the machine runs at
    * all, and with it every comparison; otherwise only these quantities, only
    * for `parts` when it is given, for a force only in `modes` when given,
-   * and only at the grid samples `samples` when given.
+   * and only at the grid samples `samples` when given. A part is a joint or a
+   * body; a force at `joint/body` is left out by naming either, and a name that
+   * is both a joint and a body in the problem is refused by oracle.spec.ts.
    */
   what:
     | 'runs'
