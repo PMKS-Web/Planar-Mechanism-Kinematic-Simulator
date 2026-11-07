@@ -42,10 +42,12 @@ TOGGLE_CLEARANCE = 1e-9
 # of the machine's size. The singular value that should be zero is then of
 # that order too, not of rounding, and which side of SINGULAR_RATIO it lands on
 # differs from one platform's arithmetic to another's. A sample is called
-# singular when that singular value is below this instead; any it catches that
-# is not singular has a condition number above 1e6, far past the point where a
-# rate is compared, so no comparable state is lost.
-SINGULAR_POSE_RATIO = 1e-6
+# singular when that singular value, of the dimensionless Jacobian
+# (`_dimensionless`), is below this instead. Measured on the redundant
+# parallelogram at every size from 1 mm to 1 km: at most 1.1e-7 at its
+# singular poses, and 6.4e-4 half a degree from one, so a regular pose is
+# caught only within about a hundredth of a degree of a singularity.
+SINGULAR_POSE_RATIO = 1e-5
 
 
 @dataclass
@@ -222,10 +224,28 @@ def regular_rank(model: ExudynModel, q) -> int:
     return int(np.sum(s > SINGULAR_RATIO * s[0])) if s.size and s[0] > 0 else 0
 
 
+def _dimensionless(model: ExudynModel, j: np.ndarray) -> np.ndarray:
+    """The Jacobian in coordinates of the machine's size, so its singular values do not depend on the unit.
+
+    A rotation column is a length per radian, so it is divided by the
+    machine's size; a row that touches no translation is an angle, so it is
+    multiplied by it. Every entry is then a pure number, and scaling the whole
+    machine leaves the matrix as it was.
+    """
+    j = np.array(j, dtype=float)
+    turns = np.zeros(model.n, dtype=bool)
+    for body in model.bodies.values():
+        turns[body.columns[2]] = True
+    j[:, turns] /= model.length_scale
+    angles = ~np.any(j[:, ~turns], axis=1)
+    j[angles] *= model.length_scale
+    return j
+
+
 def is_singular_pose(model: ExudynModel, q, rank: int) -> bool:
     """Whether the undriven Jacobian at q has lost rank below `rank`, to the pose's own accuracy."""
     _, j = _undriven(model, q)
-    s = np.linalg.svd(j, compute_uv=False)
+    s = np.linalg.svd(_dimensionless(model, j), compute_uv=False)
     if rank == 0 or not s.size or s[0] <= 0:
         return False
     return bool(s[rank - 1] < SINGULAR_POSE_RATIO * s[0])
