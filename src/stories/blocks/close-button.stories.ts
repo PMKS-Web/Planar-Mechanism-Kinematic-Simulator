@@ -22,10 +22,10 @@ const meta: Meta = {
   component: CloseButtonComponent,
   tags: ['autodocs'],
   decorators: [atWidth(250)],
-  args: { label: 'Close', tooltip: '' },
+  args: { label: 'Close', tooltip: '', disabled: false },
   render: (args) => ({
     props: args,
-    template: `<close-button [label]="label" [tooltip]="tooltip"></close-button>`,
+    template: `<close-button [label]="label" [tooltip]="tooltip" [disabled]="disabled"></close-button>`,
   }),
 };
 
@@ -39,6 +39,12 @@ export const NamesWhatItCloses: Story = { args: { label: 'Close tutorial' } };
 
 /** A tooltip is off by default: most of these sit beside their own title. */
 export const WithTooltip: Story = { args: { tooltip: 'Close' } };
+
+/**
+ * Grayed while the thing it closes cannot be left: the library's Suggest a
+ * Mechanism form holds its close button while a suggestion is on its way out.
+ */
+export const Disabled: Story = { args: { label: 'Close the library', disabled: true } };
 
 /**
  * In the corner of a card, which is where four of the five callers put it.

@@ -6,9 +6,11 @@
  * Length field and see the hairline dimension; click the angle padlock and
  * watch the hold move over with a message that offers the way back; hold a
  * second bar so a joint has nowhere to go, and watch that drag refuse with a
- * red ring and a Release button; undo, and watch the hold come off -- which
+ * red ring and a Release all button; undo, and watch the hold come off -- which
  * proves it rides the URL. Then the same thing for a cylinder, whose held pair
- * is its two mounts rather than any link's own joints.
+ * is its two mounts rather than any link's own joints. Last, pause away from
+ * the start: the chips stand down, and the start will not move onto a pose
+ * that turns a fixed angle.
  *
  *   PMKS_BASE_URL=<origin> node e2e/link-holds.mjs
  */
@@ -327,14 +329,14 @@ record('a joint the holds fully determine does not move', dist(bHeld, bStill) < 
   bStill,
 });
 record(
-  'the refusal says Held by both, and offers Release',
+  'the refusal says Held by both, and offers Release all',
   await page.evaluate(() => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
     const one = c.notify.live.find((n) => n.id === 'hold.joint');
     return (
       !!one &&
       /^Held by fixed length AB and fixed length BC/.test(one.text) &&
-      one.actions.some((action) => action.label === 'Release')
+      one.actions.some((action) => action.label === 'Release all')
     );
   })
 );
@@ -518,6 +520,66 @@ record(
 );
 await page.locator('.playButton').click();
 await page.waitForTimeout(400);
+
+// --- Away from the start, a fixed value is not drawn, and the start won't move
+
+// A fixed value is a number of the design, which is the start pose. Paused a
+// little way round, the ram's chip read the bearing it had swung to, so the
+// value the reader had fixed seemed to change under them.
+record(
+  'paused away from its start, the chips stay down',
+  await page.evaluate(() => document.querySelectorAll('[data-hold-chip]').length === 0)
+);
+await page.screenshot({ path: `${OUT}/06-paused-away.png` });
+
+// And promoting this pose would write that bearing in as the fixed one, so
+// the row is grayed with the hold named rather than refused after the click.
+await page.locator('.startChipCaret').first().click();
+await page.waitForTimeout(300);
+const moveRow = await page.evaluate(() => {
+  const row = [...document.querySelectorAll('.startMenu button')].find((one) =>
+    /Move the start here/.test(one.textContent ?? '')
+  );
+  return row
+    ? {
+        off: row.classList.contains('off'),
+        disabled: row.getAttribute('aria-disabled'),
+        reason: row.querySelector('.startMenuReason')?.textContent?.trim() ?? '',
+      }
+    : null;
+});
+record(
+  'Move the start here is grayed, naming the fixed angle',
+  moveRow?.off === true && moveRow.disabled === 'true' && moveRow.reason === 'fixed angle GC',
+  moveRow
+);
+await page.screenshot({ path: `${OUT}/07-start-menu-held.png` });
+const startBefore = await page.evaluate(() =>
+  JSON.stringify(
+    ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.mechanisms.map((frames) => frames.joints[0].map((j) => [j.id, j.x, j.y]))
+  )
+);
+// Forced: Playwright reads aria-disabled as not enabled, which is the point.
+await page.locator('.startMenu button', { hasText: 'Move the start here' }).click({ force: true });
+await page.waitForTimeout(500);
+record(
+  'and pressing it anyway leaves the start where it was',
+  (await page.evaluate(() =>
+    JSON.stringify(
+      ng
+        .getComponent(document.querySelector('app-new-grid'))
+        .mechanismSrv.mechanisms.map((frames) => frames.joints[0].map((j) => [j.id, j.x, j.y]))
+    )
+  )) === startBefore
+);
+await page.locator('.startMenu button', { hasText: 'Back to the start' }).click();
+await page.waitForTimeout(1500);
+record(
+  'back at the start, the chips are drawn again',
+  await page.evaluate(() => document.querySelectorAll('[data-hold-chip]').length > 0)
+);
 
 await contactSheet(`${OUT}/*mid-drag*.png`, `${OUT}/sheet-mid-drag.png`, 2);
 await browser.close();

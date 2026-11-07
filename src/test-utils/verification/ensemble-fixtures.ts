@@ -1,5 +1,6 @@
 import { MechanismFixture, FixtureLink, buildMechanism } from './fixture';
-import { jansenLegFixture, pumpjackFixture } from './library-fixtures';
+import { jansenLegFixture } from './library-fixtures';
+import { crankDrivenPumpjackFixture } from './library-card-fixtures';
 import { chebyshevStraightLineFixture } from './slot-fixtures';
 import { peaucellierFixture } from './classic-fixtures';
 
@@ -212,9 +213,12 @@ export function straightLinePairFixture(): MechanismFixture {
  * three playback rows on three clocks look like from the grid rather than from
  * the transport. The rates are close enough that they are plainly the same
  * machine and far enough apart to come out of step within a cycle or two.
+ *
+ * Each is driven at its crank, as a real pump is, so every beam nods once per
+ * turn of its own gearbox.
  */
 export function pumpingFieldFixture(): MechanismFixture {
-  const unit = pumpjackFixture();
+  const unit = crankDrivenPumpjackFixture();
   const spacing = 13;
   const rates = [10, 8, 12];
   const wells = rates.map((rpm, index) =>

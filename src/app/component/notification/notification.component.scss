@@ -27,6 +27,16 @@ $accent: 5px;
     left: 50%;
     transform: translateX(-50%);
     z-index: var(--layer-toast);
+    // A popover brings the browser's own box: centered by its inset and
+    // margin, bordered, padded and painted. None of that is this stack's.
+    right: auto;
+    bottom: auto;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     gap: 8px;

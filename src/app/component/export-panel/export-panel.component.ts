@@ -115,13 +115,13 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       'By analysis puts kinematics and forces on sheets of their own. By object gives every chosen joint and link a sheet.',
     images:
       'SVG stays sharp at any size and can be opened and edited; PNG drops into a document that will not take a vector. Both carry the PMKS+ mark.',
-    name: 'The stem every file is named from. Where more than one is written, what tells them apart is added to it.',
+    name: 'The start of every exported file’s name. With several files, each name ends with what that file holds.',
     analysis:
       'Static solves the mechanism held still at each position — the equilibrium a hand calculation gives. In-motion adds the inertia of the moving parts.',
     components:
       'X and Y are the components along the axes. Magnitude is √(X² + Y²) — the size of the vector, without its direction.',
     timeSteps:
-      'This mechanism passes through a toggle, where it moves far in very little input. It is solved at a finer step there, so those extra positions sit closer together in time than the rest. Even spacing leaves them out, which is what you want if you are about to difference the columns. Every position writes them all.',
+      'This mechanism is solved at extra positions near a toggle. Evenly spaced leaves those out so every time step is equal, and Every position keeps them all.',
   };
 
   /**
@@ -406,7 +406,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       if (!written) {
         this.notify.refusal(
           'export.empty',
-          'Nothing was written: the chosen objects no longer have numbers to give.'
+          'Nothing was exported: the chosen objects no longer have results. Choose others on the first step.'
         );
         return;
       }

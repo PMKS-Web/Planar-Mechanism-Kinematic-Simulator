@@ -10,11 +10,13 @@ import type { Link } from '../../../model/link';
  * component gallery can show it without building a mechanism. The app supplies
  * `PartNavigationService` at bootstrap.
  */
+export type PartLinkIntent = 'inspect' | 'edit';
+
 export interface PartLinkTarget {
   /** Light the part on the grid while it is pointed at, and nothing once it is not. */
   point(part: Joint | Link | undefined): void;
-  /** Take the reader to the part: select it where it can be changed. */
-  open(part: Joint | Link): void;
+  /** Inspect in the current analysis mode; an edit intent always opens Edit. */
+  open(part: Joint | Link, intent?: PartLinkIntent): void;
 }
 
 export const PART_LINK_TARGET = new InjectionToken<PartLinkTarget>('PartLinkTarget');

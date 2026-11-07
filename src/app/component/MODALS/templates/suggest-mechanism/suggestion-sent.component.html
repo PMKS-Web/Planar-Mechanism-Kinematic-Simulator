@@ -1,0 +1,45 @@
+<div class="sentView" role="status">
+  <div class="badge" aria-hidden="true"><mat-icon>check</mat-icon></div>
+  <h2 id="sentTitle" tabindex="-1">Suggestion sent</h2>
+  <p>
+    @if (sent().credit) {
+      <span
+        >Thank you, <b>{{ sent().credit }}</b
+        >.</span
+      >
+    } @else {
+      <span>Thank you.</span>
+    }
+    {{ viewport.isPhone() ? '' : 'We look at every suggestion.' }} If we add
+    <b>{{ sent().title }}</b
+    >, {{ outcome() }}
+  </p>
+
+  @if (!viewport.isPhone()) {
+    <div class="sentLabel">What you sent</div>
+  }
+  <app-template-card [card]="face()">
+    <div class="pending">
+      <mat-icon aria-hidden="true">schedule</mat-icon>Waiting for review ·
+      {{ sent().section ?? 'Section to be decided' }}
+    </div>
+  </app-template-card>
+</div>
+
+<div class="sentActions">
+  @if (viewport.isPhone()) {
+    <button class="btnFilled" type="button" (click)="library.emit()">
+      <mat-icon aria-hidden="true">apps</mat-icon>Back to Library
+    </button>
+    <button class="btnOutlined" type="button" (click)="another.emit()">
+      <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest Another
+    </button>
+  } @else {
+    <button class="btnOutlined" type="button" (click)="another.emit()">
+      <mat-icon aria-hidden="true">add_circle</mat-icon>Suggest Another
+    </button>
+    <button class="btnFilled" type="button" (click)="library.emit()">
+      <mat-icon aria-hidden="true">apps</mat-icon>Back to Library
+    </button>
+  }
+</div>

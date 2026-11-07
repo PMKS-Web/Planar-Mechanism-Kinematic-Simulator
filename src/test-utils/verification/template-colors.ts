@@ -94,6 +94,11 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['AQ', 'BQ'],
     ],
   },
+  // The two equal cranks, which are the whole of what makes it a
+  // parallelogram: matched, they read as one part made twice.
+  Parallelogram: { same: [['AB', 'CD']] },
+  // Watt's two arms: one part, turned end for end about the traced point.
+  Watt_Straight_Line: { same: [['AB', 'CD']] },
   // Opposite sides of the parallelogram. A pantograph is a parallelogram that
   // stays one while it moves, and matching the parallel pairs says so.
   Pantograph: {
@@ -112,6 +117,24 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['AB', 'BC', 'CD'],
       ['EF', 'FG'],
       ['HI', 'IJ', 'JK'],
+    ],
+  },
+  // As the drawing was finished in the app: both arms navy, the shock's barrel
+  // and rod one teal part, and the wheel the pale teal, so the tire reads as a
+  // broad body behind the arms rather than as one more bar.
+  Double_Wishbone: {
+    same: [
+      ['ABM', 'CD'],
+      ['KN', 'MS'],
+    ],
+    fixed: { ABM: 2, KN: 4, BCTUVWX: 3 },
+  },
+  // The three coupled wheels are one part made three times, and so are the two
+  // coupling rods, which meet on the driving wheel's crank pin and should match.
+  Steam_Locomotive: {
+    same: [
+      ['ABC', 'DEFM', 'GHI'],
+      ['BE', 'EH'],
     ],
   },
   // Two legs of one gait: same linkage, half a cycle apart. Identical colors

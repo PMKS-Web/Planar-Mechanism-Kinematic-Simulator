@@ -6,6 +6,9 @@ import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { PrisJoint } from '../../app/model/joint';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { LengthUnit } from '../../app/model/unit-enums';
+import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
+import { writeMechanismName } from '../../app/model/mechanism/mechanism-name';
 
 /**
  * The linear input speed every published payload was written at before the
@@ -239,6 +242,17 @@ export interface PublishedSpeed {
   unitsPerSecond?: number;
 }
 
+/** Write each name to the machine that owns the joint it is keyed by. */
+function nameMachines(built: BuiltMechanism, names: Readonly<Record<string, string>>): void {
+  const { mechanisms } = partitionMechanisms(built.joints, built.links, built.forces);
+  for (const [joint, name] of Object.entries(names)) {
+    const machine = mechanisms.find((one) => one.ownJoints.some((own) => own.id === joint));
+    if (!machine)
+      throw new Error(`nameMachines: no machine owns joint ${joint} to be named ${name}`);
+    writeMechanismName(machine, name);
+  }
+}
+
 /**
  * Encode a fixture into the query string the app decodes on load.
  *
@@ -257,13 +271,24 @@ export interface PublishedSpeed {
  * something — a library template, where they are chosen from the structure
  * rather than handed out in build order. See template-colors.ts. The gallery
  * links published from here pass none and keep the cursor's own order.
+ *
+ * `lengthUnit` is what the fixture's numbers are read in. The URL keeps a
+ * coordinate as the number the reader sees, so the same fixture published in
+ * inches opens with the same numbers, each now an inch; its masses and loads
+ * are read in pounds and pounds-force with it.
+ *
+ * `machineNames` names machines, each keyed by one of its own joints: a name
+ * belongs to a machine, and a machine is worked out from the drawing rather
+ * than stored, so the joint is how the name finds it (see `mechanism-name.ts`).
  */
 export function fixturePayload(
   fixture: MechanismFixture,
   objectScale: number = DEFAULT_OBJECT_SCALE,
   speed: PublishedSpeed = {},
   masses: PublishedMasses = 'as-built',
-  fills?: Map<string, string>
+  fills?: Map<string, string>,
+  lengthUnit: LengthUnit = LengthUnit.CM,
+  machineNames: Readonly<Record<string, string>> = {}
 ): string {
   const previousColors = ColorService.instance;
   const previousScale = SettingsService.objectScale;
@@ -277,10 +302,12 @@ export function fixturePayload(
     if (masses === 'zeroed') stripMass(built);
     else if (masses !== 'as-built') scaleLoading(built, masses);
     if (fills) recolor(built.links, fills);
+    nameMachines(built, machineNames);
     // The speeds ride the URL as settings rather than as anything on a joint,
     // so they are set on the service the encoder is about to read. A fresh one
     // per call, so nothing here leaks into the next mechanism's payload.
     const settings = new SettingsService();
+    settings.lengthUnit.next(lengthUnit);
     if (speed.rpm !== undefined) settings.inputSpeed.next(speed.rpm);
     // The speed the library and the gallery were published at, where a
     // fixture names none. The app's own default fell to one unit a second
