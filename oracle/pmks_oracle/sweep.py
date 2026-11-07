@@ -210,6 +210,9 @@ def _slot_end_before_turning(model, q_a, t_a, h, direction_sign):
     A turning point and a slot end can fall in one step. The bracket is walked
     again in REFINE_STEPS short steps; a slot end crossed while d is still
     rising is the limit, and one crossed after d has turned is never reached.
+    Which it is, is read off the crossing itself: the rate of d along the curve
+    there. Comparing d with the last short step's cannot tell, since a crossing
+    just past the turn is still above it.
     """
     small = h / REFINE_STEPS
     q, t = q_a, t_a
@@ -219,7 +222,8 @@ def _slot_end_before_turning(model, q_a, t_a, h, direction_sign):
         d_next = direction_sign * driver_coordinate(model, q_next)
         if past_slot_end(model, q_next) > 0:
             q_end = _slot_end_crossing(model, q, t, small)
-            if direction_sign * driver_coordinate(model, q_end) >= best:
+            t_end = tangent(model, q_end, t)
+            if direction_sign * (driver_gradient(model, q_end) @ t_end) > 0:
                 return q_end
             return None
         if d_next < best:
