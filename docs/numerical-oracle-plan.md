@@ -340,7 +340,11 @@ the branch it is on, as a parallelogram's does where its cranks lie along the fr
 well defined there, but its rates are not unique, and the minimum-norm ones least squares returns
 are not physics (one acceleration comes out at 10⁹ m/s²). Every grid sample is therefore checked
 for rank against the drawn pose; one that has lost rank is listed by k in `singularPoses`, and no
-state is stored for it. Its neighbors are stored as usual, with the condition numbers that say
+state is stored for it. Rank is judged to the pose's own accuracy, not to rounding: Newton holds a
+pose along the direction a singularity frees only to about 1e-7 of the machine's size, so the
+singular value that should be zero is of that order, and which side of a rounding threshold it
+lands on differed between macOS and Linux. A sample whose singular value is below 1e-6 of the
+largest is singular; one that is not has a condition number past 1e6, which is never compared. Its neighbors are stored as usual, with the condition numbers that say
 how close they are.
 
 **Slot limits are refused, not ignored.** The problem schema can carry a slider's travel limits,

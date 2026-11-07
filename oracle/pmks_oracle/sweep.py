@@ -29,6 +29,16 @@ from .exudyn_model import ExudynModel
 MAX_REVOLUTIONS = 3
 # A singular value this far below the largest is zero, for rank and for singularity alike.
 SINGULAR_RATIO = 1e-10
+# Where a grid sample sits on a singular pose, Newton stops at a residual near
+# rounding, but along the direction the singularity frees it is held only to
+# the square root of that residual over the constraints' curvature: about 1e-7
+# of the machine's size. The singular value that should be zero is then of
+# that order too, not of rounding, and which side of SINGULAR_RATIO it lands on
+# differs from one platform's arithmetic to another's. A sample is called
+# singular when that singular value is below this instead; any it catches that
+# is not singular has a condition number above 1e6, far past the point where a
+# rate is compared, so no comparable state is lost.
+SINGULAR_POSE_RATIO = 1e-6
 
 
 @dataclass
@@ -128,6 +138,15 @@ def regular_rank(model: ExudynModel, q) -> int:
     _, j = _undriven(model, q)
     s = np.linalg.svd(j, compute_uv=False)
     return int(np.sum(s > SINGULAR_RATIO * s[0])) if s.size and s[0] > 0 else 0
+
+
+def is_singular_pose(model: ExudynModel, q, rank: int) -> bool:
+    """Whether the undriven Jacobian at q has lost rank below `rank`, to the pose's own accuracy."""
+    _, j = _undriven(model, q)
+    s = np.linalg.svd(j, compute_uv=False)
+    if rank == 0 or not s.size or s[0] <= 0:
+        return False
+    return bool(s[rank - 1] < SINGULAR_POSE_RATIO * s[0])
 
 
 def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, budget: int, rank: int):

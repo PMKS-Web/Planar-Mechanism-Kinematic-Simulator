@@ -17,7 +17,7 @@ from . import analysis
 from .exudyn_model import ExudynModel, block_id
 from .mobility import mobility
 from .problem import GROUND, Problem
-from .sweep import regular_rank, steps_per_turn, walk
+from .sweep import is_singular_pose, regular_rank, steps_per_turn, walk
 
 SCHEMA = "pmks-oracle-reference/1"
 STORED_PER_CYCLE = 72
@@ -148,8 +148,10 @@ def solve(problem: Problem, generator: dict) -> dict:
     # on its own branch, as a parallelogram's cranks do where they lie along the
     # frame. Its pose is fine; its rates are not unique, and minimum-norm ones
     # are not physics, so no state is stored for it and its k is listed instead.
+    # Whether rank is lost is judged to the pose's accuracy, not to rounding
+    # (SINGULAR_POSE_RATIO).
     rank = regular_rank(model, w.samples[0])
-    singular = sorted(k for k in ks if regular_rank(model, w.samples[k]) < rank)
+    singular = sorted(k for k in ks if is_singular_pose(model, w.samples[k], rank))
     keep = [k for k in stored_indices(ks, per_cycle) if k not in singular]
     speed = abs(problem.driver.speed)
     accel = problem.driver.acceleration
