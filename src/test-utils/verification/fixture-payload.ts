@@ -243,7 +243,7 @@ export interface PublishedSpeed {
 }
 
 /** Write each name to the machine that owns the joint it is keyed by. */
-function nameMachines(built: BuiltMechanism, names: Readonly<Record<string, string>>): void {
+function nameMachines(built: BuiltDrawing, names: Readonly<Record<string, string>>): void {
   const { mechanisms } = partitionMechanisms(built.joints, built.links, built.forces);
   for (const [joint, name] of Object.entries(names)) {
     const machine = mechanisms.find((one) => one.ownJoints.some((own) => own.id === joint));
