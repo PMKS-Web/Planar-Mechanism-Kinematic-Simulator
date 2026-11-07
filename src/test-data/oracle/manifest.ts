@@ -51,6 +51,39 @@ export interface Exclusion {
   review: string;
 }
 
+/**
+ * A disagreement that leaves out the same frames of every machine, rather than
+ * one machine or its parts. `oneSided` in compare-oracle.ts reads this list:
+ * with the entry gone, those frames are compared like any other.
+ */
+export interface FrameExclusion {
+  /** Which frames: PMKS+'s first and last. */
+  frames: 'first-and-last';
+  /** Only differenced rates, and forces resting on differenced accelerations. */
+  method: 'differenced';
+  kind: ExclusionKind;
+  reason: string;
+  /** Required for a disagreement. */
+  issue?: string;
+  /** When to look at it again. */
+  review: string;
+}
+
+export const ORACLE_FRAME_EXCLUSIONS: FrameExclusion[] = [
+  {
+    frames: 'first-and-last',
+    method: 'differenced',
+    kind: 'disagreement',
+    reason:
+      'PMKS+ differences its first and last frames one-sided, to first order, although the ' +
+      'last frame repeats the first, so a central difference across the seam was available. ' +
+      'Compared anyway they fall inside the differenced budgets today, the hydraulic ' +
+      "cylinder's frame-0 acceleration at 9.9e-3 against 1e-2, which is not agreement.",
+    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/84',
+    review: 'When #84 is resolved.',
+  },
+];
+
 export const ORACLE_EXCLUSIONS: Exclusion[] = [
   {
     problem: 'gallery.slider-crank-whose-rod-comes-square-to-the-guide.m1',

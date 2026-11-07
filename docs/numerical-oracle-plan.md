@@ -404,6 +404,10 @@ refusal of slot limits that Phase 0 added is gone.
   hydraulic cylinder that put an angular acceleration 9.9×10⁻³ off at frame 0, where the same pose
   differenced centrally mid-sweep is 1.0×10⁻⁴ off. A differenced rate there, and any force resting
   on one, is `undefined`, and the gap is filed as [#84][i84]: 80 kinematic and 58 force samples.
+  The manifest records it in `ORACLE_FRAME_EXCLUSIONS`, which `oneSided` reads, since it leaves
+  out frames of every machine rather than one. Compared anyway, those samples fall inside their
+  budgets today, but the hydraulic cylinder's frame-0 acceleration is 9.92×10⁻³ against 10⁻², less
+  than one percent from the edge, which is not agreement.
 
 ### The budgets, from the measurement
 

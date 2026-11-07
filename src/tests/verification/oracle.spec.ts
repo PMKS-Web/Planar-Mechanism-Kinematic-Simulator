@@ -28,7 +28,11 @@ import {
   sha256,
 } from '../../test-utils/oracle/reference';
 import { PROBLEMS_DIR, REFERENCES_DIR } from '../../test-utils/oracle/published-problems';
-import { Exclusion, ORACLE_EXCLUSIONS } from '../../test-data/oracle/manifest';
+import {
+  Exclusion,
+  ORACLE_EXCLUSIONS,
+  ORACLE_FRAME_EXCLUSIONS,
+} from '../../test-data/oracle/manifest';
 
 // Every published machine, solved by PMKS+ and by the numerical oracle
 // (oracle/, on Exudyn), compared sample by sample on the driver's grid.
@@ -115,6 +119,13 @@ describe('numerical oracle', () => {
         );
         if (exclusion.kind === 'disagreement') {
           expect(exclusion.issue, exclusion.problem).toMatch(
+            /^https:\/\/github\.com\/.+\/issues\/\d+$/
+          );
+        }
+      }
+      for (const exclusion of ORACLE_FRAME_EXCLUSIONS) {
+        if (exclusion.kind === 'disagreement') {
+          expect(exclusion.issue, exclusion.frames).toMatch(
             /^https:\/\/github\.com\/.+\/issues\/\d+$/
           );
         }
