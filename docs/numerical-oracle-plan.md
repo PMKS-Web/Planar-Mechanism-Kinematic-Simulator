@@ -2,11 +2,12 @@
 
 > **Status:** Phases 0 to 4 built, 2026-11-06. **Exudyn is chosen**; Simbody, the runner-up, is
 > the intended cross-engine check, not yet built (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **154
-> are verified** against the oracle in their motion and forces (twelve of them in part; many carry
+> are verified** against the oracle in their motion and forces (nine of them in part; many carry
 > no force, and are checked to come out zero) and **43 agree they do not run**; **5 are
 > excluded** whole by the manifest, and none is left unsupported by the exporter. PMKS+'s mobility
 > agrees with the oracle's, at first and second order, on all 202 (see [Phase 4
-> results](#phase-4-results)). There are **6 disagreements**, each with an issue (see [Phase 3
+> results](#phase-4-results)). Of the **6 disagreements** found, each with an issue, **#81 is
+> fixed** and 5 remain open (see [Disagreements fixed](#disagreements-fixed) and [Phase 3
 > results](#phase-3-results)). The plan was revised on 2026-11-03 after an external review (see
 > [Review history](#review-history)).
 
@@ -274,6 +275,20 @@ mass, local versus global loads, and every unit and speed conversion.
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
 
+## Disagreements fixed
+
+Each fix changes PMKS+, never the oracle or a budget, and deletes the manifest entries its issue
+held out.
+
+- **[#81][i81], a floating pin's motor torque** (2026-11-07). `force-solver.ts` now takes the
+  driven and reference bodies from `resolveActuator`, as the position solve does, and writes
+  +τ into the driven body's moment row and −τ into the reference body's. The four machines it
+  held out are compared in full: the coupler-rocker four-bar, the oscillating fan and the
+  walking-beam pumping unit are verified, and the leg on a bicycle crank is verified but for
+  [#82][i82]'s one sample. 159,086 force samples now pass, and none fails.
+  `floating-pin-forces.spec.ts` checks the physics without the oracle: the frame's reactions
+  and the load alone balance the whole machine, in force and in moment.
+
 ## Phase 4 results
 
 Measured on 2026-11-06. `oracle-mobility.spec.ts` compares PMKS+'s mobility
@@ -446,7 +461,7 @@ Four new issues, and no PMKS+ solver changed:
 
 | Machine | Kind | What | Issue |
 | --- | --- | --- | --- |
-| Four-bar driven at its coupler-rocker pin, oscillating fan, walking-beam pumping unit, leg on a bicycle crank | disagreement | A floating pin's motor torque is applied to one body only, so the frame supplies the reaction couple: every reaction and the effort differ. The body totals agree | [#81][i81] |
+| Four-bar driven at its coupler-rocker pin, oscillating fan, walking-beam pumping unit, leg on a bicycle crank | disagreement, **fixed** | A floating pin's motor torque is applied to one body only, so the frame supplies the reaction couple: every reaction and the effort differ. The body totals agree. Fixed since (see [Disagreements fixed](#disagreements-fixed)) | [#81][i81] |
 | Leg on a bicycle crank, and the pedaling-leg template | disagreement | One pose, k = −39, is solved twenty times looser than its neighbors, and at a condition of 557 the angular velocity of BP is 1.3×10⁻⁷ off | [#82][i82] |
 | Hood hinge, aircraft landing gear (templates), cylinder riding a slot | disagreement | A cylinder stored a hair off its line: PMKS+ straightens it from frame 1 but carries the members' centers of mass rigidly from the unstraightened frame 0, and on the slot-riding one every analytic rate comes out a uniform 10⁻⁷ high | [#83][i83] |
 | Every machine with differenced rates | disagreement | One-sided differences at the first and last frames | [#84][i84] |
