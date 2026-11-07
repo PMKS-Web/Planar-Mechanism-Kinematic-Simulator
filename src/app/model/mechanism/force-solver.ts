@@ -1,4 +1,3 @@
-import { resolveActuator, GROUND_BODY } from '../actuator';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
