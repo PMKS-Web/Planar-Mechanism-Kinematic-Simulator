@@ -95,29 +95,6 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
     review: 'When the issue is closed, delete this entry.',
   },
   {
-    problem: 'gallery.four-bar-with-two-inputs.m1',
-    kind: 'disagreement',
-    what: {
-      quantities: [
-        'velocity',
-        'acceleration',
-        'comVelocity',
-        'comAcceleration',
-        'omega',
-        'alpha',
-        'reaction',
-        'bodyTotal',
-        'effort',
-      ],
-      // The static forces depend on the poses alone, and agree.
-      modes: ['dynamic'],
-    },
-    reason:
-      "The poses agree, the rates do not. PMKS+'s analytic angular velocity of the coupler BC is wrong (0.1625 rad/s at the drawn pose, where its own joint velocities and the oracle both give 0.1745), and the joint rates it leaves blank are differenced, outside the differenced budget near the toggles. The in-motion forces rest on those accelerations.",
-    issue: 'https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/issues/78',
-    review: 'When the issue is closed, delete this entry.',
-  },
-  {
     problem: 'gallery.four-bar-with-a-second-crank-on-its-input.m1',
     kind: 'by-design',
     what: 'runs',
