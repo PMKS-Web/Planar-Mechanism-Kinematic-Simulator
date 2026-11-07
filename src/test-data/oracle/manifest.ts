@@ -1,5 +1,6 @@
 import type { Quantity } from '../../test-utils/oracle/compare-oracle';
 import type { ForceQuantity } from '../../test-utils/oracle/compare-oracle-forces';
+import type { MobilityQuantity } from '../../test-utils/oracle/compare-mobility';
 
 /**
  * Every published machine, or part of one, that the oracle comparison leaves
@@ -29,12 +30,13 @@ export interface Exclusion {
    * What is left out. `'runs'` is the question of whether the machine runs at
    * all, and with it every comparison; otherwise only these quantities, only
    * for `parts` when it is given, for a force only in `modes` when given,
-   * and only at the grid samples `samples` when given.
+   * and only at the grid samples `samples` when given. `'mobility'` leaves out
+   * the mobility cross-check (oracle-mobility.spec.ts) and nothing else.
    */
   what:
     | 'runs'
     | {
-        quantities: (Quantity | ForceQuantity)[];
+        quantities: (Quantity | ForceQuantity | MobilityQuantity)[];
         parts?: string[];
         modes?: ('static' | 'dynamic')[];
         samples?: number[];

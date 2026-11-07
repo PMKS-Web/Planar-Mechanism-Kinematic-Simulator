@@ -1,6 +1,6 @@
 ---
 name: oracle
-description: Regenerate and triage the numerical oracle's references (oracle/, Exudyn). Use when adding or changing a gallery fixture or library template, changing a PMKS+ solver, touching src/test-data/oracle or oracle/, or when oracle.spec.ts, oracle-problems.spec.ts or oracle-matlab.spec.ts fails.
+description: Regenerate and triage the numerical oracle's references (oracle/, Exudyn). Use when adding or changing a gallery fixture or library template, changing a PMKS+ solver, touching src/test-data/oracle or oracle/, or when oracle.spec.ts, oracle-problems.spec.ts, oracle-matlab.spec.ts or oracle-mobility.spec.ts fails, or when changing model/mechanism/mobility.ts.
 ---
 
 # The numerical oracle
@@ -41,6 +41,9 @@ more with the newest Exudyn patch release (`PMKS_ORACLE_NUMBERS_ONLY=1`), and ke
   for one machine.** Open a GitHub issue with the numbers, add an entry to
   `src/test-data/oracle/manifest.ts` naming the issue, and leave the solver for its own pull
   request.
+- **oracle-mobility.spec.ts**: PMKS+'s free directions (`model/mechanism/mobility.ts`) and the
+  oracle's (`oracle/pmks_oracle/mobility.py`) disagree at the drawn pose, at first or second
+  order. The same triage applies; an exclusion names `'mobility'` among its quantities.
 - **"never reached"**, **"never reports"**, **"left blank"** or **"reports no …"**: PMKS+
   reported less than the oracle has. Nothing passes by not being compared, so this is a failure
   like any other, triaged the same way.

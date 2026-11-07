@@ -1,12 +1,14 @@
 # An independent numerical oracle for every verification mechanism
 
-> **Status:** Phases 0 to 3 built, 2026-11-04. **Exudyn is chosen**; Simbody, the runner-up, is
-> the intended cross-engine check, not yet built (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **154
-> are verified** against the oracle in their motion and forces (twelve of them in part; many carry
-> no force, and are checked to come out zero) and **43 agree they do not run**; **5 are
-> excluded** whole by the manifest, and none is left unsupported by the exporter. There are **6
-> disagreements**, each with an issue (see [Phase 3 results](#phase-3-results)). The plan was
-> revised on 2026-11-03 after an external review (see [Review history](#review-history)).
+> **Status:** Phases 0 to 4 built, 2026-11-06. **Exudyn is chosen**; Simbody, the runner-up, is
+> the intended cross-engine check, not yet built (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **155
+> are verified** against the oracle in their motion and forces (thirteen of them in part; many carry
+> no force, and are checked to come out zero) and **43 agree they do not run**; **4 are
+> excluded** whole by the manifest, and none is left unsupported by the exporter. PMKS+'s mobility
+> agrees with the oracle's, at first and second order, on all 202 (see [Phase 4
+> results](#phase-4-results)). There are **6 disagreements**, each with an issue (see [Phase 3
+> results](#phase-3-results)). The plan was revised on 2026-11-03 after an external review (see
+> [Review history](#review-history)).
 
 ## The problem
 
@@ -271,6 +273,62 @@ mass, local versus global loads, and every unit and speed conversion.
 | **2. Inverse dynamics** | Reactions per `(joint, body)`, Slide couples, typed actuator effort, gravity on and off | The force fixtures and the two MATLAB dynamics cases agree. Redundant supports compare resultants. Power balance holds inside the oracle too. |
 | **3. The rest of the gallery** | Floating slots, Slides, cylinders (driven, passive, frozen), several machines, travel limits, return sweeps | Every gallery entry and library template is `verified` or carries a full exclusion record. The CI `oracle` job is required. |
 | **4. Mobility cross-check** | The oracle's rank analysis against `mobility.ts` for every mobility and student-mistake fixture | They agree, or each disagreement is explained. These are the cases where Gruebler's count is wrong and the geometry decides. |
+
+## Phase 4 results
+
+Measured on 2026-11-06. `oracle-mobility.spec.ts` compares PMKS+'s mobility
+(`model/mechanism/mobility.ts`) with the oracle's for every published machine, 202 of them, at
+the drawn pose, and **they agree on every one**, at first order and at second. No manifest entry
+leaves a machine's mobility out.
+
+### The oracle's second-order test
+
+Phase 0 counted freedoms by the rank of the constraint Jacobian alone, which is first order: a
+tangency, where two constraints touch rather than cross, looks free. `oracle/pmks_oracle/mobility.py`
+now puts every first-order flex to the second-order question. A flex v of the null space survives
+when uᵀΦ_qq[v, v] = 0 for every left null vector u, the constraint forces that could stop it;
+so for each u the oracle forms the quadratic form A_u[i, j] = uᵀΦ_qq[n_i, n_j] over a basis of
+the null space, by polarizing a Richardson-extrapolated second difference of the constraints
+(step 10⁻³ of the machine's size), and the flexes that survive are the common kernel of every
+A_u, with a zero threshold of 10⁻⁶ over that size. This is the classical test, and is
+sufficient where the forms are definite; it is not a full higher-order analysis, and no
+published machine needs one.
+
+The reference records `second_order_freedoms` and `second_order_driven_freedoms` beside the
+first-order counts. A machine runs when it has one second-order freedom and holding its driver
+leaves none but dead ones: the first-order flexes that second order removes are not motions.
+Where first order finds more than one free direction, the sweep's tangent is the one flex that
+survives.
+
+`oracle/tests/test_mobility.py` holds it to four raw cases: the redundant parallelogram (one
+freedom at both orders, one redundant constraint), the MotionGen gripper (two at first order,
+one at second), the slotted lever with a rod that cannot tilt (one, then none), and Norton's
+four-bar (one at both, nothing redundant).
+
+### What it changed
+
+| Machine | First order | Second order | Effect |
+| --- | --- | --- | --- |
+| MotionGen gripper | 2 | 1 | Each jaw rides two parallel slots at one height, so carriage and jaws can turn together to first order and not to second. It was excluded as "the oracle's rank test is first order"; both solvers now agree that it runs and how far, and its rates and forces are compared. Its poses are not, as an oracle limitation: the turn is held only weakly at second order, so a converged pose is fixed along it to the square root of its residual over that curvature, and re-solving the oracle's own pose at k = −11 moves it 8.7×10⁻⁶ of its size, against a pose budget of 10⁻⁷. Its rates are past the conditioning limit throughout |
+| Slotted lever with a rod that cannot tilt | 1 | 0 | Rigid. The oracle used to walk it and stop at a solver failure; it now agrees with PMKS+ that it does not move |
+| Crank-rocker driven from the rocker at its limit | 1 | 1 | Unchanged as a machine; with the driver held, the one first-order flex dies at second order, which is what a dead point is. It stays an oracle limitation: which branch to leave a dead point by is not the oracle's to choose |
+
+### Where Gruebler's count is wrong
+
+Gruebler's count disagrees with both solvers on ten published machines. On nine it counts no
+freedom where there is one: a redundant support or a parallel guide (the parallelogram with a
+third crank, the locomotive's three wheels, the scotch yoke on two guides, the gripper on rails,
+the MotionGen gripper, the hydraulic crosshead twice, the cylinder gripper and the excavator
+bucket templates). On the tenth, the Watt six-bar with a grounded rocker joint, it counts −1 and
+the machine is simply rigid. These are the cases the cross-check exists for, and the spec asserts
+it still sees the first two kinds, so that it cannot pass by both sides falling back to the rank.
+
+### Counts
+
+Of 202 machines, **155 are verified** (thirteen in part) and **43 agree they do not run**; **4
+are excluded** whole. 249,312 kinematic samples pass, 40,218 are past the conditioning limit and
+16,308 are excluded; 155,126 force samples pass and 26,198 are past the conditioning limit. Forces
+are compared in 297 machine-modes, 153 that carry a force and 144 that carry none. Nothing fails.
 
 ## Phase 3 results
 
