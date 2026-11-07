@@ -223,14 +223,20 @@ describe('numerical oracle', () => {
         const forceFailures: string[] = [];
         for (const mode of ['static', 'dynamic'] as const) {
           const forces = compareForces(problem, reference, mechanism, samples, mode);
+          // A force's part is `joint/body`, a body or a joint; an entry's
+          // parts name bodies or joints, and leave out every force on them.
+          // With no part or sample, the question is whether the whole mode is
+          // left out, which only an entry scoped to neither can say.
           const leftOut = (quantity: string, part?: string, k?: number): boolean =>
             exclusions.some(
               (e) =>
                 e.what !== 'runs' &&
                 e.what.quantities.includes(quantity as never) &&
                 (!e.what.modes || e.what.modes.includes(mode)) &&
-                (!e.what.parts || part === undefined || e.what.parts.includes(part)) &&
-                (!e.what.samples || k === undefined || e.what.samples.includes(k))
+                (!e.what.parts ||
+                  (part !== undefined &&
+                    e.what.parts.some((p) => part === p || part.split('/').includes(p)))) &&
+                (!e.what.samples || (k !== undefined && e.what.samples.includes(k)))
             );
           if (leftOut('reaction') && leftOut('bodyTotal') && leftOut('effort')) {
             excludedSamples += forces.deviations.length;

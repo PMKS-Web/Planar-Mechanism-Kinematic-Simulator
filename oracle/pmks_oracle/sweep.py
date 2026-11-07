@@ -191,6 +191,31 @@ def _refine_turning_point(model, q_a, t_a, h, direction_sign):
     return direction_sign * _golden_section(model, q_b, t_b, 2 * small, direction_sign)
 
 
+def _slot_end_before_turning(model, q_a, t_a, h, direction_sign):
+    """The pose where a block reaches its slot's end, if it does before d turns within arclength h of q_a.
+
+    A turning point and a slot end can fall in one step. The bracket is walked
+    again in REFINE_STEPS short steps; a slot end crossed while d is still
+    rising is the limit, and one crossed after d has turned is never reached.
+    """
+    small = h / REFINE_STEPS
+    q, t = q_a, t_a
+    best = direction_sign * driver_coordinate(model, q)
+    for _ in range(REFINE_STEPS):
+        q_next = corrector(model, q + small * t, t)
+        d_next = direction_sign * driver_coordinate(model, q_next)
+        if past_slot_end(model, q_next) > 0:
+            q_end = _slot_end_crossing(model, q, t, small)
+            if direction_sign * driver_coordinate(model, q_end) >= best:
+                return q_end
+            return None
+        if d_next < best:
+            return None
+        best = d_next
+        q, t = q_next, tangent(model, q_next, t)
+    return None
+
+
 def _golden_section(model, q_a, t_a, h, direction_sign):
     """Golden-section search for the largest direction_sign * d between arclength 0 and h from q_a."""
     def at(s):
@@ -251,6 +276,18 @@ def is_singular_pose(model: ExudynModel, q, rank: int) -> bool:
     return bool(s[rank - 1] < SINGULAR_POSE_RATIO * s[0])
 
 
+def _stop_at_slot_end(model, walk: Walk, q_from, q_end, d0, step, k_next, direction) -> Limit:
+    """Store the grid samples short of the slot end at q_end, and stop there."""
+    d_end = driver_coordinate(model, q_end)
+    try:
+        while (d0 + k_next * step - d_end) * direction < -TOGGLE_CLEARANCE * step:
+            walk.samples[k_next] = analysis.newton(model, q_from, d0 + k_next * step)
+            k_next += direction
+    except analysis.SolveFailed:
+        return Limit("solver-failure", driver_coordinate(model, q_from) - d0)
+    return Limit("slot-end", d_end - d0)
+
+
 def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, budget: int, rank: int):
     """Trace from q0 toward increasing (direction=+1) or decreasing d, collecting grid samples.
 
@@ -282,8 +319,15 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
             continue
         d_new = driver_coordinate(model, q_new)
         if (d_new - d) * direction <= 0:
-            # d turned round within the last two steps: a limit of travel.
+            # d turned round within the last two steps: a limit of travel,
+            # unless a block reached the end of its slot first.
             q_back, t_back, h_back = previous
+            try:
+                q_end = _slot_end_before_turning(model, q_back, t_back, h_back + 2 * h, direction)
+            except analysis.SolveFailed:
+                return Limit("solver-failure", d - d0)
+            if q_end is not None:
+                return _stop_at_slot_end(model, walk, q_back, q_end, d0, step, k_next, direction)
             try:
                 extremum = _refine_turning_point(model, q_back, t_back, h_back + 2 * h, direction)
                 # A grid point on the toggle itself is the dead point, where no
@@ -300,13 +344,9 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
             # A block reached the end of its slot within this step.
             try:
                 q_end = _slot_end_crossing(model, q, t, h)
-                d_end = driver_coordinate(model, q_end)
-                while (d0 + k_next * step - d_end) * direction < -TOGGLE_CLEARANCE * step:
-                    walk.samples[k_next] = analysis.newton(model, q, d0 + k_next * step)
-                    k_next += direction
             except analysis.SolveFailed:
                 return Limit("solver-failure", d - d0)
-            return Limit("slot-end", d_end - d0)
+            return _stop_at_slot_end(model, walk, q, q_end, d0, step, k_next, direction)
         _, jc = _undriven(model, q_new)
         s = np.linalg.svd(jc, compute_uv=False)
         if s[rank - 1] < SINGULAR_RATIO * s[0]:

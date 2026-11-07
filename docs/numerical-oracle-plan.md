@@ -276,9 +276,11 @@ mass, local versus global loads, and every unit and speed conversion.
 
 Measured on 2026-11-04. Every published machine is now exported in full: none is left out as
 unsupported. Of 202 machines, **154 are verified** (twelve of them in part) and **43 agree they
-do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,126
-force samples pass, and none fails. Forces are compared in 295 machine-modes, 151 that carry a
-force and 144 that carry none; the manifest leaves 13 more out entirely.
+do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,676
+force samples pass, and none fails. Forces are compared in 299 machine-modes, 151 that carry a
+force and 148 that carry none; the manifest leaves 9 more out entirely. An entry that names parts
+leaves out only the forces on those parts: the hood hinge's and the landing gear's forces are
+compared everywhere but on their two cylinder members.
 
 ### What the exporter now writes down
 
@@ -310,7 +312,10 @@ precision, and the limit's kind is `slot-end`. A drawn pose already outside its 
 in either direction. Two benchmarks check it against closed forms. A driven block stops at its ends,
 ±100.5 mm from the start on a 1 mm grid. A passive block stops the driver where the bar holding it
 reaches its end, at x = 0.4 m and x = √0.0099 m, short of the toggles that would otherwise end the
-travel. The refusal of slot limits that Phase 0 added is gone.
+travel. Where a slot end and a toggle fall in one step, the step is walked again in short steps,
+and a slot end reached while the driver is still advancing is the limit: on a 50 mm grid the
+passive block stops at x = √0.2499 m, a hair short of the toggle at 0.5 m in the same step. The
+refusal of slot limits that Phase 0 added is gone.
 
 ### In the comparison
 
