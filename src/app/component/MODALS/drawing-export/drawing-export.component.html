@@ -307,10 +307,7 @@
       </button>
       @if (open.data) {
         <div class="sectionBody">
-          <span class="groupName"
-            >Tables of joints, links and any applied forces — the numbers a drawing cannot
-            carry.</span
-          >
+          <span class="groupName">Tables of joints, links and any applied forces.</span>
           @for (choice of dataChoices; track choice.value) {
             <button class="radioRow" (click)="touch({ dataFile: choice.value })">
               <span class="radio" [class.on]="options.dataFile === choice.value"></span>

@@ -29,6 +29,8 @@ const { default: GIFEncoder } = await import(
 );
 const { PNG } = await import(PLAYWRIGHT + '/node_modules/pngjs/lib/png.js');
 import { waitForReady } from './app-ready.mjs';
+import { FRAMED_BY_PICTURE, pictureBox } from './card-frame.mjs';
+import { onGrid } from './in-angular.mjs';
 import { TEMPLATE_LINKAGES, assertTemplatesParsed } from './template-payloads.mjs';
 
 assertTemplatesParsed();
@@ -141,10 +143,9 @@ for (const { id, name } of wanted()) {
   /** The box the mechanism needs over the whole cycle, not just at rest. */
   const box = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
   for (const step of steps) {
-    await page.evaluate((at) => {
-      const grid = ng.getComponent(document.querySelector('app-new-grid'));
-      grid.mechanismSrv.animate(at, false);
-    }, step);
+    // Inside the zone, or the seek moves the model and nothing redraws it, and
+    // every frame comes out as the first pose (see e2e/in-angular.mjs).
+    await onGrid(page, (grid, at) => grid.mechanismSrv.animate(at, false), step);
     await page.waitForTimeout(60);
     const frame = await page.evaluate(() => {
       const rects = [
@@ -176,7 +177,11 @@ for (const { id, name } of wanted()) {
     box.bottom = Math.max(box.bottom, frame.bottom);
   }
 
-  const pad = 0.1 * Math.max(box.right - box.left, box.bottom - box.top);
+  // A card framed on its picture is clipped to the picture, as its still is;
+  // see card-frame.mjs.
+  const framedByPicture = FRAMED_BY_PICTURE.has(id);
+  if (framedByPicture) Object.assign(box, await pictureBox(page, id));
+  const pad = framedByPicture ? 0 : 0.1 * Math.max(box.right - box.left, box.bottom - box.top);
   const cx = (box.left + box.right) / 2;
   const cy = (box.top + box.bottom) / 2;
   let width = box.right - box.left + 2 * pad;
@@ -193,10 +198,7 @@ for (const { id, name } of wanted()) {
 
   const shots = [];
   for (const [index, step] of steps.entries()) {
-    await page.evaluate((at) => {
-      const grid = ng.getComponent(document.querySelector('app-new-grid'));
-      grid.mechanismSrv.animate(at, false);
-    }, step);
+    await onGrid(page, (grid, at) => grid.mechanismSrv.animate(at, false), step);
     await page.waitForTimeout(60);
     const raw = join(scratch, `${name}-${String(index).padStart(2, '0')}.png`);
     await page.screenshot({ path: raw, animations: 'disabled', clip });

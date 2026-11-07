@@ -6,7 +6,13 @@ import { PlacementTargetService } from '../../services/placement-target.service'
 import { placementBearing } from '../../model/placement-snap';
 import { LinkTraceService } from '../../services/link-trace.service';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
+import {
+  heldBars,
+  heldBarsReaching,
+  heldBySentence,
+  holdList,
+  releaseLabel,
+} from '../../model/link-holds';
 import { holdChips } from '../../model/hold-chips';
 import { overlayBarEnds } from '../../model/hover-dimension';
 import {
@@ -2378,6 +2384,21 @@ export class NewGridComponent implements OnDestroy {
     return this.mechanismSrv.lockVisualsOn();
   }
 
+  /**
+   * Whether this body's held value wears a chip: only while its machine stands
+   * on its start.
+   *
+   * A fixed value is a value of the design, and the design is the start pose.
+   * Away from it a held crank's chip read wherever the crank had turned to
+   * (-49 deg at the start, -37 deg a little later), so the one number the
+   * reader had fixed appeared to change under them. A length reads the same at
+   * every pose and goes with it anyway, so the rule is one rule.
+   */
+  private holdChipShown(link: Link): boolean {
+    if (!this.holdsVisible()) return false;
+    return this.mechanismSrv.isMachineAtStart(this.mechanismSrv.indexOfMechanismContaining(link));
+  }
+
   /** The joint a hold has just refused to move, ringed in red while it is. */
   holdRing?: RealJoint;
   /** Where the dragged joint may go, when a single held bar decides that. */
@@ -2458,10 +2479,9 @@ export class NewGridComponent implements OnDestroy {
     );
   }
 
-  /** Release, not Unlock: an Unlock beside this would be the joint mark's word. */
   private releaseAction(bars: RealLink[]): { label: string; run: () => void }[] {
     return bars.length > 0
-      ? [{ label: 'Release', run: () => this.mechanismSrv.releaseHolds(bars) }]
+      ? [{ label: releaseLabel(bars), run: () => this.mechanismSrv.releaseHolds(bars) }]
       : [];
   }
 
@@ -2481,7 +2501,7 @@ export class NewGridComponent implements OnDestroy {
       this.mechanismSrv.links,
       this.mechanismSrv.sealedStructures()
     )) {
-      if (this.mechanismSrv.isLockedTarget(link)) continue;
+      if (this.mechanismSrv.isLockedTarget(link) || !this.holdChipShown(link)) continue;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const text =
@@ -2517,12 +2537,14 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Whether the value the hover dimension is about is locked on the selected
-   * bar, in which case its chip already labels it and the pill stays away.
+   * Whether the value the hover dimension is about is fixed on the selected
+   * bar and wearing its chip, in which case the chip already labels it and the
+   * pill stays away. Away from the start the chip is not drawn, so the pill is.
    */
   overlayValueLocked(which: 'length' | 'angle'): boolean {
     if (this.activeObjService.objType !== 'Link') return false;
-    return this.holdReads(this.activeObjService.selectedLink, which);
+    const link = this.activeObjService.selectedLink;
+    return this.holdChipShown(link) && this.holdReads(link, which);
   }
 
   /**
@@ -5569,7 +5591,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** Whether this bar wears a length chip right now. */
   private lengthChipShown(link: Link): boolean {
-    return this.holdsVisible() && this.holdReads(link, 'length');
+    return this.holdChipShown(link) && this.holdReads(link, 'length');
   }
 
   /**

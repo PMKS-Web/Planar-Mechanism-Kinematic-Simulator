@@ -14,7 +14,10 @@ import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { TEMPLATE_LINKAGES } from '../../component/MODALS/templates/template-linkages';
+import {
+  BUILT_IN_TEMPLATE_IDS,
+  TEMPLATE_LINKAGES,
+} from '../../component/MODALS/templates/template-linkages';
 
 /**
  * A mechanism's name is kept on one of its joints and rides the URL at the end
@@ -90,9 +93,13 @@ describe('a mechanism’s name', () => {
     expect(mechanismLabel(partitionOf(crank()), 0)).toBe('Mechanism 1');
   });
 
-  it('keeps every library template’s URL exactly as it was', () => {
-    for (const payload of Object.values(TEMPLATE_LINKAGES)) {
-      const decoded = decode(payload);
+  it('keeps every hand-authored template’s URL exactly as it was', () => {
+    // The generated library templates name their machines on purpose
+    // (`LIBRARY_TEMPLATE_NAMES`, read back in template-machine-names.spec.ts).
+    // The hand-authored ones are strings people have shared, and naming a
+    // machine in the codec must not have changed a byte of them.
+    for (const id of BUILT_IN_TEMPLATE_IDS) {
+      const decoded = decode(TEMPLATE_LINKAGES[id]);
       expect(decoded.joints.some((joint) => joint.machineName)).toBe(false);
     }
   });

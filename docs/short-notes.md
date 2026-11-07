@@ -30,6 +30,25 @@ therefore passes whether or not the path solves. `oracle-export-boundary.spec.ts
 instead, and proves its own guard can fail by expecting calls from `buildMechanism`. Build a
 fixture with `buildDrawing` when you need its parts without a solve.
 
+### A dialog is in the browser's top layer, and no `z-index` reaches it
+
+Angular's CDK opens its overlays -- dialogs, menus, tooltips -- as `popover="manual"` elements in
+the browser's top layer, so `.cdk-overlay-container`'s `z-index: 1000` is not what puts a dialog
+on top and raising `--layer-toast` past it does nothing. The library's Suggest a Mechanism form
+was the first dialog to send a notification, and its refusal, its failure and its Try again all
+landed behind it. `NotificationComponent` makes the stack a manual popover as well and shows it
+again whenever a message arrives, because the top layer is ordered by who was shown last. Anything
+else that must paint over an open dialog needs the same: a popover, shown after the dialog.
+
+### A block's inner class names are not private to it
+
+`segmented-block` draws its pill as `.thumb` and its label row as `.row` and `.label`, and the
+library's stylesheet is a theme mixin scoped by `#templates`, not by component. A form there with
+its own `.row` grid and a card with its own 220px `.thumb` turned the Suggest form's source toggle
+into a 220px-tall white slab with its label cut to "Open Mec…". Inside a theme mixin, scope card
+and form rules under their own root (`.templateCard .thumb`) or name them for what they are
+(`.formRow`, `.fieldLabel`), and look at every block the form hosts.
+
 ### An e2e suite that launches the machine's own Chrome is not portable
 
 Eight suites read `PMKS_CHROME` and hand Playwright an `executablePath` rather than using the
@@ -433,7 +452,7 @@ faint shadow on a photograph.
 
 ### A traced template ships its picture, and the card's art shows it
 
-"Real-Life Use Cases" (`realworld`) holds mechanisms drawn by hand over a picture of the machine.
+"Real Machines" (`realworld`) holds mechanisms drawn by hand over a picture of the machine.
 The picture cannot ride the URL, so the card names it: a `backdrop` row on the card
 (`TemplateBackdrop`), in centimeters whatever unit the payload opens in -- the steering linkage is
 drawn in meters, so its 2.26 m width is written as 226. `placeTemplateBackdrop` puts it up when the
@@ -452,6 +471,29 @@ run that lands on that overlay shoots the overlay. And card names follow `docs/u
 like any other copy — "Car Steering", never "Steering Linkage" — but `e2e/ui-copy.mjs` does not
 open the library, so nothing checks a card name for you. The animation script's `pngjs` and
 `gif-encoder` live in the Playwright install (see [Environment](environment.md#environment)) and vanish with it.
+
+### A template that specs open by id is redrawn under a new id
+
+Changing what a library card shows is not the same as changing its payload. Some ids are opened
+by name all over the suite -- `'4-Bar'` by about seventy files, `'Scotch_Yoke'` by more than a
+dozen -- so the 2026-11 review gave the redrawn Four-Bar and Scotch Yoke new ids (`Four_Bar`,
+`Scotch_Yoke_Rod`) and moved the old ones to For Development, where a development build still
+shows them and the CI e2e gate (a development build too) can still click them. A card the specs
+do not lean on is redrawn in place, as the pumps and the trammel were. Either way three things
+follow: `legacy-payloads.spec.ts` compares a shipped payload against the drawing it was, so a
+redrawn one goes in its `REDRAWN_TEMPLATES`; a test that pastes "the library's own Four-Bar"
+has to paste the new one; and a card's old images move with its old id, so the regenerated
+pictures can take the card's file names.
+
+### `template-animations.mjs` seeks inside the zone, or every frame is the same
+
+The script steps a template through its cycle with `mechanismSrv.animate(step, false)` and
+screenshots each pose. Called from `page.evaluate`, that moves the model and redraws nothing:
+the top bar's per-frame change-detection loop used to paint it anyway, and since that loop went
+(see `e2e/in-angular.mjs`) a GIF came out as fourteen copies of the first pose. One of the six
+captured in the same run (the Four-Bar) did animate, for no reason anyone pinned down, which
+hid it. The seeks go through `onGrid` now. Check a GIF's frames differ rather than trusting the
+exit code.
 
 ### "A part of this mechanism is tied to nothing" is the geometry's second opinion on a dead position
 
@@ -811,6 +853,26 @@ constraint is still a distinct cycle, so the extra loop's rows have nowhere to g
 matrix is sized by the unknowns: `B_matrix[rowIndex]` was undefined and the Kinematic Analysis
 panel threw on the three-crank parallelogram. The extra rows repeat what the others said, so the
 least-squares answer is the exact one. `redundant-parallel-crank.spec.ts` asserts the rates.
+
+### The loop walk prunes a reused link as it walks, not at the far ground
+
+`LoopSolver.findGround` enumerates every simple path between two grounds, and `edgesAlong`
+rejects a path that crosses one link or slot twice. It used to reject them only once the walk
+reached a ground, so a plate carrying many joints -- eleven cranks on one coupler, audit
+finding #29 -- was entered and left in every ordering of its joints first: factorial, thirty
+seconds to open the drawing, and a unit test sitting on CI's two-minute timeout. The walk now
+carries the links it has crossed and refuses the step that would reuse one. A rejected prefix
+rejects every path extending it, so the loops found are the same ones in the same order. If a
+drawing opens slowly, profile before guessing: it was all `findGround`.
+
+### Swapping an SVG `<image>` for another file blanks it for a few frames
+
+The canvas draws its marks from asset files, and a mark with two looks -- an input turning either
+way -- was written as two `@if` branches or one bound `href`. Either way the new file is decoded
+asynchronously, so the first time it is shown nothing is painted until it arrives: flipping a
+grounded input dropped the whole motor mark for 11 frames, about 180 ms. Keep every look mounted
+and toggle `visibility`, as the input marks in `new-grid.component.html` now do. A screenshot will
+not catch this; a screencast filmstrip of the frames after the change will.
 
 ### A slotted carrier's joints are carried from a grounded pin first
 
@@ -2377,7 +2439,7 @@ A slider block is a part, not a meeting point: splitting one leaves it unmoved o
 
 A weld is no reason to refuse; the service lets it go through `unWeldJoint` first, inside one `batched` edit -- at the start pose a posed edit holds no saves, so without the batch the unweld wrote an undo entry of its own. That means counting bodies *before* it happens: a weld fuses the links at it into one compound, so `joint.links` shows one body. The count is the weld components the compound leaves without this joint, so two leaves welded together again elsewhere are still one body, and a corner of a triangle welded at every corner is refused as one link. A Prismatic block with two riders is the same case -- the block carries `isWelded` -- and unwelding it sets `rotates`, so the service sets it back.
 
-Where the pins go is `placeSplitPins`. One body keeps the point: the link that ends a slot or is a cylinder member, or else the one that keeps the joint's letter. Every other pin takes the cheapest placement that leaves no pin on another bar and no bar over another pin, searched along each direction toward its own body's other joints, with a sideways step charged double because it turns the link rather than shortening it. Spreading the pins evenly around the point instead moved a slot's end out from under its slider -- splitting D in the Shaper fixture left B 16.9 model units off its slot, because `dragJoint(..., false)` skips the rebuild that would reseat it -- and left two plain links lying across each other's pins. Only what happens at the pins counts: a scissor's arms cross by design, and a check on whole bars found nothing that cleared and left the center pin where it was. A bar that ran on through the split point is not held to keep off the kept pin either, since only a bend could change that. Toward the *average* of a body's other joints is no direction at all for a pin in the middle of a straight bar, which is why each joint is a direction of its own. When a lock or hold keeps the pin chosen to move exactly where it was, it becomes the one that stays. Only when two slot ends meet at one pin, and one has to move, does the split call `reseatFloatingSliders()` -- calling it every time nudged blocks the split never touched, since Slider Crank Inversions loads with G and K a hair off their slots. Steps are measured in joint sizes, so a split spec built at raw fixture coordinates has every link shorter than one step and quietly checks the fallback instead: build split fixtures through `inModelUnits`.
+Where the pins go is `placeSplitPins`. One body keeps the point: the link that ends a slot or is a cylinder member, or else the one that keeps the joint's letter -- unless that leaves some pin with no clear place, when `chooseStayingPin` takes the first body in drawing order whose staying clears them all. The Steam Locomotive's crosshead J needed it: the piston rod's slide pin K is nearer J than one clearance, so the piston rod's bar to K passes J within reach wherever its pin goes, and only the piston rod staying (the main rod's pin steps along the main rod) clears. Every other pin takes the cheapest placement that leaves no pin on another bar and no bar over another pin, searched along each direction toward its own body's other joints, with a sideways step charged double because it turns the link rather than shortening it. Spreading the pins evenly around the point instead moved a slot's end out from under its slider -- splitting D in the Shaper fixture left B 16.9 model units off its slot, because `dragJoint(..., false)` skips the rebuild that would reseat it -- and left two plain links lying across each other's pins. Only what happens at the pins counts: a scissor's arms cross by design, and a check on whole bars found nothing that cleared and left the center pin where it was. A bar that ran on through the split point is not held to keep off the kept pin either, since only a bend could change that. Toward the *average* of a body's other joints is no direction at all for a pin in the middle of a straight bar, which is why each joint is a direction of its own. When a lock or hold keeps the pin chosen to move exactly where it was, it becomes the one that stays. Only when two slot ends meet at one pin, and one has to move, does the split call `reseatFloatingSliders()` -- calling it every time nudged blocks the split never touched, since Slider Crank Inversions loads with G and K a hair off their slots. Steps are measured in joint sizes, so a split spec built at raw fixture coordinates has every link shorter than one step and quietly checks the fallback instead: build split fixtures through `inModelUnits`.
 
 ### A forced click on the right-click card has to wait for the card to stop growing
 
@@ -2703,3 +2765,126 @@ pins. `parallel-guide-headings.ts` supplies that consequence to position and dif
 constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
 made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
 coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### A fixture published in inches reads every number in inches, pounds and pounds-force
+
+A URL keeps a coordinate as the number the reader sees, so `lengthUnit: LengthUnit.INCH` on a
+gallery entry turns a 2 cm bar into a 2 in bar, and it turns a link mass of 150 into 150 lbm and a
+load of 1.8 into 1.8 lbf. `FORCE_STUDY_SCALING`'s hundredfold mass and hundredth load are tuned for
+grams and newtons. The inch Toggle Clamp therefore states its pounds in its own fixture and sets
+the scaling to 1 in `FORCE_STUDY_BODIES`. To compare Static against In-motion, read the numbers
+from the running app: a `Mechanism` built in a spec straight from the payload skips the inertia
+the app derives for each body, and gave an in-motion peak twenty times the static one.
+
+### A library machine's name is keyed by a joint, and has no apostrophe
+
+`LIBRARY_TEMPLATE_NAMES` in `template-fixtures.ts` keys each name by one of the machine's own
+joints, because a machine is worked out from the drawing and not stored: `fixturePayload` asks
+the partition which machine owns that joint and writes the name to its holder
+(`writeMechanismName`). A key no machine owns throws while the generator runs. The panel accepts an
+apostrophe in a typed name, and the URL carries one, but a template's payload sits in single quotes
+in `template-linkages.ts`, where one would end the string, and `e2e/template-payloads.mjs` reads
+the payloads back with `'([^']*)'`. So it is "Watt linkage". Commas and periods are the codec's separators and are out everywhere.
+`template-machine-names.spec.ts` reads every name back off its payload.
+
+### A cylinder card is solved at the size it is published at
+
+A cylinder's head travel is measured in R, and R comes from the Object Size, so the same fixture has
+a different stroke at a different size. `buildMechanism` in a spec solves at size 1 in user units,
+which is not what a reader opens: build a cylinder card with
+`buildMechanismAtScale(inModelUnits(fixture), objectScale)` and the gallery entry's own
+`objectScale`, or a spec passes on a stroke the app never shows. `cylinderSpanning` in
+`library-card-fixtures.ts` works backwards from that rule: give it the two ends, the shortest and
+longest span, and the size, and it places the barrel end and the seal so the part reaches both.
+The Locking Pliers and the Double-Wishbone Suspension use it for a hand and a shock absorber.
+
+### A disc is as big as its farthest joint, so a wheel needs a pin at its rim
+
+A link drawn as a disc (`circle`, one revolute ground pin, no subset) reaches the outermost joint's
+end cap: its radius is that joint's distance from the ground pin plus `barHalfWidth` at the
+document's Object Size. A wheel that carries only an axle and a crank pin is therefore drawn the
+size of its crank. The Steam Locomotive gives each wheel a third joint one wheel radius less a bar
+half-width from the axle, opposite the crank pin where a real wheel carries its counterweight, so
+each wheel is drawn 1.4 m across. The radius is read at the drawing scale too, so Fine, Schematic
+and a zoom near a size limit draw the disc a little larger or smaller; the document's geometry does
+not change. `test-setup.ts` resets the Object Size before every test, so a spec that measures a disc
+reads the size straight after decoding the card.
+
+### A card can be framed on its picture rather than on its mechanism
+
+`template-thumbnails.mjs` and `template-animations.mjs` crop a card's art to the mechanism's holders.
+A Real Machines card whose picture is much larger than its linkage (the locomotive’s running gear fills
+only the bottom quarter of its picture) would show a strip of wheels with the rest of the engine
+cut away. List it in `FRAMED_BY_PICTURE` in `e2e/card-frame.mjs`, and both scripts crop to the
+backdrop image instead, with no padding; draw the picture at the card's own aspect so nothing is
+lost.
+`pictureBox` throws when the picture is not on the grid, which happens when the dev server rebuilds
+mid-run. Run it again once the rebuild is done.
+
+### Write a Slide's riders as the compound the app makes of them
+
+Two links riding one slider whose riders cannot turn (a Slide) are one rigid body, and the app stores
+them as a compound: `reconcileAssemblyWelds` builds it on load when a URL lists the riders as two
+separate links. A fixture that writes them separately still opens and solves, but the compound that
+load builds is not the one Split Joint asks about. The locomotive's crosshead and piston rod ride
+the slide pin K, and with the two written separately, splitting the union link's pin T measured
+clearance against the crosshead triangle alone. The sweep in `split-joint-templates.spec.ts`
+measured against every joint of the fused body, and the two disagreed. Declaring the compound in
+the fixture (`subset`, with the Slide's pin in `welds`) gives the payload the app itself would save,
+and both then measure the same body.
+### A stack follows shared code; unrelated features start at staging
+
+Library browsing, numerical corrections and small UI fixes had accumulated in one chain, so
+holding a force-solver review also held every later feature. Split the chain by applying each
+PR's own diff to its actual prerequisite; changing the GitHub base alone leaves the inherited
+commits in the review. Snapshot remote heads first, rebuild on temporary refs in a separate
+worktree, and push with an explicit lease for every rewritten branch. Several feature branches
+are checked out in other worktrees, so replacing those local branches would disturb another
+session. Keep the numerical oracle independent, and run its comparisons with the proposed solver
+fixes applied; passing against staging alone does not verify a correction. A combined tree check
+against the old stack catches lost changes after the split.
+
+### A panel's fold kept on the component reopens at every mode switch
+
+The left card mounts a new panel each time its mode is entered -- the Edit panel in Edit, the
+analysis panel in either analysis -- so anything a panel remembers in a field of its own is gone
+on the way back. Folds were kept that way, and a reader who closed a joint's Basic Settings or its
+Position graph found it open again after one trip to the other mode. Keep a session choice in a
+root service instead: `MechanismPanelStateService` holds the machine panel's folds, and
+`PanelFoldStateService` holds the part panels' (`e2e/panel-folds.mjs` guards both trips).
+
+### Unwelding force ownership cannot be resolved against the compound being replaced
+
+`splitCompoundAtRemainingWelds` builds its replacement links before removing the old root from the
+service's link list. Calling the ordinary root lookup there found the old compound and put the
+force back on it. Pass the replacement owner directly to `attachForceToLink`; keep member identity
+in `anchoredTo` and the URL link field. The audit attachment test checks immediate loading, physical
+load-point power, following the member, fresh reopening and finally unwelding.
+
+### afterNextRender runs outside the zone, so a timer started there redraws nothing
+
+`SvgGridService.scaleToFitLinkage` hides the grid (`tempGridDisable`) and shows it again a task
+after the next render. Angular runs `afterNextRender` callbacks outside `NgZone`, and a
+`setTimeout` started inside one is outside too: the flag went false and no change detection
+followed. Over a drawing the fit's own pan happened to trigger one; over an empty grid the view
+does not move, and the canvas stayed blank until the pointer next moved. The deferred fit now runs
+through `zone.run` (`afterRenderInZone`). Anything else that changes template state from an
+`afterNextRender` timer needs the same. `e2e/fit-keeps-grid.mjs` presses both Fit buttons from the
+keyboard, so no pointer event can redraw the grid for them.
+
+### A grayed menu row's reason opens beside the menu, not over it
+
+`Move the start here` in the playback bar's `.startMenu` is grayed when `startMoveRefusal` names a
+fixed angle, and is `aria-disabled` for the reason the shut mode tab is (above). Its `matTooltip`
+opened `above` lay over `Back to the start`, the row above it, and took that row's click; `after`
+keeps it clear of the menu. Any row in a stacked menu wants its tooltip to the side.
+
+### A native GitHub stack locks its members' base branches
+
+Rewriting branches does not change their native stack membership. GitHub rejects a PR base change
+with 422 while the PR belongs to a stack. Snapshot the membership, POST to
+`/repos/{owner}/{repo}/stacks/{number}/unstack`, retarget the open PRs, then POST the new ordered
+`pull_requests` arrays to `/repos/{owner}/{repo}/stacks`. Unstacking leaves merged historical
+entries in place. This is a metadata operation separate from rebasing the branches; recreating
+the groups does not replace the code checks. The [Stacks API](https://docs.github.com/en/rest/pulls/stacks)
+describes the endpoints.

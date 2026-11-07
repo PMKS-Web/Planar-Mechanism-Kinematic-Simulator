@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  DoCheck,
+  ElementRef,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import {
   LiveNotification,
@@ -6,6 +14,8 @@ import {
   NotificationService,
 } from '../../services/notification.service';
 import { MatIcon } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 /**
  * The glyph that says which of the four this is before the sentence is read.
@@ -53,8 +63,52 @@ const ICONS: Record<NotificationKind, string> = {
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatIcon],
 })
-export class NotificationComponent {
+export class NotificationComponent implements AfterViewInit, DoCheck {
   notifications = inject(NotificationService);
+
+  private readonly stack = viewChild.required<ElementRef<HTMLElement>>('stack');
+  /** The newest message the stack was raised for. */
+  private raisedFor?: number;
+
+  constructor() {
+    // A message still up when a dialog opens would go under it: a failure the
+    // reader has not dismissed yet is as much about the screen as a new one.
+    inject(MatDialog)
+      .afterOpened.pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.notifications.live.length > 0) this.raise();
+      });
+  }
+
+  ngAfterViewInit(): void {
+    this.raise();
+  }
+
+  /** Asked every pass, because a message arriving is a change to a plain array. */
+  ngDoCheck(): void {
+    const newest = this.notifications.live.at(-1)?.key;
+    if (newest === undefined || newest === this.raisedFor) return;
+    this.raisedFor = newest;
+    this.raise();
+  }
+
+  /**
+   * Put the stack on top of everything, dialogs included.
+   *
+   * Angular's CDK opens dialogs, menus and tooltips as popovers in the
+   * browser's top layer, which no z-index reaches: the library's Suggest a
+   * Mechanism form refused, failed and offered Try again entirely behind its
+   * own dialog. The stack is a popover too, and the top layer is ordered by
+   * who was shown last, so it is shown again whenever a message arrives or a
+   * dialog opens. Skipped where there is no popover API (the
+   * unit tests' DOM), which leaves it an ordinary fixed element.
+   */
+  private raise(): void {
+    const stack = this.stack().nativeElement;
+    if (typeof stack.showPopover !== 'function') return;
+    if (stack.matches(':popover-open')) stack.hidePopover();
+    stack.showPopover();
+  }
 
   iconFor(one: LiveNotification): string {
     return ICONS[one.kind];
