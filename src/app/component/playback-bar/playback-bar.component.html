@@ -168,9 +168,24 @@
                         <mat-icon>first_page</mat-icon>
                         Back to the start
                       </button>
-                      <button (click)="moveStartHere(row)">
+                      <!-- Grayed with its reason rather than refused after
+                           the click: aria-disabled and not disabled, so the
+                           longer sentence still opens on hover. -->
+                      @let refused = startRefusal(row);
+                      <button
+                        (click)="moveStartHere(row)"
+                        [class.off]="!!refused"
+                        [attr.aria-disabled]="refused ? 'true' : null"
+                        [matTooltip]="refused?.long ?? ''"
+                        matTooltipPosition="after"
+                      >
                         <mat-icon>flag</mat-icon>
-                        Move the start here
+                        <span class="startMenuLabel">
+                          Move the start here
+                          @if (refused) {
+                            <span class="startMenuReason">{{ refused.short }}</span>
+                          }
+                        </span>
                       </button>
                     </div>
                   </ng-template>

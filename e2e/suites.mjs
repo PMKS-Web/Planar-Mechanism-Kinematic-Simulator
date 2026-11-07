@@ -202,6 +202,7 @@ export const SUITES = [
   { name: 'template-graphs', seconds: 438, lanes: NIGHTLY },
   { name: 'template-open', seconds: 28, lanes: BOTH },
   { name: 'first-frame', seconds: 45, lanes: NIGHTLY },
+  { name: 'fit-keeps-grid', seconds: 23, lanes: BOTH },
   { name: 'top-strip-states', seconds: 194, lanes: NIGHTLY },
   { name: 'tutorial', seconds: 52, lanes: NIGHTLY },
   { name: 'two-mechanisms', seconds: 40, lanes: BOTH },

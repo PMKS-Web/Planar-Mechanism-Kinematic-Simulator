@@ -92,6 +92,7 @@ import {
   ORPHANED_JOINT,
   isOrphanedJoint,
 } from '../../model/joint-type';
+import { releaseLabel } from '../../model/link-holds';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -2314,7 +2315,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       {
         actions:
           holds.length > 0
-            ? [{ label: 'Release', run: () => this.mechanismService.releaseHolds(holds) }]
+            ? [
+                {
+                  label: releaseLabel(holds),
+                  run: () => this.mechanismService.releaseHolds(holds),
+                },
+              ]
             : [],
       }
     );

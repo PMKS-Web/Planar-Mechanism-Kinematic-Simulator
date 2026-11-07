@@ -2715,6 +2715,24 @@ force back on it. Pass the replacement owner directly to `attachForceToLink`; ke
 in `anchoredTo` and the URL link field. The audit attachment test checks immediate loading, physical
 load-point power, following the member, fresh reopening and finally unwelding.
 
+### afterNextRender runs outside the zone, so a timer started there redraws nothing
+
+`SvgGridService.scaleToFitLinkage` hides the grid (`tempGridDisable`) and shows it again a task
+after the next render. Angular runs `afterNextRender` callbacks outside `NgZone`, and a
+`setTimeout` started inside one is outside too: the flag went false and no change detection
+followed. Over a drawing the fit's own pan happened to trigger one; over an empty grid the view
+does not move, and the canvas stayed blank until the pointer next moved. The deferred fit now runs
+through `zone.run` (`afterRenderInZone`). Anything else that changes template state from an
+`afterNextRender` timer needs the same. `e2e/fit-keeps-grid.mjs` presses both Fit buttons from the
+keyboard, so no pointer event can redraw the grid for them.
+
+### A grayed menu row's reason opens beside the menu, not over it
+
+`Move the start here` in the playback bar's `.startMenu` is grayed when `startMoveRefusal` names a
+fixed angle, and is `aria-disabled` for the reason the shut mode tab is (above). Its `matTooltip`
+opened `above` lay over `Back to the start`, the row above it, and took that row's click; `after`
+keeps it clear of the menu. Any row in a stacked menu wants its tooltip to the side.
+
 ### A native GitHub stack locks its members' base branches
 
 Rewriting branches does not change their native stack membership. GitHub rejects a PR base change

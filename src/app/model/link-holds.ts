@@ -392,3 +392,15 @@ export function heldBySentence(
 ): string {
   return `Held by ${holdList(bars, joints, nameOf)}`;
 }
+
+/**
+ * The button on a refusal that lets these holds go.
+ *
+ * "Release all" when it lets go of more than one: the sentence beside it names
+ * every hold in the way, and one press releases every one it names, which a
+ * bare "Release" did not say. Release, never Unlock -- Unlock is the joint
+ * mark's word.
+ */
+export function releaseLabel(bars: readonly unknown[]): string {
+  return bars.length > 1 ? 'Release all' : 'Release';
+}
