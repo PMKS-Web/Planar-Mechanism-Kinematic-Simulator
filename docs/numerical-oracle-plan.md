@@ -382,6 +382,9 @@ block stops at x = √0.2499 m, a hair short of the toggle at 0.5 m in the same 
 just past that toggle is never reached, whether the step that crosses the turn ends behind or
 ahead of where it began. An end exactly on the toggle is reported as the toggle: there the rate
 is zero and its sign is rounding, so below 10⁻⁹ of the driver's gradient the two coincide. The
+rate and the gradient are read in the machine's own size, translations divided by L, so an end
+a hair short of a toggle stays a slot end whether the machine is drawn a thousand times smaller
+or larger, for a sliding input and a turning one. The
 refusal of slot limits that Phase 0 added is gone.
 
 ### In the comparison

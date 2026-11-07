@@ -194,6 +194,76 @@ def test_the_order_of_a_slot_end_and_a_toggle_holds_driving_the_other_way(end, s
     assert sweep["low"]["travel"] == pytest.approx(travel, abs=1e-9)
 
 
+@pytest.mark.parametrize("factor", [1e-3, 1.0, 1e3])
+@pytest.mark.parametrize("reversed_drive", [False, True])
+def test_a_slot_end_just_short_of_a_toggle_is_the_limit_at_any_size(factor, reversed_drive):
+    # B's end at y = 1e-6 m is met a hair before the toggle at y = 0. Whether
+    # the travel is still advancing there is read in the machine's own size,
+    # so drawing it larger or smaller cannot turn the slot end into a toggle.
+    raw = json.loads((CASES / "metu-double-slider.problem.json").read_text())
+    raw["sweep"]["step"] = 0.01 * factor
+    for joint in raw["joints"]:
+        if reversed_drive and joint["id"] == "A":
+            joint["axis"] = [-joint["axis"][0], -joint["axis"][1]]
+        if joint["id"] == "B":
+            joint["limits"] = [1e-6 * factor, 0.49 * factor]
+    sweep = solve(load_problem(_scaled(raw, factor)), {"oracle": "test"})["sweep"]
+    limit = sweep["low" if reversed_drive else "high"]
+    assert limit["kind"] == "slot-end"
+    travel = (math.sqrt(0.25 - 1e-12) - 0.2) * factor
+    assert limit["travel"] == pytest.approx(-travel if reversed_drive else travel, abs=1e-9 * factor)
+
+
+def _short_rod_slider_crank() -> dict:
+    """A 0.5 m crank and a 0.3 m rod on a horizontal slot, drawn at 0.3 rad and extended.
+
+    The rod is shorter than the crank, so the crank rocks between the toggles
+    at +-asin(0.6), where the rod stands upright over B at x = 0.4 m. A slot
+    that ends at x = 0.4000001 m stops B a hair before either.
+    """
+    a = [0.5 * math.cos(0.3), 0.5 * math.sin(0.3)]
+    b = [a[0] + math.sqrt(0.09 - a[1] ** 2), 0.0]
+    return {
+        "schema": "pmks-oracle-problem/1",
+        "id": "short-rod-slider-crank",
+        "gravity": 0,
+        "bodies": [
+            {"id": "2", "mass": 1, "inertia": 0.02, "com": [a[0] / 2, a[1] / 2]},
+            {"id": "3", "mass": 1, "inertia": 0.0075, "com": [(a[0] + b[0]) / 2, a[1] / 2]},
+        ],
+        "joints": [
+            {"id": "O2", "kind": "pin", "at": [0, 0], "bodies": ["2"], "grounded": True},
+            {"id": "A", "kind": "pin", "at": a, "bodies": ["2", "3"]},
+            {
+                "id": "B",
+                "kind": "slider",
+                "at": b,
+                "guide": "ground",
+                "linePoint": [0, 0],
+                "axis": [1, 0],
+                "riders": ["3"],
+                "limits": [0.4000001, 1.0],
+            },
+        ],
+        "driver": {"joint": "O2", "kind": "rotation", "bodies": ["ground", "2"], "speed": 1, "acceleration": 0},
+        "points": [{"id": "B", "body": "3", "at": b}],
+        "sweep": {"step": 0.01},
+    }
+
+
+@pytest.mark.parametrize("factor", [1e-3, 1.0, 1e3])
+def test_a_slot_end_just_short_of_a_toggle_is_the_limit_for_a_turning_input_at_any_size(factor):
+    # Turning either way from 0.3 rad the crank meets B's slot end before its
+    # toggle. The turn is in radians whatever the size; the slot is in metres.
+    raw = _short_rod_slider_crank()
+    raw["joints"][2]["limits"] = [0.4000001 * factor, 1.0 * factor]
+    sweep = solve(load_problem(_scaled(raw, factor)), {"oracle": "test"})["sweep"]
+    toggle = math.asin(0.6)
+    assert sweep["high"]["kind"] == sweep["low"]["kind"] == "slot-end"
+    assert sweep["high"]["travel"] == pytest.approx(toggle - 0.3, abs=1e-6)
+    assert sweep["low"]["travel"] == pytest.approx(-toggle - 0.3, abs=1e-6)
+
+
 def test_a_singular_pose_on_the_grid_stores_no_state():
     # The parallelogram's three cranks lie along the frame at k = 110 and 290:
     # the pose is fine, but its rates are not unique there.
