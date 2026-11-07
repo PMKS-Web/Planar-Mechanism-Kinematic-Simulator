@@ -14,7 +14,12 @@ import { TemplatesComponent } from './templates.component';
 
 describe('template catalog', () => {
   it('gives every template exactly one card', () => {
-    const carded = TEMPLATE_CARDS.map((card) => card.id as string).sort();
+    // A drawing retired from the published library keeps its card under For
+    // Development, because specs and e2e suites still open its payload.
+    const carded = [...TEMPLATE_CARDS, ...DEV_TEMPLATE_CARDS]
+      .map((card) => card.id as string)
+      .filter((id) => !(id in DEV_TEMPLATES))
+      .sort();
     const offered = [...TEMPLATE_IDS].map((id) => id as string).sort();
 
     // Named both ways round: one list says which template has no card yet, the
@@ -29,7 +34,10 @@ describe('template catalog', () => {
       expect(typeof TEMPLATE_LINKAGES[card.id as keyof typeof TEMPLATE_LINKAGES]).toBe('string');
     }
     for (const card of DEV_TEMPLATE_CARDS) {
-      expect(typeof DEV_TEMPLATES[card.id as keyof typeof DEV_TEMPLATES]).toBe('string');
+      const payload =
+        DEV_TEMPLATES[card.id as keyof typeof DEV_TEMPLATES] ??
+        TEMPLATE_LINKAGES[card.id as keyof typeof TEMPLATE_LINKAGES];
+      expect(typeof payload).toBe('string');
     }
   });
 
@@ -43,7 +51,7 @@ describe('template catalog', () => {
       expect(card.backdrop.width).toBeGreaterThan(0);
       expect(card.backdrop.opacity ?? 0.5).toBeGreaterThan(0);
     }
-    // The real-life section is the one built on pictures: every card in it has one.
+    // The Real Machines section is the one built on pictures: every card in it has one.
     const traced = TEMPLATE_CARDS.filter((card) => card.category === 'realworld');
     expect(traced.length).toBeGreaterThanOrEqual(4);
     expect(traced.every((card) => !!card.backdrop)).toBe(true);
@@ -98,7 +106,7 @@ describe('library dialog', () => {
 
   function chip(fixture: { nativeElement: HTMLElement }, name: string): HTMLButtonElement {
     const found = Array.from(
-      fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.chip')
+      fixture.nativeElement.querySelectorAll<HTMLButtonElement>('.rail .category')
     ).find((button) => (button.textContent ?? '').includes(name));
     expect(found).toBeTruthy();
     return found!;
@@ -114,12 +122,12 @@ describe('library dialog', () => {
     const fixture = open();
     const shown = cards(fixture);
 
-    for (const id of TEMPLATE_IDS) expect(shown).toContain(id);
+    for (const card of TEMPLATE_CARDS) expect(shown).toContain(card.id);
     expect(fixture.nativeElement.querySelectorAll('.caption .cardDescription').length).toBe(
       shown.length
     );
     expect(fixture.nativeElement.textContent).toContain('Four-Bar');
-    expect(fixture.nativeElement.textContent).toContain('a crank turns, a rocker swings');
+    expect(fixture.nativeElement.textContent).toContain('short crank turns all the way round');
   });
 
   it('heads each family it has cards for, and stays quiet about the ones it does not', () => {
@@ -145,11 +153,11 @@ describe('library dialog', () => {
     const fixture = open();
     const everything = cards(fixture).length;
 
-    chip(fixture, 'Cylinders').click();
+    chip(fixture, 'Drawing a Path').click();
     fixture.detectChanges();
-    const cylinders = cards(fixture);
-    expect(cylinders).toContain('Cylinder_Boom');
-    expect(cylinders).not.toContain('4-Bar');
+    const paths = cards(fixture);
+    expect(paths).toContain('Jansen_Leg');
+    expect(paths).not.toContain('4-Bar');
 
     chip(fixture, 'All').click();
     fixture.detectChanges();
@@ -166,9 +174,9 @@ describe('library dialog', () => {
     expect(cards(fixture).sort()).toEqual(['Jansen_Leg', 'Walking_Pair']);
 
     // The words are in the description, not the name.
-    search(fixture, 'welded rider');
+    search(fixture, 'through its bearings');
     fixture.detectChanges();
-    expect(cards(fixture)).toEqual(['Scotch_Yoke']);
+    expect(cards(fixture)).toEqual(['Scotch_Yoke_Rod']);
 
     search(fixture, 'gearbox');
     fixture.detectChanges();
@@ -178,6 +186,81 @@ describe('library dialog', () => {
     (fixture.nativeElement.querySelector('.emptyState button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(cards(fixture).length).toBeGreaterThan(0);
+  });
+
+  it('offers the one that is missing after the last card', () => {
+    const fixture = open();
+    chip(fixture, 'Drawing a Path').click();
+    fixture.detectChanges();
+    const end = fixture.nativeElement.querySelector('.endLine') as HTMLElement;
+    expect(end.textContent?.trim()).toContain('Suggest one that belongs here');
+
+    (end.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    expect(component.view).toBe('suggest');
+    // Filed where the reader was looking.
+    expect(component.draft.controls.section.value).toBe('paths');
+  });
+
+  it('carries a search that found nothing into the title of a suggestion', () => {
+    const fixture = open();
+    search(fixture, 'hoeken');
+    fixture.detectChanges();
+    const offer = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
+        '.emptyState button'
+      )
+    ).find((button) => (button.textContent ?? '').includes('Suggest a Mechanism'));
+    offer!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.draft.controls.title.value).toBe('hoeken');
+  });
+
+  it('keeps the library as it was behind the form, and the draft across a trip back', () => {
+    const fixture = open();
+    const component = fixture.componentInstance;
+    chip(fixture, 'Swing, Lift and Grip').click();
+    fixture.detectChanges();
+    component.suggest();
+    component.draft.controls.title.setValue('Half typed');
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('.browseView') as HTMLElement).hidden).toBe(true);
+
+    component.backToLibrary();
+    fixture.detectChanges();
+    expect(component.category).toBe('swing');
+    expect(cards(fixture)).toContain('Scissor_Lift');
+    component.suggest();
+    expect(component.draft.controls.title.value).toBe('Half typed');
+  });
+
+  it('keeps a draft when the library closes, for the next time it opens', () => {
+    const first = open();
+    first.componentInstance.suggest();
+    first.componentInstance.draft.controls.title.setValue('Kept');
+    first.destroy();
+    const again = open();
+    again.componentInstance.suggest();
+    expect(again.componentInstance.draft.controls.title.value).toBe('Kept');
+  });
+
+  it('starts a new suggestion blank once one has gone', () => {
+    const fixture = open();
+    const component = fixture.componentInstance;
+    component.suggest();
+    component.draft.controls.title.setValue('Sent already');
+    component.onSent({
+      title: 'Sent already',
+      description: 'It went.',
+      credit: '',
+      email: '',
+      still: '',
+    });
+    expect(component.view).toBe('sent');
+    component.backToLibrary();
+    component.suggest();
+    expect(component.draft.controls.title.value).toBe('');
   });
 
   it('counts what each chip would show, including under a search', () => {
@@ -191,9 +274,9 @@ describe('library dialog', () => {
     expect(startCards).toBeGreaterThan(0);
     expect(countOn('Start Here')).toBe(startCards);
 
-    search(fixture, 'cylinder');
+    search(fixture, 'jansen');
     fixture.detectChanges();
     expect(countOn('Start Here')).toBe(0);
-    expect(countOn('Cylinders')).toBeGreaterThan(0);
+    expect(countOn('Drawing a Path')).toBeGreaterThan(0);
   });
 });

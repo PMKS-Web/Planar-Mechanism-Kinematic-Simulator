@@ -40,7 +40,7 @@ export const ForceModes: Story = {
   args: {
     options: ['Static', 'In-motion'],
     label: 'Force analysis type',
-    tooltips: ['Holds the mechanism still', 'Includes the forces of movement'],
+    tooltips: ['Holds the mechanism still', 'Includes inertia'],
   },
 };
 export const ThreeTabs: Story = { args: { options: ['Position', 'Velocity', 'Acceleration'] } };

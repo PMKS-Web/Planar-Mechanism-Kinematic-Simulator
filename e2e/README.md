@@ -123,6 +123,9 @@ Not suites — import them from one.
   `template-linkages.ts` and `dev-templates.ts`: `TEMPLATE_IDS`, `TEMPLATE_LINKAGES`,
   `ALL_LINKAGES` (with the dev drawings) and `assertTemplatesParsed()` for anything that sweeps.
   Never re-parse the source yourself.
+- `card-frame.mjs` — `FRAMED_BY_PICTURE`, the library cards whose still and loop are cropped to
+  their backdrop picture rather than to the mechanism, and `pictureBox(page, id)`, which measures
+  that picture on the grid. `template-thumbnails.mjs` and `template-animations.mjs` both read it.
 - `filmstrip.mjs` — `filmstrip(page, dir, clip)` captures numbered frames (`shot(tag)`, or
   `during(everyMs, count, tag, work)` across an animation); `contactSheet(pattern, out)` tiles
   them into one image. Anything that animates or responds to a drag needs a filmstrip, not a
@@ -151,6 +154,9 @@ Not suites — import them from one.
   on arrival at an address (empty, a Watt six-bar, a Jansen leg, a phone) and on opening a card
   from the library, and fails any uncovered frame whose matrix is not the one the canvas settles
   on. The boot splash and the overlay each used to lift before the fit.
+- `fit-keeps-grid.mjs` — pressing Fit to view or Fit full motion, from the keyboard so no pointer
+  event follows, never leaves the canvas blank: the grid may be gone for the render the fit
+  measures in and no longer, on an empty grid and on a Watt six-bar.
 - `full-tour.mjs` — panels, templates, settings, share URL, help, and a fresh load at phone size.
   Fails on a NaN degrees of freedom, a page wider than its viewport, a Save that starts no
   download, or a template dialog that will not close. Needs installed Chrome (`PMKS_CHROME`).
@@ -251,6 +257,9 @@ Not suites — import them from one.
 
 ### Links, holds, locks and labels
 
+- `link-mass-fields.mjs` — a link's Mass Settings: `CoM measured from` with its help mark after
+  "from", choices that name a point, picking a joint re-describing rather than moving the point,
+  and `Inertia` on one line.
 - `link-holds.mjs` — holding a bar's length or angle: the menu rows, the chip, the padlocks, the
   joint riding its arc, a joint two holds pin down refusing with a Release button, and undo
   taking the hold off. The same for a cylinder's mounts.
@@ -362,7 +371,8 @@ Not suites — import them from one.
 ### Analysis modes and machines
 
 - `analysis-setup.mjs` — pressing an analysis mode that cannot be entered opens a list naming the
-  mechanism at fault, the way out, and a button that goes to the part.
+  mechanism at fault, the way out, and a button that goes to the part; mass-table names open Edit
+  at Mass Settings, including from the keyboard and after the section was folded.
 - `analysis-drawing-switches.mjs` — the trace and vector switches under an analysis panel's
   graphs draw on the mechanism and gray in the menu's own words.
 - `analysis-audit.mjs` — every analysis panel on every template for every part: blank graphs,
@@ -371,9 +381,11 @@ Not suites — import them from one.
 - `template-graphs.mjs` — every template's kinematic graphs read as numbers and cross-checked:
   position against solved joints, velocity and acceleration against difference quotients. Slow;
   `PMKS_ONLY=4-Bar,Slider_Crank` narrows it.
+- `panel-folds.mjs` — a joint's Edit sections and its kinematics graphs keep what the reader folded
+  across mode switches and selections.
 - `mechanism-panel.mjs` — the machines with nothing selected: the All mechanisms list, picking one
   (from a row, the setup drawer's name), the others fading, the drawer folding to it and opening
-  on arrival when a machine cannot run, a part link keeping the drawer open in Edit, and a
+  on arrival when a machine cannot run, part links keeping either analysis mode and playback, with the setup drawer staying open, and a
   rename riding the URL.
 - `two-mechanisms.mjs` — two machines in one drawing: a row each in the transport, a section each
   in the setup drawer, and a sync toggle that decouples them.
@@ -454,7 +466,11 @@ Not suites — import them from one.
 
 - `template-open.mjs` — a template loads in place on an empty grid, and offers new tab / replace /
   cancel over existing work, with replace undoable.
-- `template-backdrops.mjs` — the real-life library section and the picture each card opens on.
+- `template-backdrops.mjs` — the Real Machines library section and the picture each card opens on.
+- `suggest-mechanism.mjs` — the library's side rail and end-of-section line, and Suggest a
+  Mechanism end to end: what Send refuses and where the focus goes, a message drawn over the
+  dialog, a failed and a good send (the key function and EmailJS are answered by the suite, so no
+  mail goes out), the pasted-link states, and the way back to the library as it was left.
 - `synthesis-redesign.mjs` — Synthesis end to end: place three positions, generate, browse and
   compare candidates, preview, insert, undo, and survive a shared link.
 - `export-flow.mjs` — the Export Data drawer end to end, including reading the downloaded file.
@@ -536,3 +552,5 @@ Not suites — import them from one.
   without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
   gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
   filmstrip in `artifacts/analysis-tabs/`.
+
+- `mechanism-audit.mjs` — retained audit controls for immobile welded geometry, clockwise six-second cycle with filmstrip, tiny degree-acceleration graph and disconnected Jansen negative control.

@@ -121,8 +121,7 @@
           }
           @for (fact of overview.facts(index, editable()); track fact.label) {
             @if (fact.label === 'Input joint' && drivenJoint; as joint) {
-              <!-- Click to edit, as everywhere: the speed and direction are
-                   the joint's, and its panel is where they change. -->
+              <!-- Select the joint in this mode, just like a part on the grid. -->
               <div class="fact">
                 <span class="factLabel">{{ fact.label }}</span>
                 <span class="factValue"

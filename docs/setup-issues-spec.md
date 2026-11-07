@@ -262,10 +262,11 @@ What changed on the way:
   hover), `--brand-pale` (part link hover), `--brand-wash` (the panel), `--brand-light` (the fix
   dot), `--border-rule`, and the text tiers. The explanation's `#3c4043` is `--text-primary`, the
   nearest tier. The section header is 44px here; the shared `section-header` mixin stays 40px.
-- **A part link switches to Edit and selects the part**, as the Go To buttons did, because most
-  fixes (delete, weld, attach) are Edit-mode edits. Pointing lights the part with the grid's
-  list-pointing mark, whatever is selected and over the gray an analysis mode draws a machine
-  that can't run in (`MechanismService.linkedPart`). The export drawer's pointing still defers to
+- **A part link selects the part in the current analysis mode**, or opens Edit when pressed
+  elsewhere. The Masses table explicitly opens Edit at the body’s mass fields. A fix that needs
+  Edit leaves that mode switch to the reader. Pointing lights the part
+  with the grid's list-pointing mark, whatever is selected and over the gray an analysis mode draws
+  a machine that can't run in (`MechanismService.linkedPart`). The export drawer's pointing still defers to
   a selection (`hoveredPart`).
 - **An issue alone in its section starts with its fixes open.** With nothing to scan past, the
   fixes are what the reader came for. Several issues still start shut, and a second issue arriving

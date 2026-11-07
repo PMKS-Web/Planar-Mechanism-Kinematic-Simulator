@@ -8,6 +8,8 @@ import { Coord } from '../../model/coord';
 import { RealLink } from '../../model/link';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { LengthUnit } from '../../model/utils';
+import { RightPanelComponent } from '../right-panel/right-panel.component';
+import { SettingsFocusService } from '../../services/settings-focus.service';
 
 // Found by building a linkage with a real mouse rather than with dispatched
 // events: the very first bar anybody draws is not grounded, mobility is not a
@@ -124,5 +126,39 @@ describe('what the strip calls a body holding a value', () => {
     );
     // And not the id, which names a joint the reader was never shown.
     expect(component.status).not.toContain(`Link ${rod.id}`);
+  });
+});
+
+describe('the units readout', () => {
+  afterEach(() => {
+    RightPanelComponent.isOpen = false;
+    RightPanelComponent.openTab = 0;
+  });
+
+  it('opens Settings at its unit choices when clicked', () => {
+    TestBed.configureTestingModule({ imports: [BottombarComponent] });
+    const fixture = TestBed.createComponent(BottombarComponent);
+    fixture.detectChanges();
+    const focus = TestBed.inject(SettingsFocusService);
+
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('button.units')!
+      .click();
+
+    expect(RightPanelComponent.isOpen).toBe(true);
+    expect(RightPanelComponent.openTab).toBe(1);
+    expect(focus.unitsWanted()).toBe(true);
+  });
+
+  it('leaves Settings open when it is already showing', () => {
+    TestBed.configureTestingModule({ imports: [BottombarComponent] });
+    const fixture = TestBed.createComponent(BottombarComponent);
+    RightPanelComponent.isOpen = true;
+    RightPanelComponent.openTab = 1;
+
+    fixture.componentInstance.openUnitSettings();
+
+    expect(RightPanelComponent.isOpen).toBe(true);
+    expect(RightPanelComponent.openTab).toBe(1);
   });
 });

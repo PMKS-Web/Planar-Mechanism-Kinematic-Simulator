@@ -68,9 +68,7 @@
         <app-tabs-block
           [options]="showKinematic ? ['Rotation', 'Center of mass'] : ['Static', 'In-motion']"
           [selected]="panelTabIndex"
-          [tooltips]="
-            showKinematic ? [] : ['Holds the mechanism still', 'Includes the forces of movement']
-          "
+          [tooltips]="showKinematic ? [] : ['Holds the mechanism still', 'Includes inertia']"
           [label]="showKinematic ? 'Link kinematics' : 'Force analysis type'"
           idPrefix="analysis"
           [panelIds]="['analysis-tabpanel-0', 'analysis-tabpanel-1']"

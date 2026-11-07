@@ -1,6 +1,6 @@
 import { Coord } from './coord';
 import { BAR_HALF_SCALE } from './joint-marks';
-import { placeSplitPins } from './split-placement';
+import { chooseStayingPin, placeSplitPins } from './split-placement';
 
 const SCALE = 140;
 const AT = new Coord(0, 0);
@@ -88,5 +88,25 @@ describe('placeSplitPins', () => {
     const placed = placeSplitPins(AT, bars(45, 135), SCALE, undefined, { angle: 0 });
     placed.forEach((pin) => expect(Math.abs(pin.y)).toBeGreaterThanOrEqual(CLEARANCE - 1e-6));
     expect(distance(placed[0], placed[1])).toBeGreaterThanOrEqual(CLEARANCE - 1e-6);
+  });
+});
+
+describe('chooseStayingPin', () => {
+  it('keeps the first body when the others clear around it', () => {
+    expect(chooseStayingPin(AT, bars(0, 90), SCALE)).toBe(0);
+  });
+
+  it('keeps a later body when only its staying lets the others clear', () => {
+    // A crosshead: the main rod comes in nearly in line, and the piston rod's
+    // slide pin is nearer than one clearance, so its bar to that pin always
+    // passes the crosshead within reach unless it is the body that stays.
+    const mainRod = { ends: [toward(176)] };
+    const pistonRod = { ends: [toward(0, 0.75 * CLEARANCE), toward(0)] };
+    const pins = [mainRod, pistonRod];
+    expect(chooseStayingPin(AT, pins, SCALE)).toBe(1);
+    const placed = placeSplitPins(AT, pins, SCALE, 1);
+    expect(placed[1]).toBe(AT);
+    expect(distance(placed[0], AT)).toBeGreaterThanOrEqual(CLEARANCE - 1e-6);
+    expect(distance(placed[0], AT)).toBeLessThan(CLEARANCE + 0.05 * SCALE);
   });
 });

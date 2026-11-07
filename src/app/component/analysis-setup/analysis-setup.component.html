@@ -62,50 +62,57 @@
           </button>
         </div>
         @if (massesOpen) {
-          <div class="massTable" [class.readonly]="!massEditable()">
+          <div class="massTable" massPartLinks [class.readonly]="!massEditable()">
             <div class="massRow head">
               <span>Body</span>
               <span>Mass</span>
-              <span>Moment of inertia</span>
-              <span></span>
+              <span>Mass moment of inertia</span>
             </div>
-            @for (row of massRows(); track row.body.id) {
-              <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
-                <!-- The column ellipses, and on a phone it is narrow enough
-                     that "Link Drag crank" and "Link Drag coupler" both read
-                     as "Link D…". The full name has to be reachable. -->
-                <span class="massName" [attr.title]="row.label">{{ row.label }}</span>
-                <input-block
-                  class="cellField"
-                  cell
-                  [formGroup]="tableForm"
-                  [_formControl]="massControlName(row)"
-                />
-                <input-block
-                  class="cellField"
-                  cell
-                  [formGroup]="tableForm"
-                  [_formControl]="moiControlName(row)"
-                  [class.derived]="row.isBlock || moiIsAuto(row)"
-                >
-                  @if (massEditable() && !row.isBlock && row.body.mass > 0) {
-                    <span fieldSuffix class="stateSuffix">
-                      <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
-                    </span>
-                  }
-                </input-block>
-                @if (massEditable()) {
-                  <button
-                    class="rowJump"
-                    title="Open this link in Edit mode"
-                    (click)="goTo(row.body)"
+            @for (group of massGroups(); track $index) {
+              @if (group.label) {
+                <div class="massGroup">{{ group.label }}</div>
+              }
+              @for (row of group.rows; track row.body.id) {
+                <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
+                  <!-- Pointing at the name lights the body on the grid, and
+                       pressing it selects the body in Edit at its mass
+                       fields (`massPartLinks`). The column
+                       ellipses, and on a phone it is narrow enough that "Link
+                       Drag crank" and "Link Drag coupler" both read as "Link
+                       D…", so the full name stays reachable. -->
+                  <span class="massName" [attr.title]="row.label"
+                    ><part-link cell [part]="row.body">{{ row.label }}</part-link></span
                   >
-                    <mat-icon>arrow_outward</mat-icon>
-                  </button>
-                } @else {
-                  <span></span>
-                }
-              </div>
+                  <input-block
+                    class="cellField"
+                    cell
+                    [formGroup]="tableForm"
+                    [_formControl]="massControlName(row)"
+                  />
+                  @if (row.isBlock) {
+                    <span
+                      class="pointMass"
+                      role="note"
+                      [attr.title]="pointMassNote"
+                      [attr.aria-label]="pointMassNote"
+                    ></span>
+                  } @else {
+                    <input-block
+                      class="cellField"
+                      cell
+                      [formGroup]="tableForm"
+                      [_formControl]="moiControlName(row)"
+                      [class.derived]="moiIsAuto(row)"
+                    >
+                      @if (massEditable() && row.body.mass > 0) {
+                        <span fieldSuffix class="stateSuffix">
+                          <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                        </span>
+                      }
+                    </input-block>
+                  }
+                </div>
+              }
             }
             @if (massEditable()) {
               <div class="dotLegend">

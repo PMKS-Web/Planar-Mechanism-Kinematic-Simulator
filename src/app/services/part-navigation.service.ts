@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { PartLinkTarget } from '../component/BLOCKS/part-link/part-link-target';
+import { PartLinkIntent, PartLinkTarget } from '../component/BLOCKS/part-link/part-link-target';
 import { Joint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
 import { SelectedTabService, TabID } from '../selected-tab.service';
@@ -10,11 +10,11 @@ import { MechanismService } from './mechanism.service';
  * What a `part-link` does in the app: pointing lights the part on the grid,
  * and pressing takes the reader to it.
  *
- * Pressing switches to Edit before selecting, because a part link names a part
- * the reader is being asked to change, and Edit is the mode whose panel changes
- * it. It is deliberately not an undo step: being shown where a part is has not
- * changed the mechanism, and Undo should take back the last edit rather than
- * the last time the reader looked at something.
+ * In an analysis mode, selecting opens that part's readings without leaving
+ * the mode or pausing playback. An explicit edit intent (the Masses table)
+ * opens Edit, as does selecting outside analysis. Looking at a part is
+ * deliberately not an undo step: Undo should take back the last edit rather
+ * than the last time the reader looked at something.
  */
 @Injectable({ providedIn: 'root' })
 export class PartNavigationService implements PartLinkTarget {
@@ -31,9 +31,9 @@ export class PartNavigationService implements PartLinkTarget {
     this.mechanism.linkedPart = part;
   }
 
-  open(part: Joint | Link): void {
+  open(part: Joint | Link, intent: PartLinkIntent = 'inspect'): void {
     this.mechanism.linkedPart = undefined;
-    this.tabs.setTab(TabID.EDIT);
+    if (intent === 'edit' || !this.tabs.isAnalysisMode()) this.tabs.setTab(TabID.EDIT);
     if (part instanceof RealJoint || part instanceof RealLink) {
       this.activeObj.updateSelectedObj(part);
     }
