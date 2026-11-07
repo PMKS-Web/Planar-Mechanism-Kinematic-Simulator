@@ -37,8 +37,11 @@ const leftOut = (id: string): boolean =>
 describe('PMKS+ mobility against the oracle', () => {
   const all = rows();
 
-  it('reads every published machine', () => {
+  it('reads every published machine, and settles the second order on each', () => {
     expect(all.length).toBeGreaterThan(200);
+    // An unsettled count is only a lower bound; none is published today, and
+    // one that appears is compared by its bounds and wants a look.
+    expect(all.filter((row) => !row.oracle.settled).map((row) => row.id)).toEqual([]);
   });
 
   for (const row of all) {
@@ -51,7 +54,11 @@ describe('PMKS+ mobility against the oracle', () => {
       expect(
         { first: row.pmks.firstOrder, second: row.pmks.secondOrder },
         `PMKS+ against the oracle (Gruebler counted ${row.pmks.counted})`
-      ).toEqual({ first: row.oracle.firstOrder, second: row.oracle.secondOrder });
+      ).toEqual({
+        first: row.oracle.firstOrder,
+        second: row.oracle.settled ? row.oracle.secondOrder : row.pmks.secondOrder,
+      });
+      expect(row.agree, "within the oracle's bounds where its count is not settled").toBe(true);
     });
   }
 

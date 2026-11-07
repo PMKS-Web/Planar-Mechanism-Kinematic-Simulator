@@ -28,7 +28,6 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import analysis
-from .mobility import surviving_flexes
 from .exudyn_model import ExudynModel, block_id
 from .problem import GROUND
 
@@ -80,21 +79,9 @@ def driver_gradient(model: ExudynModel, q) -> np.ndarray:
 
 
 def tangent(model: ExudynModel, q, previous=None) -> np.ndarray:
-    """The unit direction of the configuration curve at q.
-
-    Where the undriven Jacobian leaves more than one direction free to first
-    order, only one of them survives to second order in a machine the oracle
-    walks (mobility.py), and that is the curve's.
-    """
     _, j = _undriven(model, q)
-    _, s, vt = np.linalg.svd(j)
-    free = vt.shape[0] - int(np.sum(s > SINGULAR_RATIO * s[0]))
-    if free > 1:
-        rows = [r for r in range(model.m) if r not in model.driver_rows]
-        flexes = surviving_flexes(model, q, rows)
-        t = flexes[0] if flexes.shape[0] == 1 else vt[-1]
-    else:
-        t = vt[-1]
+    _, _, vt = np.linalg.svd(j)
+    t = vt[-1]
     if previous is not None:
         if t @ previous < 0:
             t = -t

@@ -95,9 +95,9 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
   {
     problem: 'gallery.motiongen-gripper.m1',
     kind: 'oracle-limitation',
-    what: { quantities: ['position', 'com'] },
+    what: 'runs',
     reason:
-      "Each jaw rides two parallel slots at one height, so the carriage and jaws can turn together at first order and not at second, and both solvers now agree it runs and how far. That turn is held only weakly at second order, so a converged pose is fixed along it to about the square root of its residual over that curvature: re-solving the oracle's pose at k = -11 from a residual of 1.7e-15 moves it 8.7e-6 of the machine's size, and PMKS+'s differs by 3.6e-7 there, against a budget of 1e-7. Its rates are past the conditioning limit everywhere.",
+      "Each jaw rides two parallel slots at one height, so the carriage and jaws can turn together at first order and not at second; both solvers agree it has one freedom (oracle-mobility.spec.ts). The oracle does not walk a machine with a freedom that dies at second order: its poses are held along that turn only to the square root of their residual over its curvature, about 1e-5 of the machine's size, and do not reproduce across platforms to the digits a reference keeps. Its rates are past the conditioning limit throughout in any case.",
     review: 'If the oracle learns to solve a pose along a weakly held second-order direction.',
   },
   {

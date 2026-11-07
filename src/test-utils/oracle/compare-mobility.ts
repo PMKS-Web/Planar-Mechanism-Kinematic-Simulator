@@ -22,7 +22,8 @@ export interface MobilityComparison {
     /** Gruebler's count, before the geometry has its say. */
     counted: number;
   };
-  oracle: { firstOrder: number; secondOrder: number };
+  /** `secondOrder` is a lower bound where `settled` is false. */
+  oracle: { firstOrder: number; secondOrder: number; settled: boolean };
   agree: boolean;
 }
 
@@ -50,7 +51,13 @@ export function compareMobility(
   const oracle = {
     firstOrder: reference.mobility.freedoms,
     secondOrder: reference.mobility.second_order_freedoms,
+    settled: reference.mobility.second_order_settled,
   };
-  const agree = pmks.firstOrder === oracle.firstOrder && pmks.secondOrder === oracle.secondOrder;
+  // Where the oracle's second-order count is only a lower bound, PMKS+'s
+  // must reach it and may not exceed the first-order count.
+  const second = oracle.settled
+    ? pmks.secondOrder === oracle.secondOrder
+    : pmks.secondOrder >= oracle.secondOrder && pmks.secondOrder <= oracle.firstOrder;
+  const agree = pmks.firstOrder === oracle.firstOrder && second;
   return { pmks, oracle, agree };
 }

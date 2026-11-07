@@ -45,6 +45,12 @@ export interface OracleReference {
     second_order_freedoms: number;
     /** Of `driven_freedoms`, likewise. */
     second_order_driven_freedoms: number;
+    /**
+     * False where `second_order_freedoms` is only a lower bound: at a
+     * bifurcation the surviving flexes are not a subspace (mobility.py).
+     */
+    second_order_settled: boolean;
+    second_order_driven_settled: boolean;
   };
   sweep: null | {
     driver: {
