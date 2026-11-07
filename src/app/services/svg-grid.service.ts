@@ -860,17 +860,27 @@ export class SvgGridService {
     // checked — done inside it, Angular rightly calls that a value that changed
     // after it was checked. A zero-delay timer is a fresh change-detection
     // cycle, which is all that was ever wanted from the old one-second wait.
-    afterNextRender(() => setTimeout(() => this.fitToLinkage(animate), 0), {
-      injector: this.injector,
-    });
+    this.afterRenderInZone(() => this.fitToLinkage(animate));
   }
 
   /** Frame every solved pose, including paths that leave the start-pose view. */
   scaleToFitFullMotion(animate = true): void {
     this.settingsService.tempGridDisable = true;
-    afterNextRender(() => setTimeout(() => this.fitToFullMotion(animate), 0), {
-      injector: this.injector,
-    });
+    this.afterRenderInZone(() => this.fitToFullMotion(animate));
+  }
+
+  /**
+   * Run a fit a task after the next render, back inside Angular.
+   *
+   * Angular runs afterNextRender callbacks outside its zone, so a timer started
+   * there is one change detection never hears end. The fit's first act is to
+   * show the grid again, and over a drawing the view's own move happened to
+   * redraw it; over an empty grid nothing moves, and the canvas stayed blank
+   * until the pointer next stirred.
+   */
+  private afterRenderInZone(fit: () => void): void {
+    const run = () => (this.zone ? this.zone.run(fit) : fit());
+    afterNextRender(() => setTimeout(run, 0), { injector: this.injector });
   }
 
   /**

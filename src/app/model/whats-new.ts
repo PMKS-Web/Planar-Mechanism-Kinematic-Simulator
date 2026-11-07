@@ -45,7 +45,7 @@ export const WHATS_NEW: ReleaseNote[] = [
     title: 'Force analysis',
     body:
       'Give the bodies mass, hang loads on them, and read the reaction on each body at each ' +
-      'joint — held still, or in motion with the forces of movement included.',
+      'joint. Static holds the mechanism still, and In-motion includes inertia.',
   },
   {
     icon: 'compress',
@@ -63,7 +63,7 @@ export const WHATS_NEW: ReleaseNote[] = [
   },
   {
     icon: 'download',
-    title: 'Take the work away',
+    title: 'Export data and drawings',
     body:
       'The numbers as a CSV or an Excel workbook, the graphs as a printable report, and the ' +
       'geometry as DXF or SVG with a table of joints and links, for CAD.',

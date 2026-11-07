@@ -123,9 +123,9 @@ function unbalanced(status: ForceAnalysisStatus, message: string | undefined): S
     const fact = message?.split(/(?<=\.)\s/)[0];
     return {
       ...base,
-      summary: prose`${fact ?? "A mass, moment of inertia or force value isn't a usable number."}`,
+      summary: prose`${fact ?? "A mass, mass moment of inertia or force value isn't a usable number."}`,
       explain:
-        'Force analysis needs a real number for every mass, moment of inertia and force before it can balance them.',
+        'Force analysis needs a real number for every mass, mass moment of inertia and force before it can balance them.',
       fixes: [prose`Type the value again in the Masses table`],
     };
   }

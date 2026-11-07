@@ -89,6 +89,7 @@ import { MOBILITY_GALLERY } from './mobility-fixtures';
 import { STUDENT_MISTAKE_GALLERY } from './student-mistake-fixtures';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import type { LengthUnit } from '../../app/model/unit-enums';
 
 /**
  * Every mechanism the verification suite asserts on, as something a reviewer
@@ -118,6 +119,7 @@ export {
 import { DEFAULT_OBJECT_SCALE, fixturePayload, type PublishedSpeed } from './fixture-payload';
 import { SPLIT_JOINT_GALLERY } from './split-joint-gallery';
 import { PART2_LIBRARY_GALLERY } from './part2-library-gallery';
+import { LIBRARY_CARD_GALLERY } from './library-card-gallery';
 
 export interface GalleryEntry {
   name: string;
@@ -144,6 +146,8 @@ export interface GalleryEntry {
    * nothing at a speed nobody can follow.
    */
   speed?: PublishedSpeed;
+  /** What the fixture's numbers are read in. Omitted means centimeters. */
+  lengthUnit?: LengthUnit;
   fixture: MechanismFixture;
 }
 
@@ -164,6 +168,7 @@ const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
   ...PART2_LIBRARY_GALLERY,
+  ...LIBRARY_CARD_GALLERY,
   {
     name: 'Punch press',
     purpose:
@@ -825,7 +830,15 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
  */
 export function galleryMarkdown(baseUrl: string): string {
   const rows = FIXTURE_GALLERY.map((entry) => {
-    const link = `${baseUrl}/?${fixturePayload(entry.fixture, entry.objectScale, entry.speed)}`;
+    const payload = fixturePayload(
+      entry.fixture,
+      entry.objectScale,
+      entry.speed,
+      'as-built',
+      undefined,
+      entry.lengthUnit
+    );
+    const link = `${baseUrl}/?${payload}`;
     const slot = entry.floatingSlot ? 'yes' : '—';
     const slide = entry.slide ? 'yes' : '—';
     return `| [${entry.name}](${link}) | ${entry.purpose} | ${slot} | ${slide} | \`${entry.spec}\` |`;

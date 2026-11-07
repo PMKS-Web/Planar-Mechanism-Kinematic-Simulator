@@ -17,6 +17,12 @@ import {
 export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Whitworth_Quick_Return: 'Whitworth proportions',
   Scotch_Yoke: 'Scotch yoke',
+  Scotch_Yoke_Rod: 'Scotch yoke on a guided rod',
+  Four_Bar: 'Four-bar with a coupler point',
+  Locked_Four_Bar: 'Four-bar with fixed lengths',
+  Parallelogram: 'Parallelogram',
+  Watt_Straight_Line: 'Watt straight-line mechanism',
+  Dwell_Six_Bar: 'Six-bar with a dwell',
   Cylinder_Boom: 'Cylinder-driven boom',
   Radial_Engine: 'Radial engine, five cylinders',
   Chebyshev_Straight_Line: 'Chebyshev straight-line linkage',
@@ -27,12 +33,11 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Offset_Mount_Hatch: 'Offset-mount hatch',
   Scissor_Lift: 'Scissor lift',
   Shaper_Quick_Return: "Shaper's quick-return drive",
-  Pedaling_Leg: 'Leg on a bicycle crank',
   Oscillating_Fan: 'Oscillating fan',
-  Pumpjack: 'Walking-beam pumping unit',
+  Pumpjack: 'Pumpjack, driven at the crank',
   Punch_Press: 'Punch press',
   Derrick_Crane: 'Derrick crane',
-  Toggle_Clamp: 'Toggle clamp',
+  Toggle_Clamp: 'Toggle clamp, in inches',
   Offset_Load_Rocker: 'Rocker with an offset load',
   Bell_Crank: 'Bell crank',
   Flywheel_Engine: 'Engine with a flywheel',
@@ -49,6 +54,9 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Slotted_Tool_Drive: 'Slotted tool drive',
   Four_Bar_Inversions: 'Four-bar inversions',
   Slider_Crank_Inversions: 'Slider-crank inversions',
+  Locking_Pliers: 'Locking pliers',
+  Double_Wishbone: 'Double-wishbone suspension',
+  Steam_Locomotive: 'Steam locomotive',
 };
 
 /**
@@ -121,9 +129,83 @@ const FORCE_STUDY_SCALING = { mass: 100, load: 0.01 };
 const FORCE_STUDY_BODIES: Record<string, Partial<PublishedLoading>> = {
   Punch_Press: { offsetCom: { BC: { between: ['B', 'C'], at: 0.35 } } },
   Derrick_Crane: { offsetCom: { OCT: { between: ['O', 'T'], at: 0.4 } } },
-  Toggle_Clamp: { offsetCom: { HE: { between: ['H', 'E'], at: 0.35 } } },
+  // Drawn in inches, and its fixture already states pounds and pounds-force:
+  // the hundredfold and the hundredth are for the centimeter studies' grams
+  // and newtons, and its numbers are those, converted.
+  Toggle_Clamp: { mass: 1, load: 1, offsetCom: { HE: { between: ['H', 'E'], at: 0.35 } } },
   Offset_Load_Rocker: {},
   Crane_Two_Loads: { keepMoi: ['OCT'] },
+};
+
+/**
+ * What each template's machines are called, each name keyed by one of that
+ * machine's own joints (its input, here).
+ *
+ * Unnamed, a template's machine is "Mechanism 1" in the panel and "M1" on its
+ * playback row, which says nothing a reader can use; and a card holding four
+ * machines is four codes to match against four drawings by eye. So each is
+ * named the way an author would name it: the machine itself for one, and what
+ * tells the machines apart for several -- the inversions say which bar is
+ * grounded, because that is the lesson.
+ *
+ * A name has no comma, period or apostrophe: the first two are the URL's
+ * separators, and the payload sits in single quotes in template-linkages.ts.
+ * So it is "Watt linkage", not "Watt's". `template-machine-names.spec.ts` holds
+ * every name to the rule a typed one meets.
+ */
+export const LIBRARY_TEMPLATE_NAMES: Record<LibraryTemplateID, Record<string, string>> = {
+  Whitworth_Quick_Return: { A: 'Whitworth quick return' },
+  Scotch_Yoke: { A: 'Scotch yoke' },
+  Scotch_Yoke_Rod: { A: 'Scotch yoke' },
+  Four_Bar: { A: 'Four-bar' },
+  Locked_Four_Bar: { A: 'Four-bar' },
+  Parallelogram: { A: 'Parallelogram' },
+  Watt_Straight_Line: { A: 'Watt linkage' },
+  Dwell_Six_Bar: { A: 'Dwell six-bar' },
+  Cylinder_Boom: { P: 'Boom' },
+  Radial_Engine: { O: 'Radial engine' },
+  Chebyshev_Straight_Line: { G: 'Chebyshev linkage' },
+  Windshield_Wiper: { O: 'Windshield wiper' },
+  Elliptical_Crank: { A: 'Elliptical crank' },
+  Jansen_Leg: { O: 'Jansen leg' },
+  Hydraulic_Crosshead: { S: 'Hydraulic crosshead' },
+  Offset_Mount_Hatch: { S: 'Bracketed hatch' },
+  Scissor_Lift: { C: 'Scissor lift' },
+  Shaper_Quick_Return: { A: 'Shaper drive' },
+  Oscillating_Fan: { C: 'Oscillating fan' },
+  Pumpjack: { A: 'Pumpjack' },
+  Punch_Press: { A: 'Punch press' },
+  Derrick_Crane: { G: 'Derrick crane' },
+  Toggle_Clamp: { H: 'Toggle clamp' },
+  Offset_Load_Rocker: { A: 'Loaded rocker' },
+  Bell_Crank: { A: 'Bell crank' },
+  Flywheel_Engine: { A: 'Engine' },
+  Elliptical_Trammel: { A: 'Elliptical trammel' },
+  Peaucellier: { C: 'Peaucellier linkage' },
+  Pantograph: { G: 'Pantograph' },
+  Double_Butterfly: { A: 'Double butterfly' },
+  Crane_Two_Loads: { G: 'Crane' },
+  Three_Machines: { A: 'Drag link', E: 'Slider-crank', H: 'Crank-rocker' },
+  Walking_Pair: { A: 'Left leg', I: 'Right leg' },
+  Straight_Line_Pair: { A: 'Chebyshev (approximate)', H: 'Peaucellier (exact)' },
+  Pumping_Field: { A: 'Pumpjack 1', H: 'Pumpjack 2', O: 'Pumpjack 3' },
+  Reciprocating_Saw: { A: 'Reciprocating saw' },
+  Slotted_Tool_Drive: { A: 'Slotted tool drive' },
+  Four_Bar_Inversions: {
+    A: 'Crank-rocker (L4 grounded)',
+    E: 'Crank-rocker (L2 grounded)',
+    I: 'Double crank (L1 grounded)',
+    M: 'Double rocker (L3 grounded)',
+  },
+  Slider_Crank_Inversions: {
+    A: 'Engine (L1 grounded)',
+    F: 'Quick return (L2 grounded)',
+    J: 'Oscillating cylinder (L3 grounded)',
+    P: 'Pendulum pump (L4 grounded)',
+  },
+  Locking_Pliers: { A: 'Locking pliers' },
+  Double_Wishbone: { A: 'Double wishbone' },
+  Steam_Locomotive: { D: 'Steam locomotive' },
 };
 
 export function libraryTemplateMasses(id: LibraryTemplateID): PublishedMasses {

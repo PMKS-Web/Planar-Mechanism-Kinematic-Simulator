@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="667" viewBox="0 0 1060 667">
+  <!--
+    A small steam tank engine seen from the side, drawn for the Steam
+    Locomotive template to be traced over. The cylinder and the valve chest
+    above it are cut open, so the piston and the piston valve show inside;
+    the wheels, rods and valve gear are the template's own.
+
+    Laid out so that a model point (mx, my), in meters, lands at
+    ((mx + 2.95) * 100, (5.2 - my) * 100), which puts the template's axles on the
+    hubs drawn here when the picture is placed 10.6 m wide centered at
+    (2.35, 1.865). Full size: the top of the rail is y = 0. Drawn for this app;
+    no part of it is copied from elsewhere.
+  -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6eaf0"/>
+      <stop offset="1" stop-color="#c2c9d4"/>
+    </linearGradient>
+    <linearGradient id="boiler" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1f3f7"/>
+      <stop offset="0.45" stop-color="#d3d9e2"/>
+      <stop offset="1" stop-color="#9ea7b4"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b7480"/>
+      <stop offset="1" stop-color="#454c57"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef1f5"/>
+      <stop offset="1" stop-color="#a7b0bc"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9aa3af"/>
+      <stop offset="1" stop-color="#7c8592"/>
+    </linearGradient>
+    <pattern id="ballast" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M0 0 V12" stroke="#9aa2ae" stroke-width="2"/>
+    </pattern>
+    <pattern id="section" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#c9d0da"/>
+      <path d="M0 0 V8" stroke="#5d6674" stroke-width="1.5"/>
+    </pattern>
+    <style>
+      .part { stroke: #333b47; stroke-width: 2.5; stroke-linejoin: round; }
+      .line { fill: none; stroke: #333b47; stroke-width: 2.5; stroke-linecap: round; }
+      .thin { fill: none; stroke: #5d6674; stroke-width: 1.5; }
+      .rivets { fill: none; stroke: #5d6674; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 0 9; }
+      .pin { fill: #f4f6f9; stroke: #333b47; stroke-width: 2.5; }
+    </style>
+  </defs>
+  <!-- The track: ballast, sleepers and the rail -->
+  <rect fill="url(#ballast)" x="0" y="540.0" width="1060" height="127.0"/>
+  <rect class="part" fill="url(#dark)" x="10.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="72.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="134.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="196.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="258.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="320.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="382.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="444.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="506.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="568.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="630.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="692.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="754.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="816.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="878.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="940.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="url(#dark)" x="1002.0" y="527.0" width="26.0" height="15.0" rx="0.0"/>
+  <rect class="part" fill="#7c8592" x="0.0" y="520.0" width="1060.0" height="7.0" rx="0.0"/>
+  <path class="line" d="M0 520.0 H1060"/>
+  <!-- The frame plates, behind the wheels, with an axle box at each axle -->
+  <path class="part" fill="url(#frame)" d="M60.0 470.0 L795.0 470.0 L795.0 482.0 L985.0 482.0 L985.0 358.0 L60.0 358.0 Z"/>
+  <rect class="part" fill="url(#dark)" x="275.0" y="415.0" width="40.0" height="60.0" rx="3.0"/>
+  <path class="thin" d="M268.0 480.0 L268.0 358.0 M322.0 480.0 L322.0 358.0"/>
+  <rect class="part" fill="url(#dark)" x="475.0" y="415.0" width="40.0" height="60.0" rx="3.0"/>
+  <path class="thin" d="M468.0 480.0 L468.0 358.0 M522.0 480.0 L522.0 358.0"/>
+  <rect class="part" fill="url(#dark)" x="675.0" y="415.0" width="40.0" height="60.0" rx="3.0"/>
+  <path class="thin" d="M668.0 480.0 L668.0 358.0 M722.0 480.0 L722.0 358.0"/>
+  <circle class="part" fill="#6b7480" cx="395.0" cy="400.0" r="16"/>
+  <!-- The bracket the expansion link turns on, between the driving and front wheels -->
+  <path class="part" fill="url(#metal)" d="M575.0 358.0 L615.0 358.0 L608.0 426.0 L582.0 426.0 Z"/>
+  <path class="thin" d="M595.0 363.0 L595.0 404.0"/>
+  <!-- The footplate, buffer beams and buffers -->
+  <g transform="translate(0 -20)">
+    <rect class="part" fill="url(#metal)" x="55.0" y="368.0" width="940.0" height="22.0" rx="0.0"/>
+    <path class="thin" d="M55.0 378.0 L995.0 378.0"/>
+  </g>
+  <rect class="part" fill="url(#dark)" x="985.0" y="348.0" width="14.0" height="80.0" rx="1.0"/>
+  <rect class="part" fill="url(#dark)" x="45.0" y="348.0" width="14.0" height="80.0" rx="1.0"/>
+  <rect class="part" fill="url(#metal)" x="999.0" y="392.0" width="26.0" height="16.0" rx="0.0"/>
+  <rect class="part" fill="url(#metal)" x="1025.0" y="382.0" width="8.0" height="36.0" rx="3.0"/>
+  <rect class="part" fill="url(#metal)" x="19.0" y="392.0" width="26.0" height="16.0" rx="0.0"/>
+  <rect class="part" fill="url(#metal)" x="11.0" y="382.0" width="8.0" height="36.0" rx="3.0"/>
+  <!-- The cylinder and the valve chest above it, one casting, cut open -->
+  <path class="part" fill="url(#section)" d="M885.0 480.0 L980.0 480.0 L980.0 390.0 L893.0 390.0 L893.0 424.0 L885.0 420.0 Z"/>
+  <rect class="part" fill="#f4f6f9" x="893.0" y="429.0" width="79.0" height="42.0" rx="0.0"/>
+  <rect class="part" fill="#f4f6f9" x="899.0" y="397.5" width="76.0" height="25.0" rx="0.0"/>
+  <path fill="#f4f6f9" stroke="#333b47" stroke-width="2" d="M901.0 430.0 L907.0 430.0 L907.0 421.5 L901.0 421.5 Z"/>
+  <path fill="#f4f6f9" stroke="#333b47" stroke-width="2" d="M961.0 430.0 L967.0 430.0 L967.0 421.5 L961.0 421.5 Z"/>
+  <path class="part" fill="url(#metal)" d="M931.0 390.0 L943.0 390.0 L943.0 350.0 L931.0 350.0 Z"/>
+  <path fill="#f4f6f9" stroke="#333b47" stroke-width="2" d="M934.0 398.0 L940.0 398.0 L940.0 390.0 L934.0 390.0 Z"/>
+  <rect class="part" fill="url(#metal)" x="881.0" y="416.0" width="12.0" height="68.0" rx="2.0"/>
+  <rect class="part" fill="url(#metal)" x="972.0" y="416.0" width="13.0" height="68.0" rx="2.0"/>
+  <rect class="part" fill="url(#metal)" x="975.0" y="390.0" width="10.0" height="37.0" rx="2.0"/>
+  <!-- The guide the valve spindle runs in, behind the valve chest -->
+  <rect class="part" fill="url(#metal)" x="863.0" y="398.0" width="36.0" height="4.0" rx="0.0"/>
+  <rect class="part" fill="url(#metal)" x="863.0" y="418.0" width="36.0" height="4.0" rx="0.0"/>
+  <!-- The slide bars the crosshead runs between, on their bracket -->
+  <rect class="part" fill="url(#dark)" x="751.0" y="370.0" width="12.0" height="108.0" rx="0.0"/>
+  <rect class="part" fill="url(#metal)" x="755.0" y="433.0" width="128.0" height="4.5" rx="0.0"/>
+  <rect class="part" fill="url(#metal)" x="755.0" y="462.5" width="128.0" height="4.5" rx="0.0"/>
+  <g transform="translate(0 -20)">
+    <!-- The boiler, behind the side tank -->
+    <path class="part" fill="url(#boiler)" d="M355.0 318.0 L790.0 318.0 L790.0 182.0 L355.0 182.0 Z"/>
+    <path class="thin" d="M455.0 235.0 L455.0 182.0"/>
+    <path class="thin" d="M555.0 235.0 L555.0 182.0"/>
+    <path class="thin" d="M655.0 235.0 L655.0 182.0"/>
+    <path class="thin" d="M745.0 235.0 L745.0 182.0"/>
+    <!-- The dome, the safety valves and the whistle -->
+    <path class="part" fill="url(#boiler)" d="M567.0 182.0 C573.0 158.0 581.0 134.0 605.0 134.0 C629.0 134.0 637.0 158.0 643.0 182.0 Z"/>
+    <path class="part" fill="url(#metal)" d="M413.0 182.0 L419.0 158.0 L441.0 158.0 L447.0 182.0 Z"/>
+    <rect class="part" fill="url(#metal)" x="345.0" y="142.0" width="8.0" height="40.0" rx="2.0"/>
+    <!-- The smokebox, its saddle and door, and the chimney -->
+    <path class="part" fill="url(#dark)" d="M795.0 368.0 L885.0 368.0 L870.0 320.0 L810.0 320.0 Z"/>
+    <path class="part" fill="url(#dark)" d="M790.0 328.0 L890.0 328.0 L890.0 178.0 L790.0 178.0 Z"/>
+    <path class="part" fill="url(#dark)" d="M890.0 322.0 C903.0 300.0 903.0 206.0 890.0 184.0 Z"/>
+    <circle class="part" fill="url(#metal)" cx="896.0" cy="253.0" r="5"/>
+    <path class="part" fill="url(#dark)" d="M809.0 178.0 L822.0 164.0 L822.0 98.0 L858.0 98.0 L858.0 164.0 L871.0 178.0 Z"/>
+    <rect class="part" fill="url(#dark)" x="814.0" y="84.0" width="52.0" height="14.0" rx="3.0"/>
+    <!-- The side tank, with its rivets -->
+    <path class="part" fill="url(#body)" d="M370.0 368.0 L745.0 368.0 Q755.0 368.0 755.0 358.0 L755.0 245.0 Q755.0 232.0 742.0 232.0 L370.0 232.0 Z"/>
+    <path class="rivets" d="M380.0 241.0 L745.0 241.0 M380.0 359.0 L745.0 359.0"/>
+    <!-- The cab, its roof and its doorway, and the coal bunker -->
+    <path class="part" fill="url(#body)" d="M140.0 368.0 L370.0 368.0 L370.0 130.0 L140.0 130.0 Z"/>
+    <path class="part" fill="#9aa3af" d="M197.0 368.0 L275.0 368.0 L275.0 238.0 Q275.0 218.0 255.0 218.0 L217.0 218.0 Q197.0 218.0 197.0 238.0 Z"/>
+    <path class="part" fill="#9aa3af" d="M300.0 210.0 L347.0 210.0 L347.0 158.0 L300.0 158.0 Z"/>
+    <path class="part" fill="url(#metal)" d="M123.0 132.0 Q255.0 112.0 387.0 132.0 L387.0 124.0 Q255.0 104.0 123.0 124.0 Z"/>
+    <path class="part" fill="#4a515c" d="M63.0 222.0 Q80.0 198.0 100.0 208.0 Q117.0 194.0 137.0 216.0 L137.0 222.0 Z"/>
+    <path class="part" fill="url(#body)" d="M57.0 368.0 L140.0 368.0 L140.0 220.0 L57.0 220.0 Z"/>
+    <path class="rivets" d="M65.0 229.0 L132.0 229.0"/>
+  </g>
+  <!-- A hub on every axle, where the template's wheels turn -->
+  <circle class="pin" cx="295.0" cy="450.0" r="9"/>
+  <circle class="pin" cx="495.0" cy="450.0" r="9"/>
+  <circle class="pin" cx="695.0" cy="450.0" r="9"/>
+  <!-- The expansion link's trunnion -->
+  <circle class="pin" cx="595.0" cy="414.0" r="8"/>
+</svg>
