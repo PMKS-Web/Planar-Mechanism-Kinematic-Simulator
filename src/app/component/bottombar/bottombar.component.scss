@@ -84,6 +84,35 @@
       white-space: nowrap;
     }
 
+    // The units read exactly like the readouts beside them: a way into
+    // Settings for whoever goes looking, not a link announcing itself. Only
+    // the pointer and a faint wash on hover say it can be pressed.
+    .units {
+      margin: 0 -6px;
+      padding: 2px 6px;
+      border: 0;
+      border-radius: 4px;
+      background: none;
+      font: inherit;
+      cursor: pointer;
+      // The strip lets the pointer through to the canvas under it; this one
+      // control takes it back.
+      pointer-events: auto;
+
+      &:hover {
+        background: var(--hover-wash);
+      }
+
+      &:active {
+        background: var(--press-wash);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--brand-dark);
+        outline-offset: 0;
+      }
+    }
+
     // Naming what is under the hand, in the ink the panel's chip uses for it.
     .status.tuning {
       color: var(--brand-dark);
