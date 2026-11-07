@@ -305,7 +305,7 @@ Settled with the team on 2026-11-03:
 
 ## Review history
 
-- **2026-11-03, GPT-6 Astra (external review).** Its verdict: an external oracle is the right
+- **2026-11-03, external review.** Its verdict: an external oracle is the right
   direction, and Exudyn is a sensible provisional choice, but the comparison contract should be
   defined before the engine is chosen. Taken in full:
   - per-method tolerances;
