@@ -114,8 +114,10 @@ def test_benchmark(case, check):
 
 
 
-def _bounded(limits: dict[str, list[float]]) -> dict:
+def _bounded(limits: dict[str, list[float]], step: float | None = None) -> dict:
     raw = json.loads((CASES / "metu-double-slider.problem.json").read_text())
+    if step is not None:
+        raw["sweep"]["step"] = step
     for joint in raw["joints"]:
         if joint["id"] in limits:
             joint["limits"] = limits[joint["id"]]
@@ -142,6 +144,15 @@ def test_a_passive_block_stops_the_driver_where_it_reaches_its_end():
     assert sweep["low"]["travel"] == pytest.approx(math.sqrt(0.0099) - 0.2, abs=1e-9)
     assert sweep["kMax"] == 199
     assert sweep["kMin"] == math.ceil((math.sqrt(0.0099) - 0.2) / 0.001)
+
+
+def test_a_slot_end_in_the_same_step_as_a_toggle_is_the_limit():
+    # On a 50 mm grid, B reaches y = 0.01 m at x = sqrt(0.25 - 0.0001) m in
+    # the same step as the toggle at x = 0.5 m. The slot ends first, so the
+    # travel stops there and not at the toggle.
+    sweep = _bounded({"B": [0.01, 0.49]}, step=0.05)
+    assert sweep["high"]["kind"] == "slot-end"
+    assert sweep["high"]["travel"] == pytest.approx(math.sqrt(0.25 - 0.01**2) - 0.2, abs=1e-9)
 
 
 def test_a_singular_pose_on_the_grid_stores_no_state():
@@ -178,6 +189,22 @@ def test_a_singular_pose_is_found_on_a_finer_grid_too():
     sweep = solve(load_problem(raw), {"oracle": "test"})["sweep"]
     assert sweep["singularPoses"] == [220, 580]
     assert not set(sweep["samples"]["k"]) & {220, 580}
+
+
+def test_a_regular_pose_near_a_singular_one_keeps_its_state_at_any_size():
+    # The same half-degree grid on a parallelogram a thousand times smaller.
+    # `singularPoses` lists every singular sample on the grid, stored or not,
+    # so only the two true singular poses may be in it: k = 210 and 230, five
+    # degrees away, are regular and keep their state, positions and all.
+    raw = json.loads((CASES / "redundant-parallelogram.problem.json").read_text())
+    raw["sweep"]["step"] = math.pi / 360
+    for body in raw["bodies"]:
+        body["com"] = [c * 1e-3 for c in body["com"]]
+        body["inertia"] *= 1e-6
+    for item in raw["joints"] + raw["points"]:
+        item["at"] = [c * 1e-3 for c in item["at"]]
+    sweep = solve(load_problem(raw), {"oracle": "test"})["sweep"]
+    assert sweep["singularPoses"] == [220, 580]
 
 
 def test_angular_accelerations_do_not_depend_on_the_unit_of_length():

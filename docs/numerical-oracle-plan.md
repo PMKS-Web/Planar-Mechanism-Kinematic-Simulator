@@ -334,9 +334,11 @@ are compared in 297 machine-modes, 153 that carry a force and 144 that carry non
 
 Measured on 2026-11-04. Every published machine is now exported in full: none is left out as
 unsupported. Of 202 machines, **154 are verified** (twelve of them in part) and **43 agree they
-do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,126
-force samples pass, and none fails. Forces are compared in 295 machine-modes, 151 that carry a
-force and 144 that carry none; the manifest leaves 13 more out entirely.
+do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,676
+force samples pass, and none fails. Forces are compared in 299 machine-modes, 151 that carry a
+force and 148 that carry none; the manifest leaves 9 more out entirely. An entry that names parts
+leaves out only the forces on those parts: the hood hinge's and the landing gear's forces are
+compared everywhere but on their two cylinder members.
 
 ### What the exporter now writes down
 
@@ -368,7 +370,10 @@ precision, and the limit's kind is `slot-end`. A drawn pose already outside its 
 in either direction. Two benchmarks check it against closed forms. A driven block stops at its ends,
 ±100.5 mm from the start on a 1 mm grid. A passive block stops the driver where the bar holding it
 reaches its end, at x = 0.4 m and x = √0.0099 m, short of the toggles that would otherwise end the
-travel. The refusal of slot limits that Phase 0 added is gone.
+travel. Where a slot end and a toggle fall in one step, the step is walked again in short steps,
+and a slot end reached while the driver is still advancing is the limit: on a 50 mm grid the
+passive block stops at x = √0.2499 m, a hair short of the toggle at 0.5 m in the same step. The
+refusal of slot limits that Phase 0 added is gone.
 
 ### In the comparison
 
@@ -682,8 +687,12 @@ for rank against the drawn pose; one that has lost rank is listed by k in `singu
 state is stored for it. Rank is judged to the pose's own accuracy, not to rounding: Newton holds a
 pose along the direction a singularity frees only to about 1e-7 of the machine's size, so the
 singular value that should be zero is of that order, and which side of a rounding threshold it
-lands on differed between macOS and Linux. A sample whose singular value is below 1e-6 of the
-largest is singular; one that is not has a condition number past 1e6, which is never compared. Its neighbors are stored as usual, with the condition numbers that say
+lands on differed between macOS and Linux. The test is made on the Jacobian in the machine's own
+units (rotation columns divided by its size, angle rows multiplied by it), so it does not change
+with the unit of length: a sample whose singular value there is below 1e-5 of the largest is
+singular. On the redundant parallelogram at every size from a millimeter to a kilometer that is
+at most 1.1e-7 at a singular pose and 6.4e-4 half a degree from one, so a regular pose loses its
+state only within about a hundredth of a degree of a singularity. Its neighbors are stored as usual, with the condition numbers that say
 how close they are.
 
 **Slot limits were refused, not ignored.** The problem schema could carry a slider's travel
