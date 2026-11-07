@@ -326,9 +326,10 @@ it still sees the first two kinds, so that it cannot pass by both sides falling 
 ### Counts
 
 Of 202 machines, **155 are verified** (thirteen in part) and **43 agree they do not run**; **4
-are excluded** whole. 249,312 kinematic samples pass, 40,218 are past the conditioning limit and
-16,308 are excluded; 155,126 force samples pass and 26,198 are past the conditioning limit. Forces
-are compared in 297 machine-modes, 153 that carry a force and 144 that carry none. Nothing fails.
+are excluded** whole. 249,312 kinematic samples pass and 40,218 are past the conditioning limit;
+155,676 force samples pass and 29,806 are past the conditioning limit; 12,150 samples of either
+are left out by the manifest. Forces are compared in 301 machine-modes, 153 that carry a force and
+148 that carry none, and the manifest leaves 9 more out entirely. Nothing fails.
 
 ## Phase 3 results
 
