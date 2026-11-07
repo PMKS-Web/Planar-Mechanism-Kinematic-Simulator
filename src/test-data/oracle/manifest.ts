@@ -90,10 +90,10 @@ export const ORACLE_EXCLUSIONS: Exclusion[] = [
   {
     problem: 'gallery.motiongen-gripper.m1',
     kind: 'oracle-limitation',
-    what: 'runs',
+    what: { quantities: ['position', 'com'] },
     reason:
-      "Each jaw rides two parallel slots at one height, so it can turn at first order and not at second. The oracle's rank test is first order and counts two freedoms; PMKS+'s mobility.ts drops the one that dies at second order and runs it.",
-    review: 'Phase 4, when the oracle gains a second-order mobility test.',
+      "Each jaw rides two parallel slots at one height, so the carriage and jaws can turn together at first order and not at second, and both solvers now agree it runs and how far. That turn is held only weakly at second order, so a converged pose is fixed along it to about the square root of its residual over that curvature: re-solving the oracle's pose at k = -11 from a residual of 1.7e-15 moves it 8.7e-6 of the machine's size, and PMKS+'s differs by 3.6e-7 there, against a budget of 1e-7. Its rates are past the conditioning limit everywhere.",
+    review: 'If the oracle learns to solve a pose along a weakly held second-order direction.',
   },
   {
     problem: 'gallery.crank-rocker-driven-from-the-rocker-at-its-limit.m1',

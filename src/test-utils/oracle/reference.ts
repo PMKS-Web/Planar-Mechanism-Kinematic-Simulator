@@ -41,6 +41,10 @@ export interface OracleReference {
     driven_freedoms: number;
     smallest_singular_values: number[];
     exudyn_freedoms: number | null;
+    /** Of `freedoms`, those that survive the second-order test (oracle/pmks_oracle/mobility.py). */
+    second_order_freedoms: number;
+    /** Of `driven_freedoms`, likewise. */
+    second_order_driven_freedoms: number;
   };
   sweep: null | {
     driver: {

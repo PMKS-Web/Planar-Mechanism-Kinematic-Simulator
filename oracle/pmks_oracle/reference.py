@@ -136,7 +136,13 @@ def solve(problem: Problem, generator: dict, problem_sha256: str | None = None) 
     # A drawn pose at the driver's dead point (driven_freedoms 1) is not walked:
     # both ways along the curve move the driver the same way, and which branch
     # the reader meant is not the oracle's to choose.
-    if problem.driver is None or mob.freedoms != 1 or mob.driven_freedoms != 0:
+    # A freedom that dies at second order is no motion, so the machine must
+    # have exactly one that survives (mobility.py). The driver must then take
+    # that one away at first order: a first-order freedom left with the driver
+    # in place is either one of the dead ones or the driver's own dead point,
+    # where the walk has no direction to start in.
+    dead = mob.freedoms - mob.second_order_freedoms
+    if problem.driver is None or mob.second_order_freedoms != 1 or mob.driven_freedoms - dead != 0:
         out["sweep"] = None
         return out
     w = walk(model)
