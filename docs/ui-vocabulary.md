@@ -191,6 +191,19 @@ The Force Analysis setup drawer lists every body that weighs: `Body`, `Mass`, `M
 - **Several machines, one heading each**, by the machine's name (`Mechanism 2`, `Pump jack`).
   Bodies no machine owns come last, under `Not in a mechanism`. One machine gets no heading.
 
+### A link's mass fields
+
+Under Mass, the Edit panel's Mass Settings reads `CoM measured from`, then the choice, then X and Y.
+
+- **The label says "measured from"**, because `Center of mass: Centroid` read as where the point
+  is rather than what X and Y count from. The choices name a point: `Shape's centroid`, `Joint A`
+  for each joint a reader can see, `Grid origin (0, 0)`.
+- **Its help mark sits right after "from"** and names both of the choice's jobs: what X and Y are
+  measured from, and what the center of mass keeps its place against while you edit.
+- **`Inertia`** in the panel, so the label fits on one line beside its field. The help mark and the
+  Masses table say `Mass moment of inertia`, because `moment of inertia` alone is also a beam's
+  area moment. Every message says it in full.
+
 ### The machines panel
 
 With nothing selected, the left panel is about the machines on the grid.
