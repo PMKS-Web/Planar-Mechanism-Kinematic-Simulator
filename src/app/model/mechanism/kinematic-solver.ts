@@ -55,6 +55,12 @@ export class KinematicsSolver {
   private static inputJointIndex: number | undefined;
   static inputLinkIndex: number;
   /**
+   * The id of `inputLinkIndex`'s link: the one body whose rotation the drive
+   * fixes. Registration asks this rather than "does it hold an input joint",
+   * because a drawing can flag a second input that the solve ignores (#78).
+   */
+  private static inputLinkId: string | undefined;
+  /**
    * The Slides in the frame being solved, resolved once per call.
    *
    * Three separate places hand a body an angular unknown, and all three have to
@@ -89,6 +95,7 @@ export class KinematicsSolver {
     this.slideAccelMap = new Map<string, number>();
     this.slideAssemblyCache = [];
     this.inputLinkIndex = -1;
+    this.inputLinkId = undefined;
 
     this.A_matrix_AngVel = [];
     this.B_matrix_AngVel = [];
@@ -400,6 +407,11 @@ export class KinematicsSolver {
     return true;
   }
 
+  /** Whether `joint` is the drive the solve uses, rather than any joint flagged as one. */
+  private static isTheInput(joints: Joint[], joint: Joint): boolean {
+    return this.inputJointIndex !== undefined && joints[this.inputJointIndex]?.id === joint.id;
+  }
+
   private static determineLooplessKinematics(
     simJoints: Joint[],
     simLinks: Link[],
@@ -479,6 +491,7 @@ export class KinematicsSolver {
       // first, and marking the frame left the crank without a rate.
       const driven = inputJoint instanceof PrisJoint ? undefined : drivenLink(inputJoint);
       this.inputLinkIndex = driven ? links.findIndex((l) => l.id === driven.id) : -1;
+      this.inputLinkId = links[this.inputLinkIndex]?.id;
     }
 
     for (const entry of this.groundJointIndexMap.entries()) {
@@ -580,12 +593,13 @@ export class KinematicsSolver {
             // see `inputLinkIndex`. Counting it as the input body here is the
             // other half of the same mistake, and on its own it withholds the
             // column the rider needs.
-            this.linkContainsInputMap.set(
-              link.id,
-              link.joints.some(
-                (j) => j instanceof RealJoint && j.input && !(j instanceof PrisJoint)
-              )
-            );
+            //
+            // The input link, not any link holding a joint flagged as an
+            // input. `determineArrays` puts only `inputLinkIndex`'s link on the
+            // known side, so a link that a second, ignored input touches got
+            // neither a column nor a known term: its rate was never solved, and
+            // the loop around it was solved one unknown short (#78).
+            this.linkContainsInputMap.set(link.id, link.id === this.inputLinkId);
           }
           if (!this.unknownLinkIndexMap.has(link.id) && !this.linkContainsInputMap.get(link.id)) {
             this.unknownLinkIndexMap.set(link.id, this.unknownLinkIndexMap.size);
@@ -597,8 +611,10 @@ export class KinematicsSolver {
         for (const { joint } of this.guideEnds(joints, loop)) {
           this.desiredAngleMap.set(joint.id, joint.slotAngle);
           // A driven guide's rate is commanded, not solved, so it claims no
-          // column; its term goes to the known side instead.
-          if (!joint.input && !this.unknownLinkIndexMap.has(joint.id)) {
+          // column; its term goes to the known side instead. Only the drive
+          // the solve uses is commanded: a second flagged input is not seeded
+          // with a rate, so it is solved like any other guide.
+          if (!this.isTheInput(joints, joint) && !this.unknownLinkIndexMap.has(joint.id)) {
             this.unknownLinkIndexMap.set(joint.id, this.unknownLinkIndexMap.size);
           }
         }
@@ -641,10 +657,7 @@ export class KinematicsSolver {
       return;
     }
     if (!this.linkContainsInputMap.has(carrierId)) {
-      this.linkContainsInputMap.set(
-        carrierId,
-        frame.carrier.joints.some((joint) => joint instanceof RealJoint && joint.input)
-      );
+      this.linkContainsInputMap.set(carrierId, carrierId === this.inputLinkId);
     }
     if (!this.unknownLinkIndexMap.has(carrierId) && !this.linkContainsInputMap.get(carrierId)) {
       this.unknownLinkIndexMap.set(carrierId, this.unknownLinkIndexMap.size);

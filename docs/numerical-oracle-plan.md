@@ -2,12 +2,12 @@
 
 > **Status:** Phases 0 to 4 built, 2026-11-06. **Exudyn is chosen**; Simbody, the runner-up, is
 > the intended cross-engine check, not yet built (see [Phase 0 results](#phase-0-results)). Of 202 published machines, **154
-> are verified** against the oracle in their motion and forces (nine of them in part; many carry
+> are verified** against the oracle in their motion and forces (eight of them in part; many carry
 > no force, and are checked to come out zero) and **43 agree they do not run**; **5 are
 > excluded** whole by the manifest, and none is left unsupported by the exporter. PMKS+'s mobility
 > agrees with the oracle's, at first and second order, on all 202 (see [Phase 4
-> results](#phase-4-results)). Of the **6 disagreements** found, each with an issue, **#81 is
-> fixed** and 5 remain open (see [Disagreements fixed](#disagreements-fixed) and [Phase 3
+> results](#phase-4-results)). Of the **6 disagreements** found, each with an issue, **#78 and
+> #81 are fixed** and 4 remain open (see [Disagreements fixed](#disagreements-fixed) and [Phase 3
 > results](#phase-3-results)). The plan was revised on 2026-11-03 after an external review (see
 > [Review history](#review-history)).
 
@@ -288,6 +288,13 @@ held out.
   [#82][i82]'s one sample. 159,086 force samples now pass, and none fails.
   `floating-pin-forces.spec.ts` checks the physics without the oracle: the frame's reactions
   and the load alone balance the whole machine, in force and in moment.
+- **[#78][i78], a second input's rates** (2026-11-07). `kinematic-solver.ts` gave no unknown to
+  any link touching a joint flagged as an input, while it put only the first input's link on the
+  known side, so a link a second, ignored flag touched got neither. It now asks for the one input
+  the solve uses, for links, slot carriers and guide ends alike. The four-bar with two inputs is
+  verified in full, and 250,732 kinematic and 159,796 force samples pass, none failing.
+  `second-input-rates.spec.ts` checks it without the oracle: a four-bar and a slider-crank with a
+  second flag give exactly the rates they give without it.
 
 ## Phase 4 results
 
@@ -539,7 +546,7 @@ No new disagreement. Three manifest entries changed:
 
 | Machine | Kind | What | Issue |
 | --- | --- | --- | --- |
-| Four-bar with two inputs | disagreement | Its reactions, body totals and effort are left out in the dynamic mode, which needs the wrong rates; its static forces agree | [#78][i78] |
+| Four-bar with two inputs | disagreement, **fixed** | Its reactions, body totals and effort are left out in the dynamic mode, which needs the wrong rates; its static forces agree. Fixed since (see [Disagreements fixed](#disagreements-fixed)) | [#78][i78] |
 | Parallelogram with a third parallel crank | by design | PMKS+ refuses its forces (`unsupported-topology`): three parallel cranks leave the reactions indeterminate. Its motion is verified | — |
 | Locomotive drive wheels | by design | The same refusal: one side rod couples three wheels. It carries no force, and was not solved until unloaded machines were compared | — |
 
@@ -628,7 +635,7 @@ In `src/test-data/oracle/manifest.ts`:
 | Machine | Kind | What | Issue |
 | --- | --- | --- | --- |
 | Slider-crank whose rod comes square to the guide | disagreement | PMKS+ refuses the published URL (`cycle-never-closes`); the oracle and the directly built fixture both close it after two turns | [#77][i77] |
-| Four-bar with two inputs | disagreement | The coupler's analytic angular velocity is wrong (0.1625 rad/s where PMKS+'s own joint velocities and the oracle give 0.1745), and the blank joint rates are differenced outside budget | [#78][i78] |
+| Four-bar with two inputs | disagreement, **fixed** | The coupler's analytic angular velocity is wrong (0.1625 rad/s where PMKS+'s own joint velocities and the oracle give 0.1745), and the blank joint rates are differenced outside budget. Fixed since (see [Disagreements fixed](#disagreements-fixed)) | [#78][i78] |
 | Four-bar with a second crank on its input | by design | PMKS+ refuses three bodies at a driven pin; the physics runs | — |
 | MotionGen gripper | oracle limitation | A first-order freedom that dies at second order; the oracle's rank test is first order | Phase 4 |
 | Crank-rocker driven from the rocker at its limit | oracle limitation | The drawn pose is the driver's dead point | — |
