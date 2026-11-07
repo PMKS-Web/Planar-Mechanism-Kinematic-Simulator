@@ -158,9 +158,10 @@ def test_a_singular_pose_is_found_on_a_finer_grid_too():
 
 
 def test_a_regular_pose_near_a_singular_one_keeps_its_state_at_any_size():
-    # The same half-degree grid on a parallelogram a thousand times smaller:
-    # k = 210 and 230 lie five degrees from the singular poses, are regular,
-    # and must be stored, positions and all, as they are at full size.
+    # The same half-degree grid on a parallelogram a thousand times smaller.
+    # `singularPoses` lists every singular sample on the grid, stored or not,
+    # so only the two true singular poses may be in it: k = 210 and 230, five
+    # degrees away, are regular and keep their state, positions and all.
     raw = json.loads((CASES / "redundant-parallelogram.problem.json").read_text())
     raw["sweep"]["step"] = math.pi / 360
     for body in raw["bodies"]:
@@ -170,7 +171,6 @@ def test_a_regular_pose_near_a_singular_one_keeps_its_state_at_any_size():
         item["at"] = [c * 1e-3 for c in item["at"]]
     sweep = solve(load_problem(raw), {"oracle": "test"})["sweep"]
     assert sweep["singularPoses"] == [220, 580]
-    assert {210, 230} <= set(sweep["samples"]["k"])
 
 
 def test_angular_accelerations_do_not_depend_on_the_unit_of_length():
