@@ -1,10 +1,10 @@
-import { resolveActuator, GROUND_BODY } from '../actuator';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
 import { BodyOfLink, frozenCylinderAtSeal } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
 import { slideAssemblies } from '../slide-assembly';
+import { GROUND_BODY, resolveActuator } from '../actuator';
 import { assignBodies } from './bodies';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
@@ -450,7 +450,9 @@ export class ForceSolver {
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
     let inputBody: Link | undefined;
-    let referenceBody: Link | undefined;
+    // The body a motor between two moving links pushes back on; undefined when
+    // that is the frame, whose reaction is not an unknown here.
+    let inputReactionBody: Link | undefined;
     let inputKind: 'torque' | 'force' | undefined;
     let inputDirection: ForceVector = [0, 0];
     if (inputJoint) {
@@ -462,16 +464,22 @@ export class ForceSolver {
         // somewhere different at every timestep.
         inputDirection = [Math.cos(inputJoint.slotAngle), Math.sin(inputJoint.slotAngle)];
       } else {
+        // A motor turns one body against another, so it pushes on both: +τ on
+        // the body it drives and −τ on the one it is measured against. The
+        // actuator record names which is which, as it does for the position
+        // solve; only a refused input, which is never solved, falls back to the
+        // first body met here.
         const actuator = resolveActuator(inputJoint);
+        const bodyFor = (body: Link | typeof GROUND_BODY | undefined): Link | undefined =>
+          body === undefined || body === GROUND_BODY ? undefined : this.rootBody(bodies, body);
         inputBody =
-          actuator && actuator.drivenBody !== GROUND_BODY
-            ? this.rootBody(bodies, actuator.drivenBody)
+          actuator?.kind === 'angle'
+            ? bodyFor(actuator.drivenBody)
             : incident.find((body) => body instanceof RealLink);
-        referenceBody =
-          actuator && actuator.referenceBody !== GROUND_BODY
-            ? this.rootBody(bodies, actuator.referenceBody)
-            : undefined;
-        inputKind = inputBody ? 'torque' : undefined;
+        inputReactionBody =
+          actuator?.kind === 'angle' ? bodyFor(actuator.referenceBody) : undefined;
+        if (inputReactionBody === inputBody) inputReactionBody = undefined;
+        inputKind = inputBody instanceof RealLink ? 'torque' : undefined;
       }
     }
 
@@ -543,7 +551,9 @@ export class ForceSolver {
       const rows = bodyRows.get(inputBody.id)!;
       if (inputKind === 'torque' && inputBody instanceof RealLink) {
         A[rows.start + 2][inputColumn] = armScale;
-        if (referenceBody) A[bodyRows.get(referenceBody.id)!.start + 2][inputColumn] -= armScale;
+        if (inputReactionBody instanceof RealLink) {
+          A[bodyRows.get(inputReactionBody.id)!.start + 2][inputColumn] = -armScale;
+        }
       } else if (inputKind === 'force') {
         A[rows.start][inputColumn] = inputDirection[0];
         A[rows.start + 1][inputColumn] = inputDirection[1];
