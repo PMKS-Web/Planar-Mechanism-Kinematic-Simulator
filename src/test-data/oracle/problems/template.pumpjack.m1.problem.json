@@ -139,12 +139,12 @@
   }
  ],
  "driver": {
-  "joint": "P",
+  "joint": "A",
   "kind": "rotation",
-  "speed": -0.3141592653589793,
+  "speed": -1.0471975511965976,
   "bodies": [
-   "MP",
-   "PSH"
+   "ground",
+   "AM"
   ]
  },
  "loads": [],

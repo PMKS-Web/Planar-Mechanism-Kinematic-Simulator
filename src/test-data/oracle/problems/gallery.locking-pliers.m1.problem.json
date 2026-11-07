@@ -1,0 +1,232 @@
+{
+ "schema": "pmks-oracle-problem/1",
+ "id": "gallery.locking-pliers.m1",
+ "title": "Locking pliers, M1",
+ "source": {
+  "kind": "published",
+  "case": "gallery.locking-pliers",
+  "machine": "M1"
+ },
+ "gravity": 9.80665,
+ "bodies": [
+  {
+   "id": "ABJ",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.011833333333333335,
+    -0.0045000000000000005
+   ]
+  },
+  {
+   "id": "BCG",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.04936666666666667,
+    -0.007133333333333333
+   ]
+  },
+  {
+   "id": "CD",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.047299999999999995,
+    -0.00095
+   ]
+  },
+  {
+   "id": "DN",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.06946513281861524,
+    0.0003009721447893416
+   ]
+  },
+  {
+   "id": "GS",
+   "mass": 0.001,
+   "inertia": 0.0001,
+   "com": [
+    0.08144797479552546,
+    -0.0035196441377037704
+   ]
+  }
+ ],
+ "joints": [
+  {
+   "id": "A",
+   "kind": "pin",
+   "at": [
+    0.015,
+    -0.0025
+   ],
+   "bodies": [
+    "ABJ"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "B",
+   "kind": "pin",
+   "at": [
+    0.019,
+    -0.0085
+   ],
+   "bodies": [
+    "ABJ",
+    "BCG"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "C",
+   "kind": "pin",
+   "at": [
+    0.0336,
+    -0.0049
+   ],
+   "bodies": [
+    "BCG",
+    "CD"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "G",
+   "kind": "pin",
+   "at": [
+    0.09550000000000002,
+    -0.008
+   ],
+   "bodies": [
+    "BCG",
+    "GS"
+   ],
+   "grounded": false,
+   "welded": false
+  },
+  {
+   "id": "D",
+   "kind": "pin",
+   "at": [
+    0.061,
+    0.003
+   ],
+   "bodies": [
+    "CD",
+    "DN"
+   ],
+   "grounded": true,
+   "welded": false
+  },
+  {
+   "id": "S",
+   "kind": "slider",
+   "at": [
+    0.06739594959105091,
+    0.0009607117245924613
+   ],
+   "guide": "DN",
+   "linePoint": [
+    0.061,
+    0.003
+   ],
+   "axis": [
+    0.9527442677113392,
+    -0.3037735346326008
+   ],
+   "riders": [
+    "GS"
+   ],
+   "rotates": false,
+   "blockMass": 0,
+   "limits": [
+    0.005501949999999999,
+    0.021802050000000003
+   ]
+  }
+ ],
+ "driver": {
+  "joint": "S",
+  "kind": "translation",
+  "speed": -0.005
+ },
+ "loads": [],
+ "points": [
+  {
+   "id": "A",
+   "body": "ground",
+   "at": [
+    0.015,
+    -0.0025
+   ]
+  },
+  {
+   "id": "B",
+   "body": "ABJ",
+   "at": [
+    0.019,
+    -0.0085
+   ]
+  },
+  {
+   "id": "J",
+   "body": "ABJ",
+   "at": [
+    0.0015,
+    -0.0025
+   ]
+  },
+  {
+   "id": "C",
+   "body": "BCG",
+   "at": [
+    0.0336,
+    -0.0049
+   ]
+  },
+  {
+   "id": "G",
+   "body": "BCG",
+   "at": [
+    0.09550000000000002,
+    -0.008
+   ]
+  },
+  {
+   "id": "D",
+   "body": "ground",
+   "at": [
+    0.061,
+    0.003
+   ]
+  },
+  {
+   "id": "N",
+   "body": "DN",
+   "at": [
+    0.0779302656372305,
+    -0.0023980557104213178
+   ]
+  },
+  {
+   "id": "S",
+   "body": "GS",
+   "at": [
+    0.06739594959105091,
+    0.0009607117245924613
+   ]
+  }
+ ],
+ "sweep": {
+  "step": 0.0000905555555555556,
+  "maxSamples": 2000
+ },
+ "unsupported": []
+}

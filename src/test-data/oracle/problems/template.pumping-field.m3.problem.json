@@ -139,12 +139,12 @@
   }
  ],
  "driver": {
-  "joint": "Q",
+  "joint": "O",
   "kind": "rotation",
   "speed": 1.2566370614359172,
   "bodies": [
-   "PQ",
-   "QRS"
+   "ground",
+   "OP"
   ]
  },
  "loads": [],

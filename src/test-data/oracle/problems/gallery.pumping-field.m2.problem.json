@@ -139,12 +139,12 @@
   }
  ],
  "driver": {
-  "joint": "J",
+  "joint": "H",
   "kind": "rotation",
   "speed": 0.8377580409572781,
   "bodies": [
-   "IJ",
-   "JKL"
+   "ground",
+   "HI"
   ]
  },
  "loads": [],
