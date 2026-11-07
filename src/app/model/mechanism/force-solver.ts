@@ -1,3 +1,4 @@
+import { resolveActuator, GROUND_BODY } from '../actuator';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
@@ -87,6 +88,7 @@ interface MechanismFrames {
   timeNum: number[];
   inputAngularVelocities: number[];
   requiredLoops: Loop[];
+  prepareSolvers?(): void;
   gravity: boolean;
   unit: string;
 }
@@ -308,6 +310,7 @@ export class ForceSolver {
   ): ForceAnalysisFrame {
     let kinematics: FrameKinematics | undefined;
     if (mode === 'dynamic') {
+      mechanism.prepareSolvers?.();
       // Clear the solver's shared maps each frame so a mid-solve failure at
       // frame k cannot leave frame k-1's finite values in place — which would
       // read as "current" and hide the failure from the fallback below.
@@ -447,6 +450,7 @@ export class ForceSolver {
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
     let inputBody: Link | undefined;
+    let referenceBody: Link | undefined;
     let inputKind: 'torque' | 'force' | undefined;
     let inputDirection: ForceVector = [0, 0];
     if (inputJoint) {
@@ -458,7 +462,15 @@ export class ForceSolver {
         // somewhere different at every timestep.
         inputDirection = [Math.cos(inputJoint.slotAngle), Math.sin(inputJoint.slotAngle)];
       } else {
-        inputBody = incident.find((body) => body instanceof RealLink);
+        const actuator = resolveActuator(inputJoint);
+        inputBody =
+          actuator && actuator.drivenBody !== GROUND_BODY
+            ? this.rootBody(bodies, actuator.drivenBody)
+            : incident.find((body) => body instanceof RealLink);
+        referenceBody =
+          actuator && actuator.referenceBody !== GROUND_BODY
+            ? this.rootBody(bodies, actuator.referenceBody)
+            : undefined;
         inputKind = inputBody ? 'torque' : undefined;
       }
     }
@@ -531,6 +543,7 @@ export class ForceSolver {
       const rows = bodyRows.get(inputBody.id)!;
       if (inputKind === 'torque' && inputBody instanceof RealLink) {
         A[rows.start + 2][inputColumn] = armScale;
+        if (referenceBody) A[bodyRows.get(referenceBody.id)!.start + 2][inputColumn] -= armScale;
       } else if (inputKind === 'force') {
         A[rows.start][inputColumn] = inputDirection[0];
         A[rows.start + 1][inputColumn] = inputDirection[1];

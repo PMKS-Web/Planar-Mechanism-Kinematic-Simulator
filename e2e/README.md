@@ -151,6 +151,9 @@ Not suites — import them from one.
   on arrival at an address (empty, a Watt six-bar, a Jansen leg, a phone) and on opening a card
   from the library, and fails any uncovered frame whose matrix is not the one the canvas settles
   on. The boot splash and the overlay each used to lift before the fit.
+- `fit-keeps-grid.mjs` — pressing Fit to view or Fit full motion, from the keyboard so no pointer
+  event follows, never leaves the canvas blank: the grid may be gone for the render the fit
+  measures in and no longer, on an empty grid and on a Watt six-bar.
 - `full-tour.mjs` — panels, templates, settings, share URL, help, and a fresh load at phone size.
   Fails on a NaN degrees of freedom, a page wider than its viewport, a Save that starts no
   download, or a template dialog that will not close. Needs installed Chrome (`PMKS_CHROME`).
@@ -541,3 +544,5 @@ Not suites — import them from one.
   without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
   gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
   filmstrip in `artifacts/analysis-tabs/`.
+
+- `mechanism-audit.mjs` — retained audit controls for immobile welded geometry, clockwise six-second cycle with filmstrip, tiny degree-acceleration graph and disconnected Jansen negative control.
