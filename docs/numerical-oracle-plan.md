@@ -277,7 +277,8 @@ mass, local versus global loads, and every unit and speed conversion.
 Measured on 2026-11-04. Every published machine is now exported in full: none is left out as
 unsupported. Of 202 machines, **154 are verified** (twelve of them in part) and **43 agree they
 do not run**; **5 are excluded** whole by the manifest. 249,312 kinematic samples and 155,126
-force samples pass, and none fails.
+force samples pass, and none fails. Forces are compared in 295 machine-modes, 151 that carry a
+force and 144 that carry none; the manifest leaves 13 more out entirely.
 
 ### What the exporter now writes down
 
@@ -421,9 +422,9 @@ force modes: `static`, the loads and gravity alone, and `dynamic`, with the iner
 | Static | 1.9×10⁻⁹ (a reaction on the elliptical crank) | 1×10⁻⁸ |
 | Dynamic | 4.6×10⁻¹⁰ (a reaction on the slider-crank with a tracer) | 1×10⁻⁸ |
 
-100,434 force samples pass and none fails; 10,910 are past the conditioning limit. Of the 194
-machine-modes compared, 88 carry a force and 106 carry none, so the worst errors above all come
-from the 88.
+100,434 force samples pass and none fails; 10,910 are past the conditioning limit. Of the 189
+machine-modes compared, 85 carry a force and 104 carry none, so the worst errors above all come
+from the 85; five more the manifest leaves out entirely and are not counted as compared.
 
 ### Inside the oracle, and against MATLAB
 
@@ -479,8 +480,10 @@ and the comparison about 10.
   sample before a reversal, where the difference reaches across the turn.
 - **Nothing passes by not being compared.** Every stored oracle sample must be reached by a PMKS+
   frame, every joint and body the oracle reports must be reported back, and every quantity the
-  oracle has at a sample PMKS+ must have too, unless the manifest leaves it out
-  (`oracle-compare.spec.ts` removes each in turn and sees the comparison say so).
+  oracle has at a sample PMKS+ must have too, unless the manifest leaves it out. A part PMKS+
+  reports at some samples and not others is missing at each sample it skips, every quantity of
+  it; one it never reports is said once (`oracle-compare.spec.ts` removes each in turn and sees
+  the comparison say so).
 
 ### The budgets, from the measurement
 
@@ -511,8 +514,8 @@ Linux: their BLAS and LAPACK round differently, so a number that is physically z
 first Linux run rewrote every reference that way. Two changes followed:
 
 - **A regeneration keeps what it reproduces.** `pmks_oracle/agree.py` compares a new solve with the
-  committed reference: the grid, the limits, the mobility counts and which reactions are
-  identifiable must be equal, and every number must agree to one hundredth of the budget PMKS+ is
+  committed reference: the grid, the limits, the mobility counts, which reactions are
+  identifiable, and which parts, columns and force modes it holds must be equal, and every number must agree to one hundredth of the budget PMKS+ is
   held to for it, on the same scales, plus a unit in its last stored digit. Rates and forces past
   the conditioning limit are not compared, as PMKS+'s are not. Because a condition number decides
   that, it must itself reproduce to a thousandth of its size and fall on the same side of the
@@ -618,7 +621,11 @@ the branch it is on, as a parallelogram's does where its cranks lie along the fr
 well defined there, but its rates are not unique, and the minimum-norm ones least squares returns
 are not physics (one acceleration comes out at 10⁹ m/s²). Every grid sample is therefore checked
 for rank against the drawn pose; one that has lost rank is listed by k in `singularPoses`, and no
-state is stored for it. Its neighbors are stored as usual, with the condition numbers that say
+state is stored for it. Rank is judged to the pose's own accuracy, not to rounding: Newton holds a
+pose along the direction a singularity frees only to about 1e-7 of the machine's size, so the
+singular value that should be zero is of that order, and which side of a rounding threshold it
+lands on differed between macOS and Linux. A sample whose singular value is below 1e-6 of the
+largest is singular; one that is not has a condition number past 1e6, which is never compared. Its neighbors are stored as usual, with the condition numbers that say
 how close they are.
 
 **Slot limits were refused, not ignored.** The problem schema could carry a slider's travel
