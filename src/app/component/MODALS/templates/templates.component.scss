@@ -14,96 +14,86 @@
   $indigo-500: mat.m2-get-color-from-palette($primary-palette, 500);
   $indigo-700: mat.m2-get-color-from-palette($primary-palette, 700);
 
-  #templates {
+  // ---- the dialog's own box ------------------------------------------------
+
+  // On a phone the library is the whole window. In the stylesheet rather than
+  // in `openIn`, because the pane's size is inline style set once, and a phone
+  // turned on its side crosses the line with the library already open.
+  @media (max-width: nav.$phone-max-width) {
+    .libraryDialog {
+      width: 100vw !important;
+      height: 100% !important;
+      max-width: 100vw !important;
+      max-height: 100% !important;
+
+      .mat-mdc-dialog-surface {
+        border-radius: 0;
+      }
+    }
+  }
+
+  // The host fills the surface, so each view can split the height between a
+  // fixed head and a part that scrolls.
+  .libraryDialog app-templates {
     display: flex;
     flex-direction: column;
+    height: 100%;
     min-height: 0;
+  }
 
-    // ---- header: title, filter chips, search -------------------------------
+  #templates {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    color: var(--text-primary);
+
+    .browseView {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+
+      &[hidden] {
+        display: none;
+      }
+    }
+
+    // ---- header: title, search, close ---------------------------------------
 
     .titleRow {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 4px 8px 4px 24px;
+      gap: 12px;
+      padding: 10px 12px 10px 24px;
+      border-bottom: 1px solid var(--border-rule);
 
       h1 {
         margin: 0;
+        flex: 0 0 auto;
         @include mat.m2-typography-level($typography-config, 'headline-6');
+        color: var(--text-strong);
       }
     }
 
-    .filterBar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 0 16px 10px 24px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    }
-
-    // The chips wrap rather than scrolling sideways: a category that has slid
-    // off the end of a row is a category nobody finds. A second row is what the
-    // list's own height budget below leaves room for.
-    .chipRow {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px;
+    .titleSpacer {
       flex: 1 1 auto;
-      min-width: 0;
-    }
-
-    // The mode tabs' own shape -- 6px corners, indigo-50 behind an indigo-500
-    // outline when it is the one in force -- because this is the same kind of
-    // control doing the same kind of job.
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      flex: 0 0 auto;
-      height: 32px;
-      padding: 0 10px;
-      border: 1.5px solid transparent;
-      border-radius: 6px;
-      background: rgba(0, 0, 0, 0.05);
-      font-family: inherit;
-      font-size: 13px;
-      color: var(--text-primary);
-      white-space: nowrap;
-      cursor: pointer;
-      transition:
-        background-color 0.12s ease-in-out,
-        border-color 0.12s ease-in-out;
-
-      &:hover {
-        background: rgba(0, 0, 0, 0.09);
-      }
-
-      &.on {
-        background: $indigo-50;
-        border-color: $indigo-500;
-        color: $indigo-700;
-      }
-    }
-
-    .chipCount {
-      font-size: 11.5px;
-      color: var(--text-tertiary);
-    }
-
-    .chip.on .chipCount {
-      color: $indigo-500;
     }
 
     .searchBox {
       display: flex;
       align-items: center;
       gap: 6px;
-      flex: 0 0 190px;
+      // Gives way before the close button does: at a 650px window a fixed
+      // 360px pushed Close off the dialog's edge.
+      flex: 0 1 360px;
+      min-width: 160px;
       box-sizing: border-box;
-      height: 32px;
-      padding: 0 8px;
-      border: 1.5px solid rgba(0, 0, 0, 0.12);
+      height: 36px;
+      padding: 0 10px;
+      border: 1.5px solid var(--border-divider);
       border-radius: 6px;
       background: var(--card-surface);
 
@@ -129,6 +119,10 @@
         font-family: inherit;
         font-size: 13.5px;
         color: var(--text-strong);
+
+        &::placeholder {
+          color: var(--text-tertiary);
+        }
       }
 
       .clearSearch {
@@ -149,23 +143,287 @@
       }
     }
 
-    // ---- the scrolling list -------------------------------------------------
+    // ---- the rail and the list beside it ------------------------------------
 
-    // The library outgrew the five cards that used to fit on any screen, so the
-    // list scrolls instead of running off the bottom of the dialog. Material's
-    // own 65vh would leave the header floating above a short list; capping the
-    // dialog and letting the content take what is left keeps both honest.
-    //
-    // The subtraction is the title row and the filter bar above it, and the
-    // dialog is opened at 90% of the window -- so the 5vh left over is what
-    // pays for the chips wrapping onto a second row.
-    .libraryBody {
-      max-height: calc(85vh - 96px) !important;
-      overflow-y: auto;
-      padding: 0 !important;
+    .split {
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: 252px minmax(0, 1fr);
+      min-height: 0;
     }
 
-    // A family's name, on the same left edge as the cards under it -- the
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 12px 14px 16px;
+      border-right: 1px solid var(--border-rule);
+      background: var(--surface-subtle);
+      min-height: 0;
+    }
+
+    .railLabel {
+      margin: 0 0 -6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    // The list scrolls on a short window rather than pushing the Suggest card
+    // off the bottom: the card is the one thing in the rail that is not a
+    // filter, and it is the one most worth keeping in view.
+    .railList {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    // The mode tabs' own shape -- 6px corners, a brand tint behind a brand
+    // outline when it is the one in force -- because this is the same kind of
+    // control doing the same kind of job.
+    .category {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      width: 100%;
+      height: 36px;
+      padding: 0 10px;
+      border: 1.5px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13.5px;
+      color: var(--text-primary);
+      text-align: left;
+      cursor: pointer;
+      transition:
+        background-color 0.12s ease-in-out,
+        border-color 0.12s ease-in-out;
+
+      &:hover {
+        background: var(--hover-wash);
+      }
+
+      .name {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &.on {
+        background: $indigo-50;
+        border-color: $indigo-500;
+        color: $indigo-700;
+        font-weight: 500;
+
+        .chipCount {
+          color: $indigo-500;
+          font-weight: 400;
+        }
+      }
+    }
+
+    .chipCount {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .suggestCard {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border: 1.5px dashed var(--brand-pale);
+      border-radius: var(--card-radius);
+      background: var(--brand-wash);
+
+      &.row {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        margin: 12px 16px 0;
+        padding: 12px;
+      }
+    }
+
+    .suggestTop {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .suggestIcon {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--brand-tint);
+      color: var(--brand-dark);
+
+      mat-icon {
+        width: 19px;
+        height: 19px;
+        font-size: 19px;
+        line-height: 19px;
+      }
+    }
+
+    .suggestText {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .suggestTitle {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-strong);
+    }
+
+    .suggestSub {
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-secondary);
+    }
+
+    // ---- buttons the library and the form share -----------------------------
+    //
+    // The same three weights as the replace / new-tab choice below: filled for
+    // the one recommended, outlined for the other real action, bare for the
+    // way out.
+
+    .btnOutlined,
+    .btnFilled,
+    .btnQuiet,
+    .btnText {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-radius: 6px;
+      font-family: inherit;
+      white-space: nowrap;
+      cursor: pointer;
+      transition:
+        background-color 0.12s ease-in-out,
+        border-color 0.12s ease-in-out;
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        line-height: 18px;
+      }
+
+      &:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+    }
+
+    .btnOutlined {
+      height: 36px;
+      padding: 0 12px;
+      border: 1.5px solid var(--brand-light);
+      background: var(--card-surface);
+      color: $indigo-700;
+      font-size: 13px;
+      font-weight: 500;
+
+      &:hover:not(:disabled) {
+        border-color: $indigo-500;
+        background: $indigo-50;
+      }
+
+      &.wide {
+        width: 100%;
+      }
+    }
+
+    .btnFilled {
+      height: 40px;
+      padding: 0 20px 0 16px;
+      border: 1.5px solid transparent;
+      background: $indigo-700;
+      color: var(--text-on-accent);
+      font-size: 15px;
+      font-weight: 500;
+
+      &:hover:not(:disabled) {
+        background: $indigo-500;
+      }
+    }
+
+    .btnQuiet {
+      height: 40px;
+      padding: 0 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 15px;
+
+      &:hover:not(:disabled) {
+        background: var(--hover-wash);
+      }
+    }
+
+    .btnText {
+      height: 32px;
+      padding: 0 10px 0 8px;
+      border: none;
+      background: transparent;
+      color: $indigo-700;
+      font-size: 13px;
+      font-weight: 500;
+
+      &:hover {
+        background: $indigo-50;
+      }
+    }
+
+    .iconButton {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: var(--hover-wash);
+      }
+
+      &:disabled {
+        color: var(--text-disabled);
+        cursor: default;
+      }
+    }
+
+    // ---- the scrolling list -------------------------------------------------
+
+    .libraryBody {
+      position: relative;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    // A section's name, on the same left edge as the cards under it -- the
     // grid's own 24px inset, not a narrower one that leaves the heading hanging
     // out to the left of everything it names.
     .sectionHeading {
@@ -182,19 +440,31 @@
 
     .templateGrid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 16px;
       padding: 0 24px 20px;
+    }
+
+    .endLine {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 4px 24px 24px;
+      font-size: 13px;
+      color: var(--text-secondary);
     }
 
     // ---- one card -----------------------------------------------------------
 
     .templateCard {
       position: relative;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      border: 1px solid rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-divider);
       border-radius: var(--card-radius);
       background: var(--card-surface);
       cursor: pointer;
@@ -213,7 +483,7 @@
       }
     }
 
-    .thumb {
+    .templateCard .thumb {
       position: relative;
       height: 220px;
       overflow: hidden;
@@ -225,7 +495,7 @@
       background: var(--card-surface);
     }
 
-    .thumb img {
+    .templateCard .thumb img {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -237,9 +507,14 @@
       box-sizing: border-box;
     }
 
+    // A credit is one more line, so the drawing gives up that much more room.
+    .templateCard.credited .thumb img {
+      padding-bottom: 110px;
+    }
+
     // The still is what is there at rest; the loop fades in over it under the
     // pointer. Only five of the templates have one.
-    .thumb .animated {
+    .templateCard .thumb .animated {
       opacity: 0;
       transition: opacity 0.3s ease-in-out;
     }
@@ -251,7 +526,7 @@
     // Over the thumbnail. The band is opaque enough on its own that the
     // contrast does not depend on the drawing behind it -- a scrim tuned to
     // these images would be wrong for the next one added.
-    .caption {
+    .templateCard .caption {
       position: absolute;
       left: 0;
       right: 0;
@@ -260,17 +535,17 @@
       flex-direction: column;
       gap: 2px;
       padding: 8px 12px 10px;
-      background: rgba(255, 255, 255, 0.95);
-      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      background: var(--card-surface);
+      border-top: 1px solid var(--border-rule);
     }
 
-    .cardName {
+    .templateCard .cardName {
       font-size: 14px;
       font-weight: 500;
       color: var(--text-strong);
     }
 
-    .cardDescription {
+    .templateCard .cardDescription {
       font-size: 12px;
       line-height: 16px;
       color: var(--text-secondary);
@@ -282,7 +557,38 @@
       overflow: hidden;
     }
 
-    .cardActions {
+    // One line, ending in an ellipsis: a class name that runs long does not
+    // get to push the description up over the drawing.
+    .templateCard .credit {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 11.5px;
+      line-height: 16px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      mat-icon {
+        flex: none;
+        width: 15px;
+        height: 15px;
+        font-size: 15px;
+        line-height: 15px;
+        color: var(--brand-mid);
+      }
+
+      b {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+        color: $indigo-700;
+      }
+    }
+
+    .templateCard .cardActions {
       display: flex;
       justify-content: flex-end;
       padding: 8px 10px;
@@ -302,56 +608,958 @@
       padding: 64px 24px;
       color: var(--text-secondary);
       text-align: center;
+
+      p {
+        margin: 0;
+      }
     }
-    // ---- the phone -------------------------------------------------------
-    //
-    // Last in the file deliberately: these have the same specificity as the
-    // rules they replace, so they only win by coming after them. Put beside
-    // `.filterBar` where they read best, the search kept its 190px flex-basis
-    // -- which in a column is a height -- and came out as a 190px-tall box.
-    @media (max-width: nav.$phone-max-width) {
-      .filterBar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        padding: 0 16px 10px 16px;
+
+    .emptyActions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .emptyNote {
+      font-size: 12.5px;
+    }
+
+    // ---- the suggest views' head -------------------------------------------
+
+    .suggestHead {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 53px;
+      padding: 4px 12px;
+      border-bottom: 1px solid var(--border-rule);
+
+      h1 {
+        flex: 1 1 auto;
+        margin: 0;
+        @include mat.m2-typography-level($typography-config, 'headline-6');
+        color: var(--text-strong);
+        outline: none;
+      }
+    }
+
+    // ---- the form, and the preview beside it --------------------------------
+
+    .suggestView,
+    .sentPage {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    // Asked of the view's own width, not the window's: the dialog is 90% of
+    // a window capped at 80vw, so the window says little about the room the
+    // form actually has.
+    .suggestView {
+      container: suggest / inline-size;
+    }
+
+    .suggestSplit {
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 500px;
+      min-height: 0;
+    }
+
+    .suggestForm {
+      min-height: 0;
+      overflow-y: auto;
+      padding: 18px 40px 18px 24px;
+    }
+
+    .suggestFields {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: none;
+    }
+
+    .intro {
+      margin: 0;
+      max-width: 640px;
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--text-secondary);
+    }
+
+    .sourceChoice {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 380px;
+    }
+
+    .reason {
+      display: flex;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-secondary);
+
+      mat-icon {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        line-height: 16px;
+      }
+    }
+
+    .formRow {
+      display: grid;
+      gap: 16px;
+      max-width: 680px;
+
+      &.two {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
 
-      .titleRow {
-        padding-left: 16px;
+      &.titleSection {
+        grid-template-columns: minmax(0, 1fr) 230px;
+      }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      max-width: 680px;
+    }
+
+    .fieldLabel {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+
+      .opt {
+        font-weight: 400;
+      }
+    }
+
+    .input {
+      box-sizing: border-box;
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border: 1.5px solid transparent;
+      border-radius: 6px;
+      background: var(--surface-field);
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-strong);
+      outline: none;
+
+      &::placeholder {
+        color: var(--text-tertiary);
       }
 
-      // Above the chips, and the whole width. Beside them it was a box floating
-      // in the middle of a wrapping column, which reads as the dialog being
-      // broken rather than as a search.
-      //
-      // It stays rather than being dropped: forty-four cards in a 280px column
-      // is exactly where typing three letters beats scrolling, and the chips
-      // are the part of this bar that degrades gracefully.
-      .searchBox {
-        flex: 0 0 32px;
-        order: -1;
+      &:focus {
+        border-color: $indigo-500;
+        background: var(--card-surface);
       }
 
-      // One row that scrolls, rather than six that do not. Wrapping is right on
-      // a desktop, where the whole set fits in two rows and sliding a category
-      // off the end would hide it for no reason. Here the set is six rows deep
-      // and eats the cards it is meant to be filtering -- and a chip row that
-      // scrolls sideways is a thing every phone user has used.
-      .chipRow {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 2px;
+      &.bad {
+        border-color: var(--refusal-text);
+      }
 
-        &::-webkit-scrollbar {
-          display: none;
+      &:disabled {
+        color: var(--text-secondary);
+      }
+    }
+
+    textarea.input {
+      display: block;
+      height: 60px;
+      padding: 9px 12px;
+      line-height: 20px;
+      resize: vertical;
+    }
+
+    .selectWrap {
+      position: relative;
+
+      select {
+        appearance: none;
+        padding-right: 36px;
+        cursor: pointer;
+      }
+
+      mat-icon {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        color: var(--text-secondary);
+        pointer-events: none;
+      }
+    }
+
+    .hintRow {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-secondary);
+
+      &.bad {
+        color: var(--refusal-text);
+      }
+    }
+
+    .counter {
+      flex: none;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+
+      &.over {
+        color: var(--refusal-text);
+      }
+    }
+
+    .inputIcon {
+      position: relative;
+
+      .input {
+        padding-right: 40px;
+      }
+
+      .state {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        pointer-events: none;
+
+        &.ok {
+          color: var(--success-text);
+        }
+
+        &.err {
+          color: var(--refusal-text);
+        }
+
+        &.busy {
+          color: var(--text-tertiary);
+        }
+      }
+    }
+
+    .source {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      max-width: 680px;
+      padding: 10px 14px 10px 10px;
+      border: 1px solid var(--border-divider);
+      border-radius: var(--card-radius);
+      background: var(--card-surface);
+    }
+
+    .srcThumb {
+      flex: none;
+      box-sizing: border-box;
+      width: 96px;
+      height: 60px;
+      padding: 2px;
+      border: 1px solid var(--border-rule);
+      border-radius: 6px;
+      background: var(--card-surface);
+      object-fit: contain;
+    }
+
+    .srcText {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .srcName {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-strong);
+    }
+
+    .srcMeta {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .statusChip {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 24px;
+      padding: 0 9px 0 6px;
+      border-radius: 12px;
+      background: var(--success-bg);
+      color: var(--success-text);
+      font-size: 12px;
+      font-weight: 500;
+
+      &.stuck {
+        background: var(--warning-bg);
+        color: var(--warning-text);
+      }
+
+      mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        line-height: 16px;
+      }
+    }
+
+    .warnNote {
+      display: flex;
+      gap: 8px;
+      max-width: 680px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--warning-bg);
+      font-size: 12.5px;
+      line-height: 18px;
+      color: var(--text-primary);
+
+      mat-icon {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        line-height: 18px;
+        color: var(--warning-text);
+      }
+    }
+
+    .srcNote {
+      margin: -8px 0 0;
+      max-width: 680px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-secondary);
+    }
+
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 680px;
+      font-size: 13.5px;
+      line-height: 20px;
+      color: var(--text-primary);
+      cursor: pointer;
+
+      input {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin: 1px 0 0;
+        accent-color: $indigo-500;
+        cursor: pointer;
+      }
+    }
+
+    .previewColumn {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 20px 24px;
+      border-left: 1px solid var(--border-rule);
+      background: var(--surface-sunken);
+    }
+
+    .pvHead {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .pvTitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .pvWhere {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    // The card at its real 300px, with the next one in its section beside it
+    // and cut off by the frame: placed among its neighbors, not floating.
+    .pvStage {
+      position: relative;
+      overflow: hidden;
+      padding: 14px 0 18px 18px;
+      border: 1px solid var(--border-rule);
+      border-radius: var(--card-radius);
+      background: var(--card-surface);
+    }
+
+    .pvSection {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .pvRow {
+      display: flex;
+      gap: 16px;
+      width: max-content;
+
+      .templateCard {
+        flex: none;
+        width: 300px;
+      }
+    }
+
+    // A preview is looked at, not pressed: no lift, no pointer.
+    .templateCard.live,
+    .templateCard.ghost {
+      cursor: default;
+
+      &:hover,
+      &:focus-within {
+        box-shadow: none;
+      }
+    }
+
+    .templateCard.live {
+      box-shadow:
+        0 0 0 2px var(--card-surface),
+        0 0 0 4px var(--brand-light) !important;
+    }
+
+    .templateCard.ghost {
+      opacity: 0.38;
+    }
+
+    // Material's flat button, drawn rather than used: it is a picture of the
+    // Open button and must not be one a keyboard can reach.
+    .openStandIn {
+      width: 80px;
+      height: 36px;
+      border: none;
+      border-radius: 4px;
+      background: $indigo-500;
+      color: var(--text-on-accent);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    .sends {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-rule);
+      border-radius: var(--card-radius);
+      background: var(--card-surface);
+
+      dl {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        row-gap: 5px;
+        column-gap: 10px;
+        margin: 0;
+        font-size: 12.5px;
+        line-height: 17px;
+      }
+
+      dt {
+        color: var(--text-secondary);
+      }
+
+      dd {
+        margin: 0;
+        overflow: hidden;
+        color: var(--text-strong);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &.none {
+          color: var(--text-tertiary);
+        }
+      }
+    }
+
+    .sendsTitle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        line-height: 18px;
+      }
+    }
+
+    .pvNote {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 17px;
+      color: var(--text-secondary);
+
+      mat-icon {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin-top: 1px;
+        font-size: 16px;
+        line-height: 16px;
+      }
+    }
+
+    .suggestFooter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px 12px 24px;
+      border-top: 1px solid var(--border-rule);
+      background: var(--card-surface);
+    }
+
+    .footNote {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+
+      mat-icon {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        line-height: 18px;
+      }
+
+      &.problem {
+        color: var(--refusal-text);
+      }
+    }
+
+    // After the rules they replace, which they match in specificity.
+    // Side by side, the preview's 500px left an 800px window's form 140px
+    // wide. Below what the two columns need, the preview goes under the form
+    // and the pair scroll as one.
+    @container suggest (max-width: 1000px) {
+      .suggestSplit {
+        display: block;
+        overflow-y: auto;
+      }
+
+      .suggestForm {
+        overflow: visible;
+        padding-right: 24px;
+      }
+
+      .previewColumn {
+        overflow: visible;
+        border-left: none;
+        border-top: 1px solid var(--border-rule);
+      }
+    }
+
+    @container suggest (max-width: 600px) {
+      .formRow.two,
+      .formRow.titleSection {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    // ---- sent ---------------------------------------------------------------
+
+    .sentView {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 40px 24px 16px;
+      text-align: center;
+
+      h2 {
+        margin: 0;
+        outline: none;
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--text-strong);
+      }
+
+      p {
+        max-width: 560px;
+        margin: 0 0 8px;
+        font-size: 14px;
+        line-height: 21px;
+        color: var(--text-secondary);
+
+        b {
+          font-weight: 500;
+          color: var(--text-strong);
         }
       }
 
-      .chip {
-        flex: 0 0 auto;
+      .templateCard {
+        flex: none;
+        width: 300px;
+        cursor: default;
+        text-align: left;
+
+        &:hover {
+          box-shadow: none;
+        }
+      }
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--success-bg);
+      color: var(--success-text);
+
+      mat-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 30px;
+        line-height: 30px;
+      }
+    }
+
+    .sentLabel {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .templateCard .pending {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+
+      mat-icon {
+        width: 16px;
+        height: 16px;
+        font-size: 16px;
+        line-height: 16px;
+      }
+    }
+
+    .sentActions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      padding: 16px 24px 28px;
+
+      .btnOutlined {
+        height: 40px;
+        padding: 0 18px;
+        font-size: 15px;
+      }
+    }
+
+    // ---- the phone ----------------------------------------------------------
+    //
+    // Last in the file deliberately: these have the same specificity as the
+    // rules they replace, so they only win by coming after them. Keyed off the
+    // class `ViewportService` puts on the root rather than a media query of its
+    // own, because the template changes shape on that same answer.
+    &.phone {
+      .titleRow {
+        padding: 4px 4px 4px 16px;
+      }
+
+      .phoneTools {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 16px 12px;
+        border-bottom: 1px solid var(--border-rule);
+      }
+
+      // 16px, because iOS zooms the page into any field typed in smaller.
+      .searchBox {
+        flex: none;
+        height: 44px;
+
+        input {
+          font-size: 16px;
+        }
+      }
+
+      .categoryButton {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        height: 44px;
+        padding: 0 10px 0 12px;
+        border: none;
+        border-radius: 6px;
+        background: var(--surface-field);
+        font-family: inherit;
+        font-size: 15px;
+        color: var(--text-strong);
+        text-align: left;
+        cursor: pointer;
+
+        mat-icon {
+          color: var(--text-secondary);
+        }
+      }
+
+      .categoryLabel {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+      }
+
+      .categoryValue {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .split {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .sectionHeading {
+        padding: 0 16px;
+      }
+
+      .templateGrid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        padding: 0 16px 20px;
+      }
+
+      .endLine {
+        padding: 4px 16px 24px;
+      }
+
+      .sheetScrim {
+        position: absolute;
+        inset: 0;
+        background: var(--scrim);
+      }
+
+      .categorySheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        max-height: 85%;
+        padding: 8px 0 16px;
+        border-radius: 16px 16px 0 0;
+        background: var(--card-surface);
+        box-shadow: var(--card-shadow);
+      }
+
+      .handle {
+        align-self: center;
+        width: 36px;
+        height: 4px;
+        margin-bottom: 4px;
+        border-radius: 2px;
+        background: var(--surface-disabled);
+      }
+
+      .sheetHead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 8px 4px 20px;
+
+        h2 {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 500;
+          color: var(--text-strong);
+        }
+      }
+
+      .sheetList {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0 12px;
+
+        .category {
+          height: 48px;
+          font-size: 15px;
+        }
+
+        .tick {
+          flex: none;
+          width: 20px;
+          height: 20px;
+          font-size: 20px;
+          line-height: 20px;
+        }
+      }
+
+      .suggestHead {
+        padding: 4px;
+        min-height: 52px;
+
+        h1 {
+          font-size: 18px;
+        }
+      }
+
+      .suggestSplit {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .suggestForm {
+        padding: 14px 16px;
+      }
+
+      .sourceChoice {
+        max-width: none;
+      }
+
+      .input {
+        font-size: 16px;
+      }
+
+      // Three lines at the phone's larger type, so the sentence being written
+      // is not already scrolling inside its own box.
+      textarea.input {
+        height: 84px;
+      }
+
+      .pvBox {
+        overflow: hidden;
+        border: 1px solid var(--border-divider);
+        border-radius: var(--card-radius);
+        background: var(--card-surface);
+
+        &.open {
+          background: var(--surface-sunken);
+        }
+      }
+
+      .pvToggle {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        background: transparent;
+        font-family: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .pvMini {
+        flex: none;
+        box-sizing: border-box;
+        width: 56px;
+        height: 40px;
+        padding: 2px;
+        border: 1px solid var(--border-rule);
+        border-radius: 6px;
+        background: var(--card-surface);
+        object-fit: contain;
+      }
+
+      .pvText {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .pvSub {
+        overflow: hidden;
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .pvHide {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .pvBody {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 0 12px 12px;
+      }
+
+      .suggestFooter {
+        padding: 10px 16px;
+      }
+
+      .sentView {
+        padding: 24px 16px 8px;
+
+        .templateCard {
+          width: 100%;
+        }
+      }
+
+      .sentActions {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px 16px;
+
+        button {
+          width: 100%;
+        }
       }
     }
   }

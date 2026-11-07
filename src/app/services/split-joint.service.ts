@@ -8,7 +8,7 @@ import {
   splitJoint,
   splitJointChoice,
 } from '../model/split-joint';
-import { placeSplitPins } from '../model/split-placement';
+import { SplitPin, chooseStayingPin, placeSplitPins } from '../model/split-placement';
 import { ActiveObjService } from './active-obj.service';
 import { EditPermissionService } from './edit-permission.service';
 import { MechanismService } from './mechanism.service';
@@ -110,18 +110,19 @@ export class SplitJointService {
    * Where each pin goes. A slider block stays where it is and every rider
    * steps off it. At a pin, one body keeps the point -- the one whose slot or
    * cylinder would otherwise move under another part, or else the one that
-   * kept the joint's letter -- and the rest take the smallest moves that
-   * clear each other's bars (`placeSplitPins`).
+   * kept the joint's letter, unless another body staying is what lets every
+   * pin clear (`chooseStayingPin`) -- and the rest take the smallest moves
+   * that clear each other's bars (`placeSplitPins`).
    */
   private placements(at: Coord, result: SplitJointResult, held?: RealJoint): [RealJoint, Coord][] {
     const pins = [...new Set(result.pinOf.values())];
     const block = result.original instanceof PrisJoint ? result.original : undefined;
     const moving = block ? pins.filter((pin) => pin !== block) : pins;
-    const anchored = moving.findIndex((pin) => this.othersDependOn(pin, result.pinOf));
-    const stays = held ? moving.indexOf(held) : block ? undefined : anchored >= 0 ? anchored : 0;
+    const bodies = moving.map((pin) => ({ ends: this.restOfOwnLink(pin, result.pinOf) }));
+    const stays = this.whichStays(at, moving, bodies, result.pinOf, block, held);
     const targets = placeSplitPins(
       at,
-      moving.map((pin) => ({ ends: this.restOfOwnLink(pin, result.pinOf) })),
+      bodies,
       this.settings.objectScale,
       stays,
       block ? { angle: block.slotAngle } : undefined
@@ -129,6 +130,22 @@ export class SplitJointService {
     return moving
       .map((pin, index): [RealJoint, Coord] => [pin, targets[index]])
       .filter((_, index) => index !== stays);
+  }
+
+  /** Which of the moving pins keeps the point, or none when a slider block does. */
+  private whichStays(
+    at: Coord,
+    moving: RealJoint[],
+    bodies: SplitPin[],
+    pinOf: Map<Link, RealJoint>,
+    block: PrisJoint | undefined,
+    held: RealJoint | undefined
+  ): number | undefined {
+    if (held) return moving.indexOf(held);
+    if (block) return undefined;
+    const anchored = moving.findIndex((pin) => this.othersDependOn(pin, pinOf));
+    if (anchored >= 0) return anchored;
+    return chooseStayingPin(at, bodies, this.settings.objectScale);
   }
 
   /** Moving this pin would carry a slot or a cylinder that another part relies on. */

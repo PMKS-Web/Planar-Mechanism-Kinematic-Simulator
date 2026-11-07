@@ -116,6 +116,12 @@ const CLAMP = {
   elbow: { x: -0.6, y: 1.5 },
   pad: { x: 1.6, y: 0.35 },
   anchor: { x: -1.4, y: -0.6 },
+  /**
+   * How far along the clamp bar, from its pivot, the work pushes back on it.
+   * Short of the pad's pin: a load is put on a link at a point of its own,
+   * and the pin is the toggle link's as much as the bar's.
+   */
+  workAlong: 0.85,
 };
 
 /**
@@ -129,6 +135,10 @@ const CLAMP = {
  * unremarkable.
  */
 export function toggleClampFixture(): MechanismFixture {
+  const work: [number, number] = [
+    CLAMP.anchor.x + (CLAMP.pad.x - CLAMP.anchor.x) * CLAMP.workAlong,
+    CLAMP.anchor.y + (CLAMP.pad.y - CLAMP.anchor.y) * CLAMP.workAlong,
+  ];
   return {
     joints: [
       { id: 'H', x: CLAMP.handle.x, y: CLAMP.handle.y, ground: true, input: true },
@@ -141,8 +151,8 @@ export function toggleClampFixture(): MechanismFixture {
       { joints: 'EP', mass: 1, moi: 0.08, name: 'Toggle link' },
       { joints: 'NP', mass: 2, moi: 0.2, name: 'Clamp bar' },
     ],
-    // The work pushing back against the pad.
-    load: { onLink: 'NP', at: [CLAMP.pad.x, CLAMP.pad.y], vector: [0, 180] },
+    // The work pushing back against the bar, near the pad.
+    load: { onLink: 'NP', at: work, vector: [0, 180] },
     inputAngVel: INPUT_SPEED,
   };
 }

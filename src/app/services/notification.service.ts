@@ -145,6 +145,14 @@ export class NotificationService {
     this.timers.delete(key);
   }
 
+  /**
+   * Take away a message by what it is about, wherever it is in the stack: an
+   * offer to try again is a lie once the thing has gone through.
+   */
+  dismissId(id: string): void {
+    [...this.live].filter((one) => one.id === id).forEach((one) => this.dismiss(one.key));
+  }
+
   dismissAll(): void {
     [...this.live].forEach((one) => this.dismiss(one.key));
   }

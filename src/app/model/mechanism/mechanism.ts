@@ -1420,12 +1420,9 @@ export class Mechanism {
    * how fast each part is going as it does. So the frames are kept exactly as
    * they are and only the signed input speed is turned round.
    *
-   * That is what keeps a reader's place. Re-solving, or even mirroring the
-   * frames, moves every pose to a different time and the whole curve slides
-   * end for end under the playhead: the peak someone was reading jumps to the
-   * other side of the chart for a machine that has not moved. Here the curve
-   * stays where it is and the playhead turns round, which is what actually
-   * happened.
+   * The poses remain indexed in their original order; elapsed time and the
+   * row order of graphs and exports are derived from the traversal below.
+   * This keeps analysis, playback and a freshly reopened URL on one clock.
    *
    * Rates are not stored per frame. Every velocity and acceleration is derived
    * from the pose and this one signed number, so negating it is the whole of
@@ -1449,6 +1446,26 @@ export class Mechanism {
     // carried into an object claiming a different drive.
     reversed.forceAnalysisCache = new Map();
     return reversed;
+  }
+
+  /** Elapsed playback time of a stored sample, keeping both cycle endpoints. */
+  elapsedTimeAtSample(index: number): number {
+    const time = this._timeNum[index] ?? 0;
+    const last = this._timeNum.length - 1;
+    return this._framesRunBackwards && index > 0 && index < last ? this.cyclePeriod - time : time;
+  }
+
+  /** Rows go forward in time even when the stored poses are traversed backwards. */
+  samplesInPlaybackOrder(): number[] {
+    const steps = this._timeNum.map((_, index) => index);
+    return this._framesRunBackwards && steps.length > 2
+      ? [0, ...steps.slice(1, -1).reverse(), steps.length - 1]
+      : steps;
+  }
+
+  playbackRowOfSample(index: number): number {
+    const last = this._timeNum.length - 1;
+    return this._framesRunBackwards && index > 0 && index < last ? last - index : index;
   }
 
   /** See `_framesRunBackwards`. */

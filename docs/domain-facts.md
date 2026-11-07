@@ -355,13 +355,15 @@ Dragging an existing force's handle remains exact.
 walk uses. A mechanism the position solver had to settle all at once (§2.7a of `docs/joint-types-plan.md`: the gripper on rails,
 whose carriage, four links and two jaws no two known joints locate) solves its poses and then has
 no rates at all, and every velocity graph was a row of gaps over a mechanism that visibly moved.
-`AnalysisSampleService` now fills the blanks from the solved positions
-(`model/mechanism/finite-difference-kinematics.ts`): a central difference for velocity, and for
-acceleration the derivative of that velocity series rather than a second difference of positions
--- a settled pose carries the solver's tolerance as a zigzag of a hair between neighbors, invisible
-to a first difference and a spike of several units to a second. Only blanks are filled; where the
-analytic answer exists it stands. `slide-gripper.spec.ts` pins it, and `e2e/template-graphs.mjs`
-checks every plotted rate against a difference quotient of its source.
+`AnalysisSampleService` fills missing or singular rates from the full-precision solved positions
+(`model/mechanism/finite-difference-kinematics.ts`). Polynomial differences use the actual sample
+clock and stay on one input-direction branch, becoming one-sided near travel stops. Too few branch
+samples leave a gap. A commanded abrupt reversal does not define a finite instantaneous
+acceleration; neighboring samples represent branch limits. Welded leaf rates come from the root's
+rigid-body motion, and cylinder interiors from mount/axis geometry. Angular positions use degrees;
+angular velocities and accelerations use radians. Display angle conversion must preserve the data.
+`slide-gripper.spec.ts` and `mechanism-audit.spec.ts` cover these contracts; `e2e/template-graphs.mjs`
+checks plotted rates against their positions.
 
 ### Solved poses keep full precision
 
@@ -381,6 +383,27 @@ body. It covers geometry, guide angles, speed, mass, inertia, CoM, force data an
 Old payloads retain their old meaning. Old readers reject unknown precision tags; they cannot
 silently substitute default speed for a tiny nonzero value. Data already rounded away in an old
 URL requires an original source drawing to restore.
+
+### A welded leaf's force belongs to its root, and remembers the leaf
+
+A welded leaf is selected and saved by member identity, but its force belongs to the physical root
+body. `anchoredTo` retains the member so unwelding can restore the load to it. During compound
+replacement, pass the new owner explicitly: the service's old graph still contains the compound.
+Paused tracer attachment uses `indexOfMechanismSolving`, including leaves and shared frame parts.
+
+### Forces are assembled in SI, and a floating motor pushes back
+
+The force solver converts model coordinates and accelerations to SI at equation assembly. Its
+length factor is the reader's `distanceToM` divided by `MODEL_SCALE`, applied once where the solver
+reads its units. Mass and inertia are already SI. Returned force is newtons and torque is
+newton-meters; display conversion must not divide a physical torque by model scale. A floating
+motor's torque acts equally and oppositely on the body it drives and the body it is mounted on.
+
+### Reversed playback keeps the poses and turns the clock round
+
+Cached reversal reuses poses but reverses their elapsed-time ordering. `elapsedTimeAtSample`,
+`samplesInPlaybackOrder` and `playbackRowOfSample` keep plotted rows, CSV and graph markers on the
+playback clock. Velocities negate; accelerations at the same pose do not.
 
 ### A link pinned to ground twice is frame, and the force solver treats it so
 
@@ -438,8 +461,9 @@ hold and says so, with "Fix length instead" on the message.
 
 **To the reader the word is "fixed", and never "locked".** The padlock inside a field says
 **Fixed**, the menu rows say **Fixed Length** and **Fixed Angle**, a refusal says "Held by fixed
-length AB", and the way out of one is **Release**. "Locked" and "Unlock" belong to the *joint mark*
-and to nothing else. That is the opposite of the rule this file used to state -- one word for both,
+length AB", and the way out of one is **Release** -- **Release all** when the refusal names more
+than one hold, because the one press lets go of every hold it names (`releaseLabel` in
+`model/link-holds.ts`). "Locked" and "Unlock" belong to the *joint mark* and to nothing else. That is the opposite of the rule this file used to state -- one word for both,
 told apart by context -- and it was reversed after an exploratory sweep watched a reader go looking
 for a padlock they had never pressed. `hold` stays the code's name for it.
 
@@ -470,6 +494,17 @@ anything but a bar. The held-value chips and the amber guide are canvas state
 are (`lockVisualsOn`), and the hover dimensions for a length or an angle -- the link's and the
 joint panel's distance-to-joint ones alike -- are now a hairline with a pill, sized in screen pixels
 through `svgGrid.scaleWithZoom`. `e2e/link-holds.mjs` walks all of it.
+
+**A held value is a value of the design, and the design is the start pose.** So a chip is drawn
+only while its machine stands on its own start (`MechanismService.isMachineAtStart`). Paused a
+little way round, a held crank's chip used to read wherever the crank had turned to -- 50 deg at the
+start, 7 deg a moment later -- and the one number the reader had fixed seemed to change under them.
+A drag at that pose is still held exactly as before; only the chip stands down, and the hover pill
+it was standing in for comes back. For the same reason **Move the start here is grayed where it
+would turn a fixed angle**, with the angle named beside it: promoting the pose rebuilds the design
+from what is on screen, so it would have written the crank's new bearing in as the fixed one.
+`model/start-move-refusal.ts` is the rule and `startMoveRefusal` asks it. A fixed length cannot be
+turned by the motion and never refuses.
 
 **And a Lock is about position, full stop.** It refuses every gesture that would *move* what it
 holds -- a drag, a typed coordinate, a merge -- and refuses nothing else. Two other rules had grown

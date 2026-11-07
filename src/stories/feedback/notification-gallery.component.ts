@@ -12,7 +12,9 @@ import {
  */
 const SAMPLES: Record<NotificationKind, { text: string; actions?: NotificationAction[] }> = {
   success: { text: 'Link copied. It opens this exact mechanism.' },
-  refusal: { text: 'Nothing was written: the chosen objects no longer have numbers to give.' },
+  refusal: {
+    text: 'Nothing was exported: the chosen objects no longer have results. Choose others on the first step.',
+  },
   warning: { text: 'Merged C into D. The weld did not carry over — D cannot be welded.' },
   news: {
     text: 'M2 starts here now — its old start is out of reach.',

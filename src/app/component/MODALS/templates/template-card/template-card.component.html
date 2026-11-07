@@ -1,0 +1,21 @@
+<div class="thumb">
+  <!-- Decorative: the name is right underneath in text, so a screen reader
+       announcing the filename twice is noise. -->
+  <img class="still" [src]="card().thumbnail" alt="" />
+  @if (card().animation; as animation) {
+    <img class="animated" [src]="animation" alt="" />
+  }
+
+  <!-- Over the thumbnail, on a band solid enough that the drawing behind it
+       cannot decide whether the words are readable. -->
+  <div class="caption">
+    <span class="cardName">{{ card().name }}</span>
+    <span class="cardDescription">{{ card().description }}</span>
+    @if (card().credit; as credit) {
+      <span class="credit"
+        ><mat-icon aria-hidden="true">person</mat-icon>Suggested by <b>{{ credit }}</b></span
+      >
+    }
+  </div>
+</div>
+<ng-content />
