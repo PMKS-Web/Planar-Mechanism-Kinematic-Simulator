@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="320" viewBox="0 0 1160 320">
+  <!--
+    A ten-inch pair of locking pliers, drawn for the Locking Pliers template to
+    be traced over: the frame (upper jaw and handle), the lower jaw, the lower
+    handle, the toggle link inside the frame's channel, the adjusting screw it
+    rests on, the spring that opens the jaws, and a rod held in the jaws.
+
+    Laid out so that a model point (mx, my), in inches, lands at
+    ((mx + 0.6) * 100, (1.4 - my) * 100), which puts the template's joints on
+    the rivets drawn here when the picture is placed 11.6 in wide centered at
+    (5.2, -0.2) in. Drawn for this app; no part of it is copied from elsewhere.
+  -->
+  <defs>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f6f9"/>
+      <stop offset="0.45" stop-color="#c9d0d9"/>
+      <stop offset="1" stop-color="#8d96a3"/>
+    </linearGradient>
+    <linearGradient id="steelDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9c1cc"/>
+      <stop offset="1" stop-color="#6c7583"/>
+    </linearGradient>
+    <linearGradient id="rod" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e9d9b8"/>
+      <stop offset="1" stop-color="#a88a55"/>
+    </linearGradient>
+    <pattern id="knurl" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <rect width="7" height="7" fill="#aeb6c1"/>
+      <path d="M0 0 V7" stroke="#6c7583" stroke-width="2"/>
+    </pattern>
+    <style>
+      .part { stroke: #333b47; stroke-width: 3; stroke-linejoin: round; }
+      .edge { fill: none; stroke: #333b47; stroke-width: 2; stroke-linecap: round; }
+      .soft { fill: none; stroke: #ffffff; stroke-width: 2; stroke-opacity: 0.7; stroke-linecap: round; }
+      .rivet { fill: #dfe4ea; stroke: #333b47; stroke-width: 2.5; }
+      .teeth { fill: none; stroke: #333b47; stroke-width: 2; stroke-linejoin: miter; }
+      .spring { fill: none; stroke: #4a5361; stroke-width: 3; stroke-linecap: round; }
+    </style>
+  </defs>
+  <!-- The frame: fixed jaw, head and upper handle -->
+  <path class="part" fill="url(#steel)" d="M62.0 121.0 L172.0 121.0 L180.0 128.0 L178.0 142.0 L190.0 174.0 L215.0 190.0 L240.0 183.0 L265.0 158.0 L295.0 144.0 L1065.0 107.0 L1072.0 98.0 L1070.0 48.0 L1060.0 42.0 L320.0 60.0 L250.0 62.0 L175.0 78.0 L115.0 96.0 L72.0 108.0 L60.0 114.0 Z"/>
+  <path class="edge" d="M310.0 134.0 L1060.0 99.0"/>
+  <path class="soft" d="M180.0 74.0 Q260.0 54.0 320.0 54.0 L1050.0 48.0"/>
+  <path class="teeth" d="M66.0 121.0 L71.0 128.0 L76.0 121.0 L81.0 128.0 L86.0 121.0 L91.0 128.0 L96.0 121.0 L101.0 128.0 L106.0 121.0 L111.0 128.0 L116.0 121.0 L121.0 128.0 L126.0 121.0 L131.0 128.0 L136.0 121.0 L141.0 128.0 L146.0 121.0 L151.0 128.0 L156.0 121.0 L161.0 128.0 L166.0 121.0 L171.0 128.0 L176.0 121.0"/>
+  <!-- A cutaway in the handle's side, where the toggle link meets the screw -->
+  <clipPath id="window"><path d="M550.0 128.7 L850.0 114.3 L850.0 70.0 L550.0 80.0 Z"/></clipPath>
+  <path fill="#59616d" stroke="#333b47" stroke-width="2" d="M550.0 128.7 L850.0 114.3 L850.0 70.0 L550.0 80.0 Z"/>
+  <g clip-path="url(#window)">
+  <!-- The adjusting screw, tip at the toggle link -->
+  <path class="part" fill="url(#steelDark)" d="M665.6 103.2 L1093.8 77.9 L1094.7 91.9 L666.4 117.2 Z"/>
+  <path class="edge" stroke-width="1.2" d="M679.6 102.4 L685.4 116.1"/>
+  <path class="edge" stroke-width="1.2" d="M689.6 101.8 L695.4 115.5"/>
+  <path class="edge" stroke-width="1.2" d="M699.5 101.2 L705.4 114.9"/>
+  <path class="edge" stroke-width="1.2" d="M709.5 100.6 L715.3 114.3"/>
+  <path class="edge" stroke-width="1.2" d="M719.5 100.1 L725.3 113.7"/>
+  <path class="edge" stroke-width="1.2" d="M729.5 99.5 L735.3 113.1"/>
+  <path class="edge" stroke-width="1.2" d="M739.5 98.9 L745.3 112.6"/>
+  <path class="edge" stroke-width="1.2" d="M749.4 98.3 L755.3 112.0"/>
+  <path class="edge" stroke-width="1.2" d="M759.4 97.7 L765.2 111.4"/>
+  <path class="edge" stroke-width="1.2" d="M769.4 97.1 L775.2 110.8"/>
+  <path class="edge" stroke-width="1.2" d="M779.4 96.5 L785.2 110.2"/>
+  <path class="edge" stroke-width="1.2" d="M789.4 95.9 L795.2 109.6"/>
+  <path class="edge" stroke-width="1.2" d="M799.4 95.3 L805.2 109.0"/>
+  <path class="edge" stroke-width="1.2" d="M809.3 94.7 L815.2 108.4"/>
+  <path class="edge" stroke-width="1.2" d="M819.3 94.1 L825.1 107.8"/>
+  <path class="edge" stroke-width="1.2" d="M829.3 93.6 L835.1 107.2"/>
+  <path class="edge" stroke-width="1.2" d="M839.3 93.0 L845.1 106.6"/>
+  <path class="edge" stroke-width="1.2" d="M849.3 92.4 L855.1 106.0"/>
+  <path class="edge" stroke-width="1.2" d="M859.3 91.8 L865.1 105.5"/>
+  <path class="edge" stroke-width="1.2" d="M869.2 91.2 L875.1 104.9"/>
+  <path class="edge" stroke-width="1.2" d="M879.2 90.6 L885.0 104.3"/>
+  <path class="edge" stroke-width="1.2" d="M889.2 90.0 L895.0 103.7"/>
+  <path class="edge" stroke-width="1.2" d="M899.2 89.4 L905.0 103.1"/>
+  <path class="edge" stroke-width="1.2" d="M909.2 88.8 L915.0 102.5"/>
+  <path class="edge" stroke-width="1.2" d="M919.1 88.2 L925.0 101.9"/>
+  <path class="edge" stroke-width="1.2" d="M929.1 87.6 L935.0 101.3"/>
+  <path class="edge" stroke-width="1.2" d="M939.1 87.0 L944.9 100.7"/>
+  <path class="edge" stroke-width="1.2" d="M949.1 86.5 L954.9 100.1"/>
+  <path class="edge" stroke-width="1.2" d="M959.1 85.9 L964.9 99.5"/>
+  <path class="edge" stroke-width="1.2" d="M969.1 85.3 L974.9 99.0"/>
+  <path class="edge" stroke-width="1.2" d="M979.0 84.7 L984.9 98.4"/>
+  <path class="edge" stroke-width="1.2" d="M989.0 84.1 L994.8 97.8"/>
+  <path class="edge" stroke-width="1.2" d="M999.0 83.5 L1004.8 97.2"/>
+  <path class="edge" stroke-width="1.2" d="M1009.0 82.9 L1014.8 96.6"/>
+  <path class="edge" stroke-width="1.2" d="M1019.0 82.3 L1024.8 96.0"/>
+  <path class="edge" stroke-width="1.2" d="M1029.0 81.7 L1034.8 95.4"/>
+  <path class="edge" stroke-width="1.2" d="M1038.9 81.1 L1044.8 94.8"/>
+  <path class="edge" stroke-width="1.2" d="M1048.9 80.5 L1054.7 94.2"/>
+  <path class="edge" stroke-width="1.2" d="M1058.9 79.9 L1064.7 93.6"/>
+  </g>
+  <!-- The toggle link, from the handle up to the screw tip -->
+  <path class="part" fill="url(#steelDark)" d="M379.5 182.3 L669.4 100.8 L679.6 107.2 L674.4 118.1 L385.6 203.4 L374.9 195.1 Z"/>
+  <!-- The lower handle -->
+  <path class="part" fill="url(#steel)" d="M232.0 210.0 L258.0 202.0 L320.0 182.0 L396.0 167.0 L500.0 176.0 L710.0 190.0 L1000.0 202.0 L1042.0 206.0 L1050.0 220.0 L1040.0 238.0 L990.0 242.0 L710.0 236.0 L460.0 230.0 L320.0 238.0 L270.0 250.0 L240.0 246.0 L226.0 230.0 Z"/>
+  <path class="soft" d="M320.0 188.0 Q396.0 173.0 500.0 182.0 L1000.0 208.0"/>
+  <path class="edge" d="M480.0 224.0 L990.0 234.0"/>
+  <!-- The release lever -->
+  <path class="part" fill="url(#steelDark)" d="M780.0 237.0 L960.0 240.0 L1005.0 258.0 L995.0 270.0 L950.0 260.0 L780.0 246.0 Z"/>
+  <!-- The lower jaw -->
+  <path class="part" fill="url(#steel)" d="M65.0 165.0 L172.0 165.0 L190.0 145.0 L215.0 142.0 L234.0 156.0 L246.0 192.0 L272.0 214.0 L270.0 240.0 L245.0 248.0 L222.0 235.0 L200.0 202.0 L155.0 200.0 L105.0 192.0 L72.0 178.0 Z"/>
+  <path class="teeth" d="M68.0 165.0 L73.0 158.0 L78.0 165.0 L83.0 158.0 L88.0 165.0 L93.0 158.0 L98.0 165.0 L103.0 158.0 L108.0 165.0 L113.0 158.0 L118.0 165.0 L123.0 158.0 L128.0 165.0 L133.0 158.0 L138.0 165.0 L143.0 158.0 L148.0 165.0 L153.0 158.0 L158.0 165.0 L163.0 158.0 L168.0 165.0 L173.0 158.0 L178.0 165.0"/>
+  <path class="soft" d="M80.0 173.0 L160.0 173.0"/>
+  <!-- A rod held in the jaws -->
+  <circle class="part" fill="url(#rod)" cx="120.0" cy="143.0" r="21"/>
+  <circle fill="none" stroke="#7a6337" stroke-width="1.5" cx="120.0" cy="143.0" r="13"/>
+  <!-- The knurled knob that sets the jaws -->
+  <path class="part" fill="url(#knurl)" d="M1072.0 116.0 L1155.0 110.0 L1158.0 56.0 L1072.0 50.0 Z"/>
+  <path class="part" fill="url(#steelDark)" d="M1065.0 107.0 L1074.0 118.0 L1074.0 48.0 L1065.0 45.0 Z"/>
+  <circle class="rivet" cx="210.0" cy="165.0" r="11"/>
+  <circle fill="#ffffff" fill-opacity="0.8" cx="207.0" cy="162.0" r="3"/>
+  <circle class="rivet" cx="250.0" cy="225.0" r="11"/>
+  <circle fill="#ffffff" fill-opacity="0.8" cx="247.0" cy="222.0" r="3"/>
+  <circle class="rivet" cx="396.0" cy="189.0" r="9"/>
+  <circle fill="#ffffff" fill-opacity="0.8" cx="393.0" cy="186.0" r="3"/>
+</svg>

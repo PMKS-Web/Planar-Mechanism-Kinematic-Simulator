@@ -27,14 +27,13 @@ export const TEMPLATE_CATEGORIES = [
   // looking. The dialog only offers this category in a development build.
   { id: 'dev', name: 'For Development' },
   { id: 'start', name: 'Start Here' },
-  { id: 'realworld', name: 'Real-Life Use Cases' },
-  { id: 'sixbar', name: 'Six-Bars and Harder' },
-  { id: 'slots', name: 'Slots and Sliders' },
-  { id: 'cylinders', name: 'Cylinders' },
-  { id: 'paths', name: 'Paths and Curves' },
+  { id: 'realworld', name: 'Real Machines' },
+  { id: 'backforth', name: 'Back-and-Forth Motion' },
+  { id: 'swing', name: 'Swing, Lift and Grip' },
+  { id: 'paths', name: 'Drawing a Path' },
   { id: 'forces', name: 'Forces' },
-  { id: 'drives', name: 'Unusual Drives' },
-  { id: 'machines', name: 'Many Mechanisms' },
+  { id: 'sixbar', name: 'Six-Bars and Beyond' },
+  { id: 'machines', name: 'Multiple Mechanisms' },
 ] as const;
 
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
@@ -87,6 +86,12 @@ export interface TemplateCard {
   readonly animation?: string;
   /** Optional picture the mechanism opens on top of. */
   readonly backdrop?: TemplateBackdrop;
+  /**
+   * Who suggested it, for a mechanism added through Suggest a Mechanism: the
+   * Credit As they gave, shown on the card as "Suggested by". Absent for the
+   * library's own, and for a suggestion sent anonymously.
+   */
+  readonly credit?: string;
 }
 
 /**
@@ -97,50 +102,13 @@ export interface TemplateCard {
  * row here.
  */
 export const TEMPLATE_CARDS: readonly TemplateCard[] = [
+  // Start Here
   {
-    id: 'Hydraulic_Crosshead',
-    name: 'Hydraulic Crosshead',
-    category: 'cylinders',
-    description:
-      'A barrel welded to its frame and a crosshead welded to its rod: both ends keep their attachments rigid.',
-    thumbnail: 'assets/gifs/hydraulic-crosshead.png',
-    animation: 'assets/gifs/hydraulic-crosshead.gif',
-  },
-  {
-    id: 'Offset_Mount_Hatch',
-    name: 'Bracketed Hatch',
-    category: 'cylinders',
-    description:
-      'Welded offsets at both cylinder ends lift a hinged hatch. Trace the hatch tip and compare its travel with the cylinder stroke.',
-    thumbnail: 'assets/gifs/offset-mount-hatch.png',
-    animation: 'assets/gifs/offset-mount-hatch.gif',
-  },
-  {
-    id: 'Reciprocating_Saw',
-    name: 'Reciprocating Saw',
-    category: 'forces',
-    description:
-      'A yoke drives a loaded saw carriage. Compare crank torque and guide reactions over the cutting and return strokes.',
-    thumbnail: 'assets/gifs/reciprocating-saw.png',
-    animation: 'assets/gifs/reciprocating-saw.gif',
-  },
-  {
-    id: 'Slotted_Tool_Drive',
-    name: 'Slotted Tool Drive',
-    category: 'forces',
-    description:
-      'A tool-normal load turns with its slotted carrier while a hanging load stays vertical. Compare input torque and pin reactions.',
-    thumbnail: 'assets/gifs/slotted-tool-drive.png',
-    animation: 'assets/gifs/slotted-tool-drive.gif',
-  },
-
-  {
-    id: '4-Bar',
+    id: 'Four_Bar',
     name: 'Four-Bar',
     category: 'start',
     description:
-      'A classic crank-rocker: a crank turns, a rocker swings, and ' +
-      'the coupler between them draws a curve.',
+      'The short crank turns all the way round, the opposite link only swings, and a point on the coupler draws a curve.',
     thumbnail: 'assets/gifs/four-bar.png',
     animation: 'assets/gifs/four-bar.gif',
   },
@@ -148,339 +116,57 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     id: 'Slider_Crank',
     name: 'Slider-Crank',
     category: 'start',
-    description: 'Rotation into a straight push — the engine and the pump both live here.',
+    description: 'Turns rotation into a straight push and pull, like a piston on a crankshaft.',
     thumbnail: 'assets/gifs/slider-crank.png',
     animation: 'assets/gifs/slider-crank.gif',
   },
   {
-    id: 'Bell_Crank',
-    name: 'Bell Crank',
-    category: 'start',
-    description:
-      'Two bars welded into one body at a right angle, so a push one way comes out of the far ' +
-      'side pointing another.',
-    thumbnail: 'assets/gifs/bell-crank.png',
-    animation: 'assets/gifs/bell-crank.gif',
-  },
-  {
-    id: 'Locked_Four_Bar',
-    name: 'Locked Four-Bar',
-    category: 'start',
-    description:
-      'The crank holds its angle and the other bars their lengths, so a class can only change ' +
-      'what it is meant to.',
-    thumbnail: 'assets/gifs/locked-four-bar.png',
-    animation: 'assets/gifs/locked-four-bar.gif',
-  },
-
-  {
-    id: 'Watt_I',
-    name: 'Watt I',
-    category: 'sixbar',
-    description: 'Two four-bars sharing a link, so the output can do what one four-bar cannot.',
-    thumbnail: 'assets/gifs/watt-i.png',
-    animation: 'assets/gifs/watt-i.gif',
-  },
-  {
-    id: 'Watt_II',
-    name: 'Watt II',
-    category: 'sixbar',
-    description: 'The other Watt chain: its two loops meet at a link rather than at a joint.',
-    thumbnail: 'assets/gifs/watt-ii.png',
-    animation: 'assets/gifs/watt-ii.gif',
-  },
-  {
-    id: 'Stephenson_III',
-    name: 'Stephenson III',
-    category: 'sixbar',
-    description:
-      'A six-bar whose ternary links sit apart, so both loops have to be solved at once.',
-    thumbnail: 'assets/gifs/stephenson-iii.png',
-    animation: 'assets/gifs/stephenson-iii.gif',
-  },
-  {
-    id: 'Double_Butterfly',
-    name: 'Double Butterfly',
-    category: 'sixbar',
-    description:
-      'The eight-bar with no four-bar loop anywhere in it: six joints that will not come apart ' +
-      'and have to be solved together.',
-    thumbnail: 'assets/gifs/double-butterfly.png',
-    animation: 'assets/gifs/double-butterfly.gif',
-  },
-
-  {
-    id: 'Whitworth_Quick_Return',
-    name: 'Whitworth Quick-Return',
-    category: 'slots',
-    description: 'Crank longer than the ground offset, so the lever turns instead of rocking.',
-    thumbnail: 'assets/gifs/whitworth.png',
-    animation: 'assets/gifs/whitworth.gif',
-  },
-  {
-    id: 'Shaper_Quick_Return',
-    name: 'Shaper Quick-Return',
-    category: 'slots',
-    description:
-      'A floating slot handing off to a grounded one: the tool slide cuts slow and returns fast.',
-    thumbnail: 'assets/gifs/shaper-quick-return.png',
-    animation: 'assets/gifs/shaper-quick-return.gif',
-  },
-  {
-    id: 'Scotch_Yoke',
-    name: 'Scotch Yoke',
-    category: 'slots',
-    description: 'A welded rider translating on its guide — pure cosine motion.',
-    thumbnail: 'assets/gifs/scotch-yoke.png',
-    animation: 'assets/gifs/scotch-yoke.gif',
-  },
-  {
-    id: 'Radial_Engine',
-    name: 'Radial Engine',
-    category: 'slots',
-    description: 'Five sliders on one crank pin; piston stroke is exactly twice the throw.',
-    thumbnail: 'assets/gifs/radial-engine.png',
-    animation: 'assets/gifs/radial-engine.gif',
-  },
-  {
-    id: 'Elliptical_Crank',
-    name: 'Elliptical Crank',
-    category: 'slots',
-    description:
-      'A six-bar no chain of dyads reaches: the coupler and its guided end solve together.',
-    thumbnail: 'assets/gifs/elliptical-crank.png',
-    animation: 'assets/gifs/elliptical-crank.gif',
-  },
-  {
-    id: 'Flywheel_Engine',
-    name: 'Engine with a Flywheel',
-    category: 'slots',
-    description:
-      'The one crank drawn as the disc it sweeps, rather than as a bar, driving a piston down ' +
-      'its guide.',
-    thumbnail: 'assets/gifs/flywheel-engine.png',
-    animation: 'assets/gifs/flywheel-engine.gif',
-  },
-  {
-    id: 'Elliptical_Trammel',
-    name: 'Elliptical Trammel',
-    category: 'slots',
-    description:
-      'No pin touches ground. Two blocks on crossed guides swing the bar between them through a ' +
-      'true ellipse.',
-    thumbnail: 'assets/gifs/elliptical-trammel.png',
-    animation: 'assets/gifs/elliptical-trammel.gif',
-  },
-
-  {
     id: 'Cylinder_Boom',
     name: 'Cylinder-Driven Boom',
-    category: 'cylinders',
-    description: 'The cylinder is the drive, and the boom follows the law of cosines.',
+    category: 'start',
+    description:
+      'A hydraulic cylinder pushes, and the boom swings up the way a digger lifts its arm.',
     thumbnail: 'assets/gifs/cylinder-boom.png',
     animation: 'assets/gifs/cylinder-boom.gif',
   },
   {
-    id: 'Cylinder_Gripper',
-    name: 'Parallel Gripper',
-    category: 'slots',
+    id: 'Parallelogram',
+    name: 'Parallelogram',
+    category: 'start',
     description:
-      'A cylinder carriage and jaws hung on equal links, the outer pin of ' +
-      'each riding a rail. The jaws stay level and meet flat.',
-    thumbnail: 'assets/gifs/cylinder-gripper.png',
-    animation: 'assets/gifs/cylinder-gripper.gif',
+      'Opposite links are equal, so the coupler never tilts as the crank turns. A desk lamp’s arm uses this to keep its head level.',
+    thumbnail: 'assets/gifs/parallelogram.png',
+    animation: 'assets/gifs/parallelogram.gif',
   },
   {
-    id: 'Scissor_Lift',
-    name: 'Scissor Lift',
-    category: 'cylinders',
+    id: 'Locked_Four_Bar',
+    name: 'Four-Bar with Fixed Lengths',
+    category: 'start',
     description:
-      'Cylinder, supporting block and a slot in the moving platform — three parts, three jobs.',
-    thumbnail: 'assets/gifs/scissor-lift.png',
-    animation: 'assets/gifs/scissor-lift.gif',
-  },
-
-  {
-    id: 'Chebyshev_Straight_Line',
-    name: 'Chebyshev Straight-Line',
-    category: 'paths',
-    description:
-      'Approximate straight-line generation: the coupler midpoint runs flat along the top.',
-    thumbnail: 'assets/gifs/chebyshev.png',
-    animation: 'assets/gifs/chebyshev.gif',
-  },
-  {
-    id: 'Jansen_Leg',
-    name: 'Jansen Leg',
-    category: 'paths',
-    description:
-      "One leg of a Strandbeest — eight bars on Jansen's holy numbers, and the foot walks.",
-    thumbnail: 'assets/gifs/jansen-leg.png',
-    animation: 'assets/gifs/jansen-leg.gif',
-  },
-  {
-    id: 'Windshield_Wiper',
-    name: 'Windshield Wiper',
-    category: 'paths',
-    description: 'One motor, two arms: continuous rotation into two bounded sweeps.',
-    thumbnail: 'assets/gifs/windshield-wiper.png',
-    animation: 'assets/gifs/windshield-wiper.gif',
-  },
-  {
-    id: 'Peaucellier',
-    name: 'Peaucellier-Lipkin',
-    category: 'paths',
-    description:
-      'Exact straight-line generation, where Chebyshev only approximates it: the rhombus ' +
-      'inverts a circle into a ruled line.',
-    thumbnail: 'assets/gifs/peaucellier.png',
-    animation: 'assets/gifs/peaucellier.gif',
-  },
-  {
-    id: 'Pantograph',
-    name: 'Pantograph',
-    category: 'paths',
-    description:
-      "Pen and tracer held in line with the pivot, so one draws the other's curve at half the " +
-      'size.',
-    thumbnail: 'assets/gifs/pantograph.png',
-    animation: 'assets/gifs/pantograph.gif',
-  },
-
-  {
-    id: 'Punch_Press',
-    name: 'Punch Press',
-    category: 'forces',
-    description: 'Follow how the required crank torque changes through a loaded press stroke.',
-    thumbnail: 'assets/gifs/punch-press.png',
-    animation: 'assets/gifs/punch-press.gif',
-  },
-  {
-    id: 'Derrick_Crane',
-    name: 'Derrick Crane',
-    category: 'forces',
-    description:
-      'A weight far out on a boom held close in — the link carries several times the load.',
-    thumbnail: 'assets/gifs/derrick-crane.png',
-    animation: 'assets/gifs/derrick-crane.gif',
-  },
-  {
-    id: 'Toggle_Clamp',
-    name: 'Toggle Clamp',
-    category: 'forces',
-    description:
-      'Where mechanical advantage comes from: the clamping force runs away as the links line up.',
-    thumbnail: 'assets/gifs/toggle-clamp.png',
-    animation: 'assets/gifs/toggle-clamp.gif',
-  },
-  {
-    id: 'Offset_Load_Rocker',
-    name: 'Offset Load Rocker',
-    category: 'forces',
-    description:
-      'An off-center load produces a moment. Compare its reactions with a load applied along the link.',
-    thumbnail: 'assets/gifs/offset-load-rocker.png',
-    animation: 'assets/gifs/offset-load-rocker.gif',
-  },
-  {
-    id: 'Crane_Two_Loads',
-    name: 'Crane with Two Loads',
-    category: 'forces',
-    description:
-      'Grid against link reference frames: the hook hangs vertical whatever the jib does, while ' +
-      'the rope pull swings with it.',
-    thumbnail: 'assets/gifs/crane-two-loads.png',
-    animation: 'assets/gifs/crane-two-loads.gif',
-  },
-
-  {
-    id: 'Oscillating_Fan',
-    name: 'Oscillating Fan',
-    category: 'drives',
-    description:
-      'The motor rides the head it sweeps: the driven pin turns right round, the head does not.',
-    thumbnail: 'assets/gifs/oscillating-fan.png',
-    animation: 'assets/gifs/oscillating-fan.gif',
-  },
-  {
-    id: 'Pumpjack',
-    name: 'Pumpjack',
-    category: 'drives',
-    description:
-      'Driven where the pitman meets the beam, and the output is a straight-line stroke.',
-    thumbnail: 'assets/gifs/pumpjack.png',
-    animation: 'assets/gifs/pumpjack.gif',
-  },
-  {
-    id: 'Pedaling_Leg',
-    name: 'Pedaling Leg',
-    category: 'drives',
-    description: 'A driven knee carried by the thigh: one leg can only rock the crank half a turn.',
-    thumbnail: 'assets/gifs/pedaling-leg.png',
-    animation: 'assets/gifs/pedaling-leg.gif',
-  },
-
-  {
-    id: 'Three_Machines',
-    name: 'Three Mechanisms',
-    category: 'machines',
-    description:
-      'Three mechanisms in one drawing, each on its own animation row at its own speed and ' +
-      'direction.',
-    thumbnail: 'assets/gifs/three-machines.png',
-    animation: 'assets/gifs/three-machines.gif',
-  },
-  {
-    id: 'Walking_Pair',
-    name: 'Walking Pair',
-    category: 'machines',
-    description:
-      'Two Jansen legs half a cycle apart: one foot planted while the other swings. A gait is ' +
-      'a relationship between mechanisms.',
-    thumbnail: 'assets/gifs/walking-pair.png',
-    animation: 'assets/gifs/walking-pair.gif',
-  },
-  {
-    id: 'Straight_Line_Pair',
-    name: 'Approximate and Exact',
-    category: 'machines',
-    description:
-      "Chebyshev's line bows and Peaucellier's does not. Side by side the two words mean " +
-      'something you can see.',
-    thumbnail: 'assets/gifs/straight-line-pair.png',
-    animation: 'assets/gifs/straight-line-pair.gif',
-  },
-  {
-    id: 'Pumping_Field',
-    name: 'Pumping Field',
-    category: 'machines',
-    description:
-      'Three beams on three clocks, drifting out of step the way a real field does — three ' +
-      'animation rows, seen from the grid.',
-    thumbnail: 'assets/gifs/pumping-field.png',
-    animation: 'assets/gifs/pumping-field.gif',
+      'Fixed Length and Fixed Angle are on, so dragging a joint only changes what is left free. Turn one off and drag again.',
+    thumbnail: 'assets/gifs/locked-four-bar.png',
+    animation: 'assets/gifs/locked-four-bar.gif',
   },
   {
     id: 'Four_Bar_Inversions',
     name: 'Four-Bar Inversions',
-    category: 'machines',
+    category: 'start',
     description:
-      'One chain of four bars, drawn four times with a different bar held still. Each keeps ' +
-      'its color, so you can watch a crank become a coupler.',
+      'The same four links, each time with a different one held still: watch a crank in one become the coupler in another.',
     thumbnail: 'assets/gifs/four-bar-inversions.png',
     animation: 'assets/gifs/four-bar-inversions.gif',
   },
   {
     id: 'Slider_Crank_Inversions',
     name: 'Slider-Crank Inversions',
-    category: 'machines',
+    category: 'start',
     description:
-      'The same chain four ways again, this time with a slider in it: an engine, a ' +
-      'quick-return, an oscillating cylinder and a pump.',
+      'One slider-crank held still four ways: an engine, a quick-return, an oscillating cylinder and a hand pump.',
     thumbnail: 'assets/gifs/slider-crank-inversions.png',
     animation: 'assets/gifs/slider-crank-inversions.gif',
   },
-  // Real-life use cases: each traced by hand over a picture of the machine,
+
+  // Real Machines: each traced by hand over a picture of the machine,
   // and each card opens on that picture. The placements are the ones the
   // drawings were made at, in centimeters, which the backdrop service
   // converts into whatever unit the payload opens in.
@@ -521,7 +207,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Excavator Bucket',
     category: 'realworld',
     description:
-      'The bucket curl of an excavator, traced over its drawing: a cylinder, a bell crank, and the link that tips the bucket.',
+      'How a digger curls its bucket, traced over its drawing: a cylinder, a bell crank, and the link that tips the bucket.',
     thumbnail: 'assets/gifs/excavator-bucket.png',
     animation: 'assets/gifs/excavator-bucket.gif',
     backdrop: {
@@ -537,7 +223,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Car Steering',
     category: 'realworld',
     description:
-      'A center-arm steering mechanism: the pitman arm swings two tie rods, and each knuckle turns its wheel, traced in meters.',
+      'Swing the center arm and two tie rods steer both front wheels together. Drawn at full size, in meters.',
     thumbnail: 'assets/gifs/car-steering.png',
     animation: 'assets/gifs/car-steering.gif',
     // Drawn in meters: 2.26 m wide, centered a centimeter left and eight up.
@@ -549,13 +235,372 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       opacity: 0.8,
     },
   },
+  // These two are generated from fixtures rather than drawn by hand, and their
+  // pictures were drawn around the fixtures' pins (each SVG says how).
+  {
+    id: 'Locking_Pliers',
+    name: 'Locking Pliers',
+    category: 'realworld',
+    description:
+      'A cylinder squeezes the handles. The jaws stop closing as the toggle link comes into line, then lock just past it.',
+    thumbnail: 'assets/gifs/locking-pliers.png',
+    animation: 'assets/gifs/locking-pliers.gif',
+    // Drawn in inches: 11.6 in wide, centered at (5.2, -0.2) in.
+    backdrop: {
+      src: 'assets/backdrops/locking-pliers.svg',
+      width: 29.464,
+      centerX: 13.208,
+      centerY: -0.508,
+      opacity: 0.8,
+    },
+  },
+  {
+    id: 'Double_Wishbone',
+    name: 'Double-Wishbone Suspension',
+    category: 'realworld',
+    description:
+      'Two unequal arms guide a front wheel. As it rises, its top tilts toward the car and the tire barely moves sideways. Drawn at full size.',
+    thumbnail: 'assets/gifs/double-wishbone.png',
+    animation: 'assets/gifs/double-wishbone.gif',
+    backdrop: {
+      src: 'assets/backdrops/double-wishbone.svg',
+      width: 104,
+      centerX: 30,
+      centerY: 36,
+      opacity: 0.8,
+    },
+  },
+  {
+    id: 'Steam_Locomotive',
+    name: 'Steam Locomotive',
+    category: 'realworld',
+    description:
+      'A main rod and coupling rods link the piston to all three wheels, and valve gear slides the valve that lets steam in and out.',
+    thumbnail: 'assets/gifs/steam-locomotive.png',
+    animation: 'assets/gifs/steam-locomotive.gif',
+    backdrop: {
+      src: 'assets/backdrops/steam-locomotive.svg',
+      width: 1060,
+      centerX: 235,
+      centerY: 186.5,
+      opacity: 0.8,
+    },
+  },
+
+  // Back-and-Forth Motion
+  {
+    id: 'Scotch_Yoke_Rod',
+    name: 'Scotch Yoke',
+    category: 'backforth',
+    description:
+      'A pin on a turning disc slides in the yoke’s slot and pushes the rod back and forth through its bearings.',
+    thumbnail: 'assets/gifs/scotch-yoke.png',
+    animation: 'assets/gifs/scotch-yoke.gif',
+  },
+  {
+    id: 'Flywheel_Engine',
+    name: 'Engine with a Flywheel',
+    category: 'backforth',
+    description: 'A crank drawn as a flywheel drives a piston up and down its guide.',
+    thumbnail: 'assets/gifs/flywheel-engine.png',
+    animation: 'assets/gifs/flywheel-engine.gif',
+  },
+  {
+    id: 'Radial_Engine',
+    name: 'Radial Engine',
+    category: 'backforth',
+    description:
+      'Five pistons share one crank, as in an old propeller plane. Each piston travels twice the crank’s length.',
+    thumbnail: 'assets/gifs/radial-engine.png',
+    animation: 'assets/gifs/radial-engine.gif',
+  },
+  {
+    id: 'Whitworth_Quick_Return',
+    name: 'Whitworth Quick-Return',
+    category: 'backforth',
+    description:
+      'A machine tool drive that cuts slowly and returns quickly: the crank turns the slotted link all the way round, unevenly.',
+    thumbnail: 'assets/gifs/whitworth.png',
+    animation: 'assets/gifs/whitworth.gif',
+  },
+  {
+    id: 'Shaper_Quick_Return',
+    name: 'Shaper Quick-Return',
+    category: 'backforth',
+    description:
+      'A metal shaper’s drive: the tool slides forward slowly to cut and comes back fast.',
+    thumbnail: 'assets/gifs/shaper-quick-return.png',
+    animation: 'assets/gifs/shaper-quick-return.gif',
+  },
+  {
+    id: 'Pumpjack',
+    name: 'Pumpjack',
+    category: 'backforth',
+    description:
+      'An oil-field pump: a turning crank rocks the walking beam, which lifts the pump rod straight up and down out of the well.',
+    thumbnail: 'assets/gifs/pumpjack.png',
+    animation: 'assets/gifs/pumpjack.gif',
+  },
+
+  // Swing, Lift and Grip
+  {
+    id: 'Windshield_Wiper',
+    name: 'Windshield Wiper',
+    category: 'swing',
+    description:
+      'One motor turning round, two wiper arms sweeping back and forth together across the glass.',
+    thumbnail: 'assets/gifs/windshield-wiper.png',
+    animation: 'assets/gifs/windshield-wiper.gif',
+  },
+  {
+    id: 'Oscillating_Fan',
+    name: 'Oscillating Fan',
+    category: 'swing',
+    description:
+      'The motor rides on the fan head it swings: its crank turns all the way round while the head sweeps side to side.',
+    thumbnail: 'assets/gifs/oscillating-fan.png',
+    animation: 'assets/gifs/oscillating-fan.gif',
+  },
+  {
+    id: 'Cylinder_Gripper',
+    name: 'Parallel Gripper',
+    category: 'swing',
+    description:
+      'A cylinder closes two jaws that stay level the whole way and meet flat, like a robot’s gripper.',
+    thumbnail: 'assets/gifs/cylinder-gripper.png',
+    animation: 'assets/gifs/cylinder-gripper.gif',
+  },
+  {
+    id: 'Scissor_Lift',
+    name: 'Scissor Lift',
+    category: 'swing',
+    description:
+      'A cylinder pushes crossed arms apart to raise the platform straight up, one end of each arm sliding.',
+    thumbnail: 'assets/gifs/scissor-lift.png',
+    animation: 'assets/gifs/scissor-lift.gif',
+  },
+  {
+    id: 'Offset_Mount_Hatch',
+    name: 'Bracketed Hatch',
+    category: 'swing',
+    description:
+      'A cylinder on welded brackets lifts a hinged hatch. Trace the hatch’s tip and compare its travel with the cylinder’s.',
+    thumbnail: 'assets/gifs/offset-mount-hatch.png',
+    animation: 'assets/gifs/offset-mount-hatch.gif',
+  },
+
+  // Drawing a Path
+  {
+    id: 'Chebyshev_Straight_Line',
+    name: 'Chebyshev Straight-Line',
+    category: 'paths',
+    description:
+      'Four links that draw a nearly straight line: watch the middle of the top link run almost flat.',
+    thumbnail: 'assets/gifs/chebyshev.png',
+    animation: 'assets/gifs/chebyshev.gif',
+  },
+  {
+    id: 'Watt_Straight_Line',
+    name: 'Watt’s Straight-Line',
+    category: 'paths',
+    description:
+      'Two arms rock, and the middle of the short link between them runs up and down a nearly straight line. Cars use it to guide a rear axle.',
+    thumbnail: 'assets/gifs/watt-straight-line.png',
+    animation: 'assets/gifs/watt-straight-line.gif',
+  },
+  {
+    id: 'Peaucellier',
+    name: 'Peaucellier-Lipkin',
+    category: 'paths',
+    description:
+      'The first mechanism found to draw a perfectly straight line using only pins and links, with no guide to slide on.',
+    thumbnail: 'assets/gifs/peaucellier.png',
+    animation: 'assets/gifs/peaucellier.gif',
+  },
+  {
+    id: 'Elliptical_Trammel',
+    name: 'Elliptical Trammel',
+    category: 'paths',
+    description:
+      'Two blocks slide on crossed guides and swing a bar between them, so the traced point on the bar runs along an ellipse.',
+    thumbnail: 'assets/gifs/elliptical-trammel.png',
+    animation: 'assets/gifs/elliptical-trammel.gif',
+  },
+  {
+    id: 'Pantograph',
+    name: 'Pantograph',
+    category: 'paths',
+    description: 'A copying tool: the pen draws the same curve as the tracer, at half the size.',
+    thumbnail: 'assets/gifs/pantograph.png',
+    animation: 'assets/gifs/pantograph.gif',
+  },
+  {
+    id: 'Jansen_Leg',
+    name: 'Jansen Leg',
+    category: 'paths',
+    description:
+      'One leg of Theo Jansen’s wind-walking Strandbeest: a turning crank makes the foot step along the ground.',
+    thumbnail: 'assets/gifs/jansen-leg.png',
+    animation: 'assets/gifs/jansen-leg.gif',
+  },
+
+  // Forces
+  {
+    id: 'Punch_Press',
+    name: 'Punch Press',
+    category: 'forces',
+    description:
+      'The crank torque rises as the punch meets its load and falls as the punch returns.',
+    thumbnail: 'assets/gifs/punch-press.png',
+    animation: 'assets/gifs/punch-press.gif',
+  },
+  {
+    id: 'Toggle_Clamp',
+    name: 'Toggle Clamp',
+    category: 'forces',
+    description:
+      'As two links come into line, a small push on the handle makes a much larger clamping force. Drawn in inches.',
+    thumbnail: 'assets/gifs/toggle-clamp.png',
+    animation: 'assets/gifs/toggle-clamp.gif',
+  },
+  {
+    id: 'Crane_Two_Loads',
+    name: 'Crane with Two Loads',
+    category: 'forces',
+    description:
+      'A hook load that always hangs straight down and a rope pull that turns with the jib: two ways a force can point.',
+    thumbnail: 'assets/gifs/crane-two-loads.png',
+    animation: 'assets/gifs/crane-two-loads.gif',
+  },
+  {
+    id: 'Offset_Load_Rocker',
+    name: 'Offset Load Rocker',
+    category: 'forces',
+    description:
+      'A load placed off the line of its link also twists it. Compare the joint forces with a load along the link.',
+    thumbnail: 'assets/gifs/offset-load-rocker.png',
+    animation: 'assets/gifs/offset-load-rocker.gif',
+  },
+  {
+    id: 'Reciprocating_Saw',
+    name: 'Reciprocating Saw',
+    category: 'forces',
+    description:
+      'A saw blade pushed back and forth against the wood: compare the crank torque on the cutting stroke and the return.',
+    thumbnail: 'assets/gifs/reciprocating-saw.png',
+    animation: 'assets/gifs/reciprocating-saw.gif',
+  },
+  {
+    id: 'Slotted_Tool_Drive',
+    name: 'Slotted Tool Drive',
+    category: 'forces',
+    description:
+      'A cutting load that turns with the tool and a weight that always hangs down: compare the torque and pin forces.',
+    thumbnail: 'assets/gifs/slotted-tool-drive.png',
+    animation: 'assets/gifs/slotted-tool-drive.gif',
+  },
+
+  // Six-Bars and Beyond
+  {
+    id: 'Bell_Crank',
+    name: 'Bell Crank',
+    category: 'sixbar',
+    description:
+      'A crank drives an L-shaped lever, welded from two links, that passes the motion round a corner to a second rocker.',
+    thumbnail: 'assets/gifs/bell-crank.png',
+    animation: 'assets/gifs/bell-crank.gif',
+  },
+  {
+    id: 'Dwell_Six_Bar',
+    name: 'Six-Bar with a Dwell',
+    category: 'sixbar',
+    description:
+      'The output link swings out and back, then stands still for a third of every turn while the crank keeps going.',
+    thumbnail: 'assets/gifs/dwell-six-bar.png',
+    animation: 'assets/gifs/dwell-six-bar.gif',
+  },
+  {
+    id: 'Watt_I',
+    name: 'Watt I',
+    category: 'sixbar',
+    description:
+      'Two triangles pinned straight to each other, and both free to move: the first of the two Watt six-bars.',
+    thumbnail: 'assets/gifs/watt-i.png',
+    animation: 'assets/gifs/watt-i.gif',
+  },
+  {
+    id: 'Watt_II',
+    name: 'Watt II',
+    category: 'sixbar',
+    description:
+      'Two four-bars in a row, the first one’s rocker driving the second: the other Watt six-bar.',
+    thumbnail: 'assets/gifs/watt-ii.png',
+    animation: 'assets/gifs/watt-ii.gif',
+  },
+  {
+    id: 'Stephenson_III',
+    name: 'Stephenson III',
+    category: 'sixbar',
+    description:
+      'A six-bar whose two triangles never touch: other links sit between them, unlike in a Watt six-bar.',
+    thumbnail: 'assets/gifs/stephenson-iii.png',
+    animation: 'assets/gifs/stephenson-iii.gif',
+  },
+  {
+    id: 'Elliptical_Crank',
+    name: 'Elliptical Crank',
+    category: 'sixbar',
+    description:
+      'A turning crank and a sliding block steer one long link, so its far end draws an ellipse.',
+    thumbnail: 'assets/gifs/elliptical-crank.png',
+    animation: 'assets/gifs/elliptical-crank.gif',
+  },
+  {
+    id: 'Double_Butterfly',
+    name: 'Double Butterfly',
+    category: 'sixbar',
+    description: 'Eight links and no four-bar loop anywhere inside, all driven by one crank.',
+    thumbnail: 'assets/gifs/double-butterfly.png',
+    animation: 'assets/gifs/double-butterfly.gif',
+  },
+
+  // Multiple Mechanisms
+  {
+    id: 'Walking_Pair',
+    name: 'Walking Pair',
+    category: 'machines',
+    description:
+      'Two Jansen legs half a cycle apart: one foot stays planted while the other swings forward.',
+    thumbnail: 'assets/gifs/walking-pair.png',
+    animation: 'assets/gifs/walking-pair.gif',
+  },
+  {
+    id: 'Pumping_Field',
+    name: 'Pumping Field',
+    category: 'machines',
+    description:
+      'Three pumpjacks at slightly different speeds drift in and out of step, each on its own animation row.',
+    thumbnail: 'assets/gifs/pumping-field.png',
+    animation: 'assets/gifs/pumping-field.gif',
+  },
+  {
+    id: 'Straight_Line_Pair',
+    name: 'Approximate and Exact',
+    category: 'machines',
+    description:
+      'Chebyshev’s line beside Peaucellier’s: one bows very slightly, the other is perfectly straight.',
+    thumbnail: 'assets/gifs/straight-line-pair.png',
+    animation: 'assets/gifs/straight-line-pair.gif',
+  },
 ];
 
 /**
  * Drawings for working on the app rather than for learning a mechanism.
  *
  * Kept apart from the list above because the dialog only offers them in a
- * development build, and because their payloads come from a different file.
+ * development build. Most payloads come from `dev-templates.ts`; the last few
+ * are library drawings retired from the published library, whose payloads stay
+ * in `template-linkages.ts` because specs and e2e suites still open them.
  */
 export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
   {
@@ -584,6 +629,58 @@ export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
       "Ross McSweeney's Running Horse Automata, from MotionGen: forty-five joints on one " +
       'degree of freedom, tracing both hooves.',
     thumbnail: 'assets/gifs/dev-render-stress.png',
+  },
+  // Redrawn in the 2026-11 review: the library's Four-Bar and Scotch Yoke cards
+  // open new drawings now, and these are the old ones under their old ids.
+  {
+    id: '4-Bar',
+    name: 'Four-Bar, First Drawing',
+    category: 'dev',
+    description:
+      'The first four-bar drawing, with no traced point. Specs and e2e suites open it; the library’s Four-Bar adds a coupler point.',
+    thumbnail: 'assets/gifs/four-bar-plain.png',
+    animation: 'assets/gifs/four-bar-plain.gif',
+  },
+  {
+    id: 'Scotch_Yoke',
+    name: 'Scotch Yoke on One Guide',
+    category: 'dev',
+    description:
+      'The yoke on a single guide under its slot. Specs and e2e suites open it; the library draws the yoke on a rod through two bearings.',
+    thumbnail: 'assets/gifs/scotch-yoke-one-guide.png',
+    animation: 'assets/gifs/scotch-yoke-one-guide.gif',
+  },
+  // Retired from the published library in the 2026-11 review
+  // (PMKS-Web/PMKSWeb issue 247): the crosshead tested welds rather than
+  // teaching anything, the derrick repeated Crane with Two Loads, and Three
+  // Mechanisms only showed what Walking Pair and Pumping Field show with a story
+  // attached.
+  {
+    id: 'Hydraulic_Crosshead',
+    name: 'Hydraulic Crosshead',
+    category: 'dev',
+    description:
+      'A barrel welded to its frame and a crosshead welded to its rod: both ends keep their attachments rigid.',
+    thumbnail: 'assets/gifs/hydraulic-crosshead.png',
+    animation: 'assets/gifs/hydraulic-crosshead.gif',
+  },
+  {
+    id: 'Derrick_Crane',
+    name: 'Derrick Crane',
+    category: 'dev',
+    description:
+      'A weight far out on a boom held close in — the link carries several times the load.',
+    thumbnail: 'assets/gifs/derrick-crane.png',
+    animation: 'assets/gifs/derrick-crane.gif',
+  },
+  {
+    id: 'Three_Machines',
+    name: 'Three Mechanisms',
+    category: 'dev',
+    description:
+      'Three mechanisms in one drawing, each on its own animation row at its own speed and direction.',
+    thumbnail: 'assets/gifs/three-machines.png',
+    animation: 'assets/gifs/three-machines.gif',
   },
 ];
 

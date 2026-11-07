@@ -189,8 +189,7 @@
       <p class="multiNote">
         A selection of more than one kind of object. Drag it, or use its canvas handles to move,
         rotate or scale it together; the fields for a value appear when every selected part has that
-        value. A force in the selection travels with the body it acts on rather than on its own,
-        because that is what decides where a force is.
+        value. A force in the selection moves with the link it acts on.
       </p>
     </collapsible-subsection>
   }
@@ -201,7 +200,7 @@
       dataAction="duplicate"
       [click]="duplicate.bind(this)"
       [disabled]="structureIsFrozen()"
-      tooltip="Copies the selected topology one grid step away."
+      tooltip="Copies the selected parts one grid step away."
     >
       Duplicate Selected
     </button-block>

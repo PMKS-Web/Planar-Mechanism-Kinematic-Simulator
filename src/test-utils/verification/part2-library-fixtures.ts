@@ -73,6 +73,14 @@ export function reciprocatingSawFixture(): MechanismFixture {
   return fixture;
 }
 
+/**
+ * How far along the tool carrier the cutting load acts, as a share of the way
+ * from the crank pin B to the return rocker's pin C: past C, toward the end of
+ * the slot. On C itself it would sit on a pin the rocker shares, and a load is
+ * put on a link at a point of its own.
+ */
+const TOOL_LOAD_ALONG = 1.35;
+
 /** A slotted coupler carries a tool-normal load while the output arm carries a hanging weight. */
 export function slottedToolDriveFixture(): MechanismFixture {
   const fixture = slottedCouplerFixture();
@@ -80,13 +88,17 @@ export function slottedToolDriveFixture(): MechanismFixture {
   const b = fixture.joints.find((j) => j.id === 'B')!;
   const f = fixture.joints.find((j) => j.id === 'F')!;
   const span = Math.hypot(c.x - b.x, c.y - b.y);
+  const tool: [number, number] = [
+    b.x + (c.x - b.x) * TOOL_LOAD_ALONG,
+    b.y + (c.y - b.y) * TOOL_LOAD_ALONG,
+  ];
   fixture.links.forEach((link, i) => {
     link.name = ['Input crank', 'Tool carrier', 'Return rocker', 'Loaded output'][i];
   });
   fixture.loads = [
     {
       onLink: 'BCX',
-      at: [c.x, c.y],
+      at: tool,
       vector: [(-(c.y - b.y) * 60) / span, ((c.x - b.x) * 60) / span],
       local: true,
     },

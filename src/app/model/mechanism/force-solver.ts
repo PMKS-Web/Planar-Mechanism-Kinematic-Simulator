@@ -1,3 +1,4 @@
+import { resolveActuator, GROUND_BODY } from '../actuator';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
@@ -88,6 +89,7 @@ interface MechanismFrames {
   timeNum: number[];
   inputAngularVelocities: number[];
   requiredLoops: Loop[];
+  prepareSolvers?(): void;
   gravity: boolean;
   unit: string;
 }
@@ -309,6 +311,7 @@ export class ForceSolver {
   ): ForceAnalysisFrame {
     let kinematics: FrameKinematics | undefined;
     if (mode === 'dynamic') {
+      mechanism.prepareSolvers?.();
       // Clear the solver's shared maps each frame so a mid-solve failure at
       // frame k cannot leave frame k-1's finite values in place — which would
       // read as "current" and hide the failure from the fallback below.
@@ -747,7 +750,7 @@ export class ForceSolver {
       case 'missing-kinematics':
         return 'Some links are missing the motion data in-motion analysis needs.';
       case 'invalid-properties':
-        return "A mass, moment of inertia or force value isn't a usable number.";
+        return "A mass, mass moment of inertia or force value isn't a usable number.";
       default:
         return '';
     }
@@ -1000,7 +1003,7 @@ export class ForceSolver {
       }
       if (body instanceof RealLink) {
         if (!Number.isFinite(body.massMoI) || body.massMoI < 0) {
-          return `Link ${nameOf(body)} has a moment of inertia that isn't a usable number. Type it again in the Masses table.`;
+          return `Link ${nameOf(body)} has a mass moment of inertia that isn't a usable number. Type it again in the Masses table.`;
         }
         for (const force of body.forces) {
           if (

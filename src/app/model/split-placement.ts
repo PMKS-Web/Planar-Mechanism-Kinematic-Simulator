@@ -46,6 +46,34 @@ export function placeSplitPins(
   stays: number | undefined,
   block?: SplitBlock
 ): Coord[] {
+  return arrange(at, pins, scale, stays, block).targets;
+}
+
+/**
+ * Which body keeps the point when nothing else decides it: the first, in
+ * drawing order, whose staying lets every other pin clear, or the first body
+ * when none does.
+ *
+ * Drawing order decides which body keeps the joint's letter, and is no reason
+ * to settle for a pin left on a bar when another body staying would clear. A
+ * piston rod whose slide pin is nearer the crosshead than one clearance cannot
+ * step off a main rod that stays, because its bar to that pin always passes
+ * the crosshead within reach; a main rod's pin steps off a piston rod that
+ * stays by going along the main rod.
+ */
+export function chooseStayingPin(at: Coord, pins: SplitPin[], scale: number): number {
+  const clears = pins.findIndex((_, stays) => arrange(at, pins, scale, stays).clear);
+  return Math.max(clears, 0);
+}
+
+/** The placement `placeSplitPins` describes, and whether every pin found clear space. */
+function arrange(
+  at: Coord,
+  pins: SplitPin[],
+  scale: number,
+  stays: number | undefined,
+  block?: SplitBlock
+): { targets: Coord[]; clear: boolean } {
   const barHalf = BAR_HALF_SCALE * scale;
   const clearance = 2 * barHalf + BAR_GAP_FACTOR * scale;
   const pinGap = PIN_GAP_FACTOR * scale;
@@ -54,6 +82,7 @@ export function placeSplitPins(
   const placed: [Coord, Coord][] = [];
   const placedPins: Coord[] = [];
   const result: Coord[] = pins.map(() => at);
+  let clear = true;
   if (stays !== undefined) {
     placedPins.push(at);
     pins[stays].ends.forEach((end) => placed.push([at, end]));
@@ -84,11 +113,12 @@ export function placeSplitPins(
       }
     }
     const chosen = best?.at ?? closest!.at;
+    clear &&= best !== undefined;
     result[index] = chosen;
     placedPins.push(chosen);
     pin.ends.forEach((end) => placed.push([chosen, end]));
   });
-  return result;
+  return { targets: result, clear };
 
   /**
    * How far this candidate is inside clear space; negative where it overlaps.

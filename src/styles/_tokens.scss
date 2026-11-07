@@ -151,6 +151,10 @@
   --tab-hover: rgba(0, 0, 0, 0.03);
   /* The same button while pressed, or a row that is active. */
   --press-wash: rgba(0, 0, 0, 0.06);
+  /* The dimming under a sheet raised inside a dialog: Material's own dialog
+     backdrop, so a sheet over the library dims it the way the library dims
+     the app. */
+  --scrim: rgba(0, 0, 0, 0.32);
   /* The edge of a keycap drawn in a tooltip or a menu row. */
   --border-keycap: rgba(0, 0, 0, 0.18);
 

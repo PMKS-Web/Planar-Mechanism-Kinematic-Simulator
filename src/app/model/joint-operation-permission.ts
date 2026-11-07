@@ -137,14 +137,14 @@ export function refuseAttach(
     return {
       code: 'input.two-bodies',
       short: 'input already connected',
-      long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave the input naming no pair. Remove the input first.',
+      long: 'This input already drives one body against another, so a third can’t join it. Remove the input first.',
     };
   }
   if (cylindersEnclosing(context.cylinders, joint).length === 0) return undefined;
   return {
     code: 'cylinder.attach-at-an-end-joint',
     short: 'inside a cylinder',
-    long: 'This joint is inside a cylinder, which places it rather than solving for it, so a third body arriving here would have nothing holding it. Attach at one of the joints at its ends instead.',
+    long: 'This joint is inside a cylinder. Attach to one of the joints at its ends.',
   };
 }
 
@@ -351,7 +351,7 @@ function refuseRemoveSlider(
     return {
       code: 'cylinder.sealed-slider',
       short: 'inside a cylinder',
-      long: 'This joint is inside a cylinder, and its sliding is what the part is. Delete the cylinder instead.',
+      long: 'This joint is the cylinder’s sliding joint. Delete the cylinder to remove it.',
     };
   }
   return undefined;

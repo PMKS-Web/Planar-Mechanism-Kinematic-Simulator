@@ -13,6 +13,12 @@ import {
   memberHoldReads,
   memberHoldTransition,
 } from '../model/link-holds';
+import { holdChips } from '../model/hold-chips';
+import {
+  StartMoveRefusal,
+  anglesTurnedSince,
+  refuseMovingStart,
+} from '../model/start-move-refusal';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import {
   driveDirectionWord,
@@ -1322,7 +1328,7 @@ export class MechanismService {
     link: RealLink
   ): { point: (point: Coord) => Coord; angle: number } | undefined {
     if (this.isAtStartPose()) return { point: (point) => new Coord(point.x, point.y), angle: 0 };
-    const index = this.indexOfMechanismContaining(link);
+    const index = this.indexOfMechanismSolving(link);
     const frames = this.mechanisms[index];
     // An unsolved or unassigned body is never animated, even when another
     // independent machine is paused away from its start.
@@ -2655,7 +2661,11 @@ export class MechanismService {
     });
   }
 
-  private attachForceToLink(force: Force, link: RealLink): void {
+  private attachForceToLink(
+    force: Force,
+    link: RealLink,
+    owner: RealLink = (this.rootLinkOwning(link) as RealLink | undefined) ?? link
+  ): void {
     this.links.forEach((candidate) => {
       candidate.forces = candidate.forces.filter((item) => item !== force && item.id !== force.id);
       if (candidate instanceof RealLink) {
@@ -2664,12 +2674,13 @@ export class MechanismService {
         });
       }
     });
-    force.link = link;
+    force.link = owner;
     // A leaf is a body somebody can point at; a compound is what a weld makes
     // of several. So the *member* is what is remembered, and welding onto a
     // compound leaves that memory alone -- it is what an unweld will need.
     if (link.subset.length === 0) force.anchoredTo = link.id;
-    if (!link.forces.some((candidate) => candidate.id === force.id)) link.forces.push(force);
+    if (!force.link.forces.some((candidate) => candidate.id === force.id))
+      force.link.forces.push(force);
   }
 
   private detachForce(force: Force): void {
@@ -6025,6 +6036,18 @@ export class MechanismService {
   }
 
   /**
+   * Is this machine parked on its own start?
+   *
+   * The clock's answer, as the playback bar's "from start" chip asks it, and
+   * for one machine where `isAtStartPose` asks it of the whole drawing. A part
+   * no machine owns has no clock to be away from, so it is always at its start.
+   */
+  isMachineAtStart(index: number): boolean {
+    if (index === -1) return true;
+    return !this.isMechanismPlaying(index) && this.secondsOf(index) === 0;
+  }
+
+  /**
    * Remember the paused pose for a history step.
    *
    * A fraction of the cycle survives a rebuild whose solver produces a
@@ -6845,10 +6868,15 @@ export class MechanismService {
    * The honest counterpart of the automatic fallback, and what makes the anchor
    * a thing the reader can see and control rather than a rule they have to
    * infer from where the mechanism lands after an edit.
+   *
+   * Refused, quietly, where it would turn a fixed angle: the control that
+   * offers it is grayed with `startMoveRefusal`'s reason, so nothing reaches
+   * this to be refused but a caller that did not ask.
    */
   setCurrentPoseAsStart(part: Joint | Link | Force): boolean {
     const index = this.indexOfMechanismContaining(part);
     if (index === -1 || !this.mechanisms[index]?.isMechanismValid()) return false;
+    if (this.startMoveRefusal(index)) return false;
     const key = topologyOf(this.partitions[index].ownJoints);
     this.anchors.delete(key);
     this.seedFromDisplay = key;
@@ -6869,6 +6897,25 @@ export class MechanismService {
       0
     );
     return true;
+  }
+
+  /**
+   * Why this machine's start may not move to the pose on screen, or nothing.
+   *
+   * Asked of the chips rather than of the solver's bars: what may not change
+   * is what the reader sees as fixed, and for a cylinder that is the angle
+   * mount to mount, however many members carry the flag.
+   */
+  startMoveRefusal(index: number): StartMoveRefusal | undefined {
+    const start = this.mechanisms[index]?.joints[0];
+    if (!start) return undefined;
+    const own = holdChips(this.links, this.sealedStructures()).filter(
+      (chip) => this.indexOfMechanismContaining(chip.link) === index
+    );
+    return refuseMovingStart(
+      anglesTurnedSince(own, start).map((chip) => chip.link),
+      this.joints
+    );
   }
 
   /**
@@ -7836,7 +7883,9 @@ export class MechanismService {
             this.distanceFromForceToLink(force, left) - this.distanceFromForceToLink(force, right);
           return distance === 0 ? left.id.localeCompare(right.id) : distance;
         })[0];
-      if (owner) this.attachForceToLink(force, owner);
+      // The replacements are not in `this.links` yet: looking up ownership
+      // there would reattach a leaf to the compound being removed.
+      if (owner) this.attachForceToLink(force, owner, owner);
       else this.detachForce(force);
     }
     return replacements;

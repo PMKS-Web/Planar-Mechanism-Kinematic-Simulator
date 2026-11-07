@@ -15,6 +15,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { readFileSync } from 'node:fs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -132,6 +133,80 @@ record(
   entered
 );
 
+// --- the Masses table: a body's name is its row's one way to it -------------
+const massNames = page.locator('app-analysis-setup .massRow part-link button');
+record(
+  'every mass row names its body as a part link, with no arrow beside it',
+  (await massNames.count()) > 0 &&
+    (await page.locator('app-analysis-setup .massRow button:not(.partLink)').count()) === 0
+);
+// "Mass moment of inertia", as Alex asked: moment of inertia alone is also the
+// beam's area moment. Wider than its column, it wraps rather than spills.
+const inertiaHead = await page.evaluate(() => {
+  const cell = document.querySelectorAll('app-analysis-setup .massRow.head > span')[2];
+  const table = document.querySelector('app-analysis-setup .massTable').getBoundingClientRect();
+  return {
+    text: cell.textContent.trim(),
+    fits:
+      cell.scrollWidth <= cell.clientWidth + 1 &&
+      cell.getBoundingClientRect().right <= table.right + 1,
+  };
+});
+record(
+  'the inertia column says mass moment of inertia, inside its column',
+  inertiaHead.text === 'Mass moment of inertia' && inertiaHead.fits,
+  inertiaHead
+);
+await massNames.nth(1).hover();
+await page.waitForTimeout(200);
+const lit = await page.evaluate(
+  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.linkedPart?.id
+);
+record('pointing at a name lights that body on the grid', !!lit, lit);
+await massNames.nth(1).click();
+await page.waitForTimeout(600);
+const massLanding = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  return {
+    tab: grid.tabService.getCurrentTab(),
+    selected: grid.activeObjService.selectedLink?.id,
+  };
+});
+record(
+  'and pressing its mass-table name selects that body in Edit',
+  massLanding.tab === 1 && massLanding.selected === lit,
+  massLanding
+);
+
+// A mass link is an editing shortcut even after its section was folded shut.
+const massSection = page.locator('app-edit-panel collapsible-subsection', {
+  has: page.locator('.panel-header__toggle', { hasText: 'Mass Settings' }),
+});
+await massSection.locator('.panel-header__toggle').click();
+await tab('Force').click();
+const massFilm = filmstrip(page, 'artifacts/analysis-mass-links');
+await massFilm.during(90, 6, 'open-mass-settings', () => massNames.nth(1).press('Enter'));
+record(
+  'a mass-table link also opens Edit from the keyboard, with Mass Settings expanded',
+  (await page
+    .locator('app-edit-panel')
+    .getByRole('textbox', { name: 'Mass', exact: true })
+    .count()) > 0 &&
+    (await massSection
+      .locator('.panel-header__toggle mat-icon')
+      .evaluate((icon) => icon.classList.contains('rotate180'))),
+  await page.locator('app-edit-panel').innerText()
+);
+record(
+  'the Force setup drawer stays open beside the mass fields',
+  (await page.locator('app-analysis-setup').count()) === 1
+);
+await contactSheet(
+  'artifacts/analysis-mass-links/*.png',
+  'artifacts/analysis-mass-links-sheet.png',
+  3
+);
+
 // --- a mechanism with nothing driving it ------------------------------------
 await open(payloads['4-Bar']);
 await inAngular(page, () => {
@@ -178,7 +253,7 @@ const landed = await page.evaluate(() => {
   };
 });
 record(
-  'and pressing it lands in Edit with that joint selected',
+  'a part link opens Edit when the analysis mode could not be entered',
   landed.tab === 1 && landed.selected === 'Joint' && label === `joint ${landed.id}`,
   { label, landed }
 );
@@ -248,6 +323,7 @@ const toD = partLink('joint D');
 record('and names the joint the fix is about as a link to it', (await toD.count()) === 1);
 await toD.click();
 await page.waitForTimeout(600);
+await tab('Edit').click();
 await page
   .locator('app-edit-panel toggle-block', { hasText: 'Grounded' })
   .getByRole('switch')
@@ -654,6 +730,7 @@ record(
 );
 await page.locator('app-analysis-setup li.issueFix').first().locator('part-link button').click();
 await page.waitForTimeout(600);
+await tab('Edit').click();
 await page.locator('app-edit-panel segmented-block button', { hasText: 'Welded' }).first().click();
 await page.waitForTimeout(700);
 machinesNow = await readinessNow();
@@ -675,6 +752,7 @@ record(
 );
 await page.locator('app-analysis-setup .issueFix').first().locator('part-link button').click();
 await page.waitForTimeout(600);
+await tab('Edit').click();
 await page
   .locator('app-edit-panel segmented-block button', { hasText: 'Prismatic' })
   .first()
