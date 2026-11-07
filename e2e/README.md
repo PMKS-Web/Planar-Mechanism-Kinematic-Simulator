@@ -151,6 +151,9 @@ Not suites — import them from one.
   on arrival at an address (empty, a Watt six-bar, a Jansen leg, a phone) and on opening a card
   from the library, and fails any uncovered frame whose matrix is not the one the canvas settles
   on. The boot splash and the overlay each used to lift before the fit.
+- `fit-keeps-grid.mjs` — pressing Fit to view or Fit full motion, from the keyboard so no pointer
+  event follows, never leaves the canvas blank: the grid may be gone for the render the fit
+  measures in and no longer, on an empty grid and on a Watt six-bar.
 - `full-tour.mjs` — panels, templates, settings, share URL, help, and a fresh load at phone size.
   Fails on a NaN degrees of freedom, a page wider than its viewport, a Save that starts no
   download, or a template dialog that will not close. Needs installed Chrome (`PMKS_CHROME`).
@@ -365,7 +368,8 @@ Not suites — import them from one.
 ### Analysis modes and machines
 
 - `analysis-setup.mjs` — pressing an analysis mode that cannot be entered opens a list naming the
-  mechanism at fault, the way out, and a button that goes to the part.
+  mechanism at fault, the way out, and a button that goes to the part; mass-table names open Edit
+  at Mass Settings, including from the keyboard and after the section was folded.
 - `analysis-drawing-switches.mjs` — the trace and vector switches under an analysis panel's
   graphs draw on the mechanism and gray in the menu's own words.
 - `analysis-audit.mjs` — every analysis panel on every template for every part: blank graphs,
@@ -374,9 +378,11 @@ Not suites — import them from one.
 - `template-graphs.mjs` — every template's kinematic graphs read as numbers and cross-checked:
   position against solved joints, velocity and acceleration against difference quotients. Slow;
   `PMKS_ONLY=4-Bar,Slider_Crank` narrows it.
+- `panel-folds.mjs` — a joint's Edit sections and its kinematics graphs keep what the reader folded
+  across mode switches and selections.
 - `mechanism-panel.mjs` — the machines with nothing selected: the All mechanisms list, picking one
   (from a row, the setup drawer's name), the others fading, the drawer folding to it and opening
-  on arrival when a machine cannot run, a part link keeping the drawer open in Edit, and a
+  on arrival when a machine cannot run, part links keeping either analysis mode and playback, with the setup drawer staying open, and a
   rename riding the URL.
 - `two-mechanisms.mjs` — two machines in one drawing: a row each in the transport, a section each
   in the setup drawer, and a sync toggle that decouples them.
@@ -539,3 +545,5 @@ Not suites — import them from one.
   without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
   gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
   filmstrip in `artifacts/analysis-tabs/`.
+
+- `mechanism-audit.mjs` — retained audit controls for immobile welded geometry, clockwise six-second cycle with filmstrip, tiny degree-acceleration graph and disconnected Jansen negative control.

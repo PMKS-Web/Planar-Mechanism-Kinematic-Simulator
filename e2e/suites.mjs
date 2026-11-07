@@ -125,6 +125,7 @@ export const SUITES = [
   { name: 'link-mass-fields', seconds: 5, lanes: NIGHTLY },
   { name: 'locking', seconds: 21, lanes: BOTH },
   { name: 'mechanism-panel', seconds: 97, lanes: NIGHTLY },
+  { name: 'mechanism-audit', seconds: 15, lanes: NIGHTLY },
   { name: 'menu-focus', seconds: 16, lanes: BOTH },
   { name: 'mobile', seconds: 81, lanes: NIGHTLY },
   { name: 'multi-mechanism-smoke', seconds: 3, lanes: BOTH },
@@ -158,6 +159,7 @@ export const SUITES = [
   { name: 'phase4-stack-and-menu', seconds: 19, lanes: BOTH },
   { name: 'phase4-sticky-and-snap', seconds: 13, lanes: BOTH },
   { name: 'phase5-driven-cylinder', seconds: 8, lanes: BOTH },
+  { name: 'panel-folds', seconds: 10, lanes: NIGHTLY },
   { name: 'playback-bar', seconds: 8, lanes: BOTH },
   { name: 'playback-direction', seconds: 18, lanes: BOTH },
   {
@@ -202,6 +204,7 @@ export const SUITES = [
   { name: 'template-graphs', seconds: 438, lanes: NIGHTLY },
   { name: 'template-open', seconds: 28, lanes: BOTH },
   { name: 'first-frame', seconds: 45, lanes: NIGHTLY },
+  { name: 'fit-keeps-grid', seconds: 23, lanes: BOTH },
   { name: 'top-strip-states', seconds: 194, lanes: NIGHTLY },
   { name: 'tutorial', seconds: 52, lanes: NIGHTLY },
   { name: 'two-mechanisms', seconds: 40, lanes: BOTH },

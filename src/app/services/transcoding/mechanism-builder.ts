@@ -209,6 +209,9 @@ export class MechanismBuilder {
       forceData.magnitude
     );
     force.name = forceData.name;
+    // The record may name a selectable welded member. Its root participates
+    // in the solve; its member identity determines where an unweld leaves it.
+    if (forceData.linkID !== link.id) force.anchoredTo = forceData.linkID;
     // Add force to link
     link.forces.push(force);
 

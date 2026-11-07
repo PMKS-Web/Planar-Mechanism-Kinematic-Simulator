@@ -16,7 +16,7 @@
  * - The drawer's machine names pick the same way, in either mode.
  * - Entering Kinematic Analysis with a machine that cannot run opens the
  *   drawer; with every machine ready it does not.
- * - A part link in the drawer goes to Edit and leaves the drawer open.
+ * - Part links keep either analysis mode and playback, including in the setup drawer.
  * - A machine is renamed in Edit, one undo, and the name rides the URL.
  * - Undoing a rename keeps the links' jobs: the facts are cached against the
  *   solve, which a rename does not change, while undo replaces every link.
@@ -27,7 +27,9 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { onGrid } from './in-angular.mjs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -318,17 +320,80 @@ record(
   await drawerText()
 );
 
-// --- a part link goes to Edit, and the drawer stays -------------------------
+// --- a part link keeps the analysis mode, and the drawer stays --------------
 await page.locator('app-analysis-setup part-link button').first().click();
 await page.waitForTimeout(600);
 const where = await page.evaluate(() =>
   ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab()
 );
 record(
-  'a part link takes the reader to Edit with the setup drawer still open',
-  where === 1 && (await drawerOpen()),
+  'a part link keeps Kinematic Analysis with the setup drawer still open',
+  where === 2 && (await drawerOpen()),
   { where, open: await drawerOpen() }
 );
+
+// --- overview part links open readings in the current analysis mode ----------
+mkdirSync('artifacts/analysis-part-links', { recursive: true });
+const navigationState = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    return {
+      mode: grid.tabService.getCurrentTab(),
+      type: grid.activeObjService.objType,
+      id: grid.activeObjService.getSelectedObj().id,
+      input: !!grid.activeObjService.selectedJoint?.input,
+      playing: grid.settings.animating.getValue(),
+      title: document.querySelector('app-analysis-panel .panelTitleText')?.textContent.trim(),
+      graphs: document.querySelectorAll('app-analysis-panel app-analysis-graph-section').length,
+    };
+  });
+for (const [mode, modeId, tag] of [
+  ['Kinematic', 2, 'kinematic'],
+  ['Force', 3, 'force'],
+]) {
+  await open(payloads['Punch_Press']);
+  await tab(mode).click();
+  await page
+    .locator('app-mechanism-panel .fact', { hasText: 'Input joint' })
+    .locator('part-link button')
+    .click();
+  await page.waitForTimeout(400);
+  let state = await navigationState();
+  record(
+    `${mode}: the input joint opens its readings without leaving the mode`,
+    state.mode === modeId &&
+      state.type === 'Joint' &&
+      state.input &&
+      state.title?.includes(state.id) &&
+      state.graphs > 0,
+    state
+  );
+
+  await onGrid(page, (grid) => grid.activeObjService.updateSelectedObj(null));
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  const link = page.locator('app-mechanism-panel .linkList part-link button').first();
+  const linkName = (await link.innerText()).trim();
+  const linkId = await link.evaluate(
+    (button) => ng.getComponent(button.closest('part-link')).part().id
+  );
+  const frames = `artifacts/analysis-part-links/${tag}`;
+  const film = filmstrip(page, frames);
+  await film.during(90, 6, 'select-link', () => link.click());
+  state = await navigationState();
+  record(
+    `${mode}: a link opens its readings without leaving the mode or stopping playback`,
+    state.mode === modeId &&
+      state.type === 'Link' &&
+      state.id === linkId &&
+      state.title?.includes(linkName) &&
+      state.graphs > 0 &&
+      state.playing,
+    state
+  );
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.screenshot({ path: `artifacts/analysis-part-links/${tag}.png` });
+  await contactSheet(`${frames}/*.png`, `artifacts/analysis-part-links/${tag}-sheet.png`, 3);
+}
 
 // --- a machine is renamed in Edit, and the URL keeps it ---------------------
 await open(payloads['Straight_Line_Pair']);

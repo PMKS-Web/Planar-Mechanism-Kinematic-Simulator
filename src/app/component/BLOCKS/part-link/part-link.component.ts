@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, input, OnDestroy } from '@angular/core';
+import {
+  booleanAttribute,
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  OnDestroy,
+} from '@angular/core';
 import type { Joint } from '../../../model/joint';
 import type { Link } from '../../../model/link';
 import { PART_LINK_TARGET } from './part-link-target';
@@ -20,10 +27,18 @@ import { PART_LINK_TARGET } from './part-link-target';
   templateUrl: './part-link.component.html',
   styleUrls: ['./part-link.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.cell]': 'cell()' },
 })
 export class PartLinkComponent implements OnDestroy {
   /** The joint or link this names. */
   readonly part = input.required<Joint | Link>();
+
+  /**
+   * A name in a table cell rather than words in a sentence: it takes the cell
+   * and ends in an ellipsis when the name is longer than the column, where a
+   * part link in a sentence never breaks and so never shortens.
+   */
+  readonly cell = input<boolean, unknown>(false, { transform: booleanAttribute });
 
   /**
    * Optional so a block test or a host that has not wired one up still renders
