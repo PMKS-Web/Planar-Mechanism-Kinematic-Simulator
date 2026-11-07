@@ -191,6 +191,20 @@ def _refine_turning_point(model, q_a, t_a, h, direction_sign):
     return direction_sign * _golden_section(model, q_b, t_b, 2 * small, direction_sign)
 
 
+# A slot end and a toggle at the same point: the rate of d along the curve at
+# the crossing is zero there, and its sign is rounding. Below this fraction of
+# the driver's gradient the two coincide, and the toggle is reported, as it is
+# what the travel turns at.
+COINCIDENT_LIMITS = 1e-9
+
+
+def _still_advancing(model, q, t, direction_sign) -> bool:
+    """Whether d still moves in direction_sign along the curve at q, clear of rounding."""
+    gradient = driver_gradient(model, q)
+    rate = direction_sign * (gradient @ tangent(model, q, t))
+    return bool(rate > COINCIDENT_LIMITS * np.linalg.norm(gradient))
+
+
 def _slot_end_before_turning(model, q_a, t_a, h, direction_sign):
     """The pose where a block reaches its slot's end, if it does before d turns within arclength h of q_a.
 
@@ -209,10 +223,7 @@ def _slot_end_before_turning(model, q_a, t_a, h, direction_sign):
         d_next = direction_sign * driver_coordinate(model, q_next)
         if past_slot_end(model, q_next) > 0:
             q_end = _slot_end_crossing(model, q, t, small)
-            t_end = tangent(model, q_end, t)
-            if direction_sign * (driver_gradient(model, q_end) @ t_end) > 0:
-                return q_end
-            return None
+            return q_end if _still_advancing(model, q_end, t, direction_sign) else None
         if d_next < best:
             return None
         best = d_next
@@ -292,6 +303,22 @@ def _stop_at_slot_end(model, walk: Walk, q_from, q_end, d0, step, k_next, direct
     return Limit("slot-end", d_end - d0)
 
 
+def _stop_at_toggle(model, walk: Walk, q_back, t_back, h, d0, step, k_next, direction, d_last) -> Limit:
+    """Refine the turning point within arclength h of q_back, store the grid samples short of it, and stop."""
+    try:
+        extremum = _refine_turning_point(model, q_back, t_back, h, direction)
+        # A grid point on the toggle itself is the dead point, where no
+        # rate is defined, and whether rounding puts the refined toggle
+        # a hair before or after it differs between platforms.
+        while (d0 + k_next * step - extremum) * direction < -TOGGLE_CLEARANCE * step:
+            walk.samples[k_next] = analysis.newton(model, q_back, d0 + k_next * step)
+            k_next += direction
+    except analysis.SolveFailed:
+        # A turn the corrector cannot follow is not a toggle anyone has measured.
+        return Limit("solver-failure", d_last - d0)
+    return Limit("toggle", extremum - d0)
+
+
 def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, budget: int, rank: int):
     """Trace from q0 toward increasing (direction=+1) or decreasing d, collecting grid samples.
 
@@ -332,25 +359,19 @@ def _walk_one_way(model, q0, d0, step, direction, walk: Walk, revolute: bool, bu
                 return Limit("solver-failure", d - d0)
             if q_end is not None:
                 return _stop_at_slot_end(model, walk, q_back, q_end, d0, step, k_next, direction)
-            try:
-                extremum = _refine_turning_point(model, q_back, t_back, h_back + 2 * h, direction)
-                # A grid point on the toggle itself is the dead point, where no
-                # rate is defined, and whether rounding puts the refined toggle
-                # a hair before or after it differs between platforms.
-                while (d0 + k_next * step - extremum) * direction < -TOGGLE_CLEARANCE * step:
-                    walk.samples[k_next] = analysis.newton(model, q_back, d0 + k_next * step)
-                    k_next += direction
-            except analysis.SolveFailed:
-                # A turn the corrector cannot follow is not a toggle anyone has measured.
-                return Limit("solver-failure", d - d0)
-            return Limit("toggle", extremum - d0)
+            return _stop_at_toggle(model, walk, q_back, t_back, h_back + 2 * h, d0, step, k_next, direction, d)
         if past_slot_end(model, q_new) > 0:
-            # A block reached the end of its slot within this step.
+            # A block reached the end of its slot within this step, unless d
+            # turned round first: a step can cross the turn and still end
+            # ahead of where it began, and the crossing is then never reached.
             try:
                 q_end = _slot_end_crossing(model, q, t, h)
+                advancing = _still_advancing(model, q_end, t, direction)
             except analysis.SolveFailed:
                 return Limit("solver-failure", d - d0)
-            return _stop_at_slot_end(model, walk, q, q_end, d0, step, k_next, direction)
+            if advancing:
+                return _stop_at_slot_end(model, walk, q, q_end, d0, step, k_next, direction)
+            return _stop_at_toggle(model, walk, q, t, h, d0, step, k_next, direction, d)
         _, jc = _undriven(model, q_new)
         s = np.linalg.svd(jc, compute_uv=False)
         if s[rank - 1] < SINGULAR_RATIO * s[0]:
