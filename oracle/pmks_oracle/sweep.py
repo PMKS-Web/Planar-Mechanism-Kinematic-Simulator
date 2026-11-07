@@ -199,9 +199,17 @@ COINCIDENT_LIMITS = 1e-9
 
 
 def _still_advancing(model, q, t, direction_sign) -> bool:
-    """Whether d still moves in direction_sign along the curve at q, clear of rounding."""
-    gradient = driver_gradient(model, q)
-    rate = direction_sign * (gradient @ tangent(model, q, t))
+    """Whether d still moves in direction_sign along the curve at q, clear of rounding.
+
+    The rate and the gradient are both taken in coordinates of the machine's
+    size, as in `_dimensionless`: a translation is divided by it and a turn is
+    left alone. Measured in raw coordinates, which mix lengths and radians,
+    the same machine drawn larger or smaller could cross the threshold.
+    """
+    size = np.where(_turns(model), 1.0, model.length_scale)
+    gradient = driver_gradient(model, q) * size
+    along = tangent(model, q, t) / size
+    rate = direction_sign * (gradient @ along) / np.linalg.norm(along)
     return bool(rate > COINCIDENT_LIMITS * np.linalg.norm(gradient))
 
 
@@ -264,6 +272,14 @@ def regular_rank(model: ExudynModel, q) -> int:
     return int(np.sum(s > SINGULAR_RATIO * s[0])) if s.size and s[0] > 0 else 0
 
 
+def _turns(model: ExudynModel) -> np.ndarray:
+    """Which coordinates are a body's turn, in radians, rather than a translation."""
+    turns = np.zeros(model.n, dtype=bool)
+    for body in model.bodies.values():
+        turns[body.columns[2]] = True
+    return turns
+
+
 def _dimensionless(model: ExudynModel, j: np.ndarray) -> np.ndarray:
     """The Jacobian in coordinates of the machine's size, so its singular values do not depend on the unit.
 
@@ -273,9 +289,7 @@ def _dimensionless(model: ExudynModel, j: np.ndarray) -> np.ndarray:
     machine leaves the matrix as it was.
     """
     j = np.array(j, dtype=float)
-    turns = np.zeros(model.n, dtype=bool)
-    for body in model.bodies.values():
-        turns[body.columns[2]] = True
+    turns = _turns(model)
     j[:, turns] /= model.length_scale
     angles = ~np.any(j[:, ~turns], axis=1)
     j[angles] *= model.length_scale
