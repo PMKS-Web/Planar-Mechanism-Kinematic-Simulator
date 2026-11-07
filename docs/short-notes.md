@@ -2707,6 +2707,13 @@ through `zone.run` (`afterRenderInZone`). Anything else that changes template st
 `afterNextRender` timer needs the same. `e2e/fit-keeps-grid.mjs` presses both Fit buttons from the
 keyboard, so no pointer event can redraw the grid for them.
 
+### A grayed menu row's reason opens beside the menu, not over it
+
+`Move the start here` in the playback bar's `.startMenu` is grayed when `startMoveRefusal` names a
+fixed angle, and is `aria-disabled` for the reason the shut mode tab is (above). Its `matTooltip`
+opened `above` lay over `Back to the start`, the row above it, and took that row's click; `after`
+keeps it clear of the menu. Any row in a stacked menu wants its tooltip to the side.
+
 ### A native GitHub stack locks its members' base branches
 
 Rewriting branches does not change their native stack membership. GitHub rejects a PR base change

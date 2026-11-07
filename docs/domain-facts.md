@@ -438,8 +438,9 @@ hold and says so, with "Fix length instead" on the message.
 
 **To the reader the word is "fixed", and never "locked".** The padlock inside a field says
 **Fixed**, the menu rows say **Fixed Length** and **Fixed Angle**, a refusal says "Held by fixed
-length AB", and the way out of one is **Release**. "Locked" and "Unlock" belong to the *joint mark*
-and to nothing else. That is the opposite of the rule this file used to state -- one word for both,
+length AB", and the way out of one is **Release** -- **Release all** when the refusal names more
+than one hold, because the one press lets go of every hold it names (`releaseLabel` in
+`model/link-holds.ts`). "Locked" and "Unlock" belong to the *joint mark* and to nothing else. That is the opposite of the rule this file used to state -- one word for both,
 told apart by context -- and it was reversed after an exploratory sweep watched a reader go looking
 for a padlock they had never pressed. `hold` stays the code's name for it.
 
@@ -470,6 +471,17 @@ anything but a bar. The held-value chips and the amber guide are canvas state
 are (`lockVisualsOn`), and the hover dimensions for a length or an angle -- the link's and the
 joint panel's distance-to-joint ones alike -- are now a hairline with a pill, sized in screen pixels
 through `svgGrid.scaleWithZoom`. `e2e/link-holds.mjs` walks all of it.
+
+**A held value is a value of the design, and the design is the start pose.** So a chip is drawn
+only while its machine stands on its own start (`MechanismService.isMachineAtStart`). Paused a
+little way round, a held crank's chip used to read wherever the crank had turned to -- 50 deg at the
+start, 7 deg a moment later -- and the one number the reader had fixed seemed to change under them.
+A drag at that pose is still held exactly as before; only the chip stands down, and the hover pill
+it was standing in for comes back. For the same reason **Move the start here is grayed where it
+would turn a fixed angle**, with the angle named beside it: promoting the pose rebuilds the design
+from what is on screen, so it would have written the crank's new bearing in as the fixed one.
+`model/start-move-refusal.ts` is the rule and `startMoveRefusal` asks it. A fixed length cannot be
+turned by the motion and never refuses.
 
 **And a Lock is about position, full stop.** It refuses every gesture that would *move* what it
 holds -- a drag, a typed coordinate, a merge -- and refuses nothing else. Two other rules had grown

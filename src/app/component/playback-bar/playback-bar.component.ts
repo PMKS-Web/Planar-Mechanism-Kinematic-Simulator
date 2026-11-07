@@ -42,6 +42,7 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { SaveHistoryService } from '../../services/save-history.service';
 import { PrisJoint, RealJoint } from '../../model/joint';
 import { inputSetFor, NO_INPUT_SET } from '../../model/mechanism/readiness';
+import { StartMoveRefusal } from '../../model/start-move-refusal';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
@@ -499,9 +500,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
    * the machine's clock, and the rest of that clock is on this card.
    */
   moveStartHere(row: PlaybackRow): void {
+    if (this.startRefusal(row)) return;
     this.startMenuFor = null;
     const part = this.mechanism.partitions[row.index]?.ownJoints[0];
     if (part) this.mechanism.setCurrentPoseAsStart(part);
+  }
+
+  /** Why "Move the start here" is grayed for this row, or nothing when it is live. */
+  startRefusal(row: PlaybackRow): StartMoveRefusal | undefined {
+    return this.mechanism.startMoveRefusal(row.index);
   }
 
   /**

@@ -496,6 +496,49 @@ describe('editing at a displaced pose', () => {
     expect(service.isAtStartPose()).toBe(true);
   });
 
+  it('will not move the start where it would turn a fixed angle', () => {
+    // The Locked Four-Bar's crank is fixed at its start angle. Parked a third
+    // of a turn round, the crank points somewhere else, and promoting that
+    // pose wrote the new bearing in as the fixed one.
+    const { service, joints, links } = oneBar();
+    links[0].hold = 'angle';
+    service.updateMechanism();
+    displace(service);
+    const was = startPoses(service);
+
+    expect(service.startMoveRefusal(0)).toEqual({
+      short: 'fixed angle AB',
+      long: 'Starting here would turn fixed angle AB. Turn off its Fixed Angle first.',
+    });
+    expect(service.setCurrentPoseAsStart(joints[1])).toBe(false);
+    expect(startPoses(service)).toBe(was);
+  });
+
+  it('still moves the start past fixed lengths, which no pose can change', () => {
+    const { service, joints, links } = oneBar();
+    links[1].hold = 'length';
+    links[2].hold = 'length';
+    service.updateMechanism();
+    displace(service);
+
+    expect(service.startMoveRefusal(0)).toBeUndefined();
+    expect(service.setCurrentPoseAsStart(joints[1])).toBe(true);
+  });
+
+  it('says each machine is at its own start by its own clock', () => {
+    const harness = createMechanismHarness();
+    const { service } = harness;
+    fourBar(service, 'A', 0);
+    fourBar(service, 'E', 10);
+    service.updateMechanism();
+    expect([service.isMachineAtStart(0), service.isMachineAtStart(1)]).toEqual([true, true]);
+
+    service.seekMechanism(1, service.mechanisms[1].cyclePeriod / 3);
+    expect([service.isMachineAtStart(0), service.isMachineAtStart(1)]).toEqual([true, false]);
+    // A part no machine owns has no clock to be away from.
+    expect(service.isMachineAtStart(-1)).toBe(true);
+  });
+
   // ---- what an operation *means*, by category (plan §6.2) ------------------
 
   it('applies an identity-addressed edit to the design, not to the pose', () => {
