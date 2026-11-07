@@ -111,8 +111,35 @@ def _same_pose(model: ExudynModel, a, b) -> bool:
     return True
 
 
+# Short steps the bracket around a turning point is walked again in, before the
+# golden-section search: each is corrected from its own tangent, so no chord is
+# long enough for Newton to wander off the curve where it bends.
+REFINE_STEPS = 16
+
+
 def _refine_turning_point(model, q_a, t_a, h, direction_sign):
-    """Golden-section search for the extremum of d along the curve between arclength 0 and h from q_a."""
+    """The extremum of d along the curve within arclength h of q_a.
+
+    The bracket is walked again in REFINE_STEPS short steps, and the search
+    then runs over the two short steps around the largest d found. A chord
+    from q_a across the whole bracket, along q_a's own tangent, can leave the
+    corrector wandering for its whole iteration budget where the curve bends
+    sharply, and whether it converges in time then differs between platforms.
+    """
+    small = h / REFINE_STEPS
+    walked = [(direction_sign * driver_coordinate(model, q_a), q_a, t_a)]
+    q, t = q_a, t_a
+    for _ in range(REFINE_STEPS):
+        q = corrector(model, q + small * t, t)
+        t = tangent(model, q, t)
+        walked.append((direction_sign * driver_coordinate(model, q), q, t))
+    i = max(range(len(walked)), key=lambda n: walked[n][0])
+    _, q_b, t_b = walked[max(i - 1, 0)]
+    return direction_sign * _golden_section(model, q_b, t_b, 2 * small, direction_sign)
+
+
+def _golden_section(model, q_a, t_a, h, direction_sign):
+    """Golden-section search for the largest direction_sign * d between arclength 0 and h from q_a."""
     def at(s):
         q = corrector(model, q_a + s * t_a, t_a)
         return direction_sign * driver_coordinate(model, q), q
@@ -134,7 +161,7 @@ def _refine_turning_point(model, q_a, t_a, h, direction_sign):
         if hi - lo < 1e-14 * max(1.0, model.length_scale):
             break
     best, _ = at((lo + hi) / 2)
-    return direction_sign * best
+    return best
 
 
 def regular_rank(model: ExudynModel, q) -> int:

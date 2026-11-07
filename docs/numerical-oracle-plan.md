@@ -414,7 +414,9 @@ every call; and `InitializeSolver` writes a solution file unless told not to.
 
 A one-freedom mechanism's configuration curve is traced by pseudo-arclength continuation from the
 drawn pose, which fixes the assembly branch. A travel limit is where the driver coordinate turns
-round, refined by golden-section search over the last two steps. A singular Jacobian and a solver
+round, refined by golden-section search over the last two steps, walked again first in sixteen
+short steps from their own tangents: a chord across the whole bracket left Newton wandering where
+the excavator's curve bends, and it converged in time on Linux and not on macOS. A singular Jacobian and a solver
 failure are reported as such and never as a toggle. Grid samples sit at d₀ + k·step, keyed by k.
 A rotary cycle closes when the drawing returns to its start after at most three turns. A rocking
 pin input reverses at its last solvable sample and PMKS+ retraces the same branch, so for it one
