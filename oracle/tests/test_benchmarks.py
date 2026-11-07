@@ -168,6 +168,18 @@ def _scaled(raw: dict, factor: float) -> dict:
     return out
 
 
+def test_a_singular_pose_is_found_on_a_finer_grid_too():
+    # At half a degree a step the cranks lie along the frame at k = 220 and
+    # 580. Newton leaves the pose there 2e-8 m off along the direction the
+    # singularity frees, so its Jacobian keeps full rank to rounding; judged to
+    # the pose's accuracy it does not, and neither state is stored.
+    raw = json.loads((CASES / "redundant-parallelogram.problem.json").read_text())
+    raw["sweep"]["step"] = math.pi / 360
+    sweep = solve(load_problem(raw), {"oracle": "test"})["sweep"]
+    assert sweep["singularPoses"] == [220, 580]
+    assert not set(sweep["samples"]["k"]) & {220, 580}
+
+
 def test_angular_accelerations_do_not_depend_on_the_unit_of_length():
     raw = json.loads((CASES / "norton-fourbar.problem.json").read_text())
     small = solve(load_problem(raw), {"oracle": "test"})["sweep"]["samples"]

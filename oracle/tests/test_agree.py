@@ -92,3 +92,20 @@ def test_a_newer_generator_reproduces_when_only_its_numbers_are_asked(case):
     with pytest.raises(agree.Disagreement, match="generator"):
         agree.check(problem, reference, other)
     agree.check(problem, reference, other, same_generator=False)
+
+
+@pytest.mark.parametrize("which", ["first", "second"])
+def test_a_column_or_force_mode_left_out_is_a_change(case, which):
+    # Either argument may be the incomplete one: a regeneration that drops a
+    # column must not be kept as reproduced, nor one that adds it back.
+    problem, reference = case
+
+    def cut(edit):
+        other = copy.deepcopy(reference)
+        edit(other["sweep"]["samples"])
+        return (other, reference) if which == "first" else (reference, other)
+
+    with pytest.raises(agree.Disagreement, match="points B columns"):
+        agree.check(problem, *cut(lambda s: s["points"]["B"].pop("vel")))
+    with pytest.raises(agree.Disagreement, match="force modes"):
+        agree.check(problem, *cut(lambda s: s["forces"].pop("dynamic")))
